@@ -1,0 +1,24 @@
+# permissions for end users to edit keplerdependencies.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: keplerdependency-editor-role
+rules:
+- apiGroups:
+  - dependency.kepler.operator.com
+  resources:
+  - keplerdependencies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - dependency.kepler.operator.com
+  resources:
+  - keplerdependencies/status
+  verbs:
+  - get
