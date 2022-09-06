@@ -1,0 +1,7 @@
+apiVersion: dependency.kepler.operator.com/v1
+kind: KeplerDependency
+metadata:
+  name: keplerdependency-sample
+spec:
+  # Add fields here
+  foo: bar
