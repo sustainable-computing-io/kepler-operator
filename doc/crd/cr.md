@@ -1,5 +1,5 @@
 ## Kepler CR
-The Kepler CR provides specification of each kepler components including exportor, estimator, model-server, and exporter (including prometheus and grafana dependency.
+The Kepler CR provides specification of each kepler components including exportor, estimator, model-server, and exporter
   
 ```yaml
 collector:
@@ -47,10 +47,4 @@ model-server:
       type: local
       hostPath: 
       ...
-prometheus:
-    # https://pkg.go.dev/github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1#PrometheusSpec
-    ...
-grafana:
-    dashboard-script:
-    ...
 ```
