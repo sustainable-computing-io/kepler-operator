@@ -1,0 +1,48 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - dependency.kepler.operator.com
+  resources:
+  - keplerdependencies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - dependency.kepler.operator.com
+  resources:
+  - keplerdependencies/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - dependency.kepler.operator.com
+  resources:
+  - keplerintegrations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - dependency.kepler.operator.com
+  resources:
+  - keplerintegrations/status
+  verbs:
+  - get
+  - patch
+  - update

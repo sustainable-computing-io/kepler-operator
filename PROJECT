@@ -5,6 +5,9 @@ resources:
 - group: dependency
   kind: KeplerDependency
   version: v1
+- group: dependency
+  kind: KeplerIntegration
+  version: v1
 version: 3-alpha
 plugins:
   go.operator-sdk.io/v2-alpha: {}
