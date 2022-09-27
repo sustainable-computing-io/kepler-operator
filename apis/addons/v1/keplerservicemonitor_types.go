@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,8 +29,7 @@ type KeplerServiceMonitorSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of KeplerServiceMonitor. Edit keplerservicemonitor_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	ServiceMonitor v1.ServiceMonitorSpec `json:"serviceMonitor,omitempty"`
 }
 
 // KeplerServiceMonitorStatus defines the observed state of KeplerServiceMonitor
