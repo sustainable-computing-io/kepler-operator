@@ -1,3 +1,6 @@
-## This file is auto-generated, do not modify ##
+## Append samples you want in your CSV to this file as resources ##
 resources:
-- dependency_v1_keplerdependency.yaml
+- addons_v1_keplermachineconfig.yaml
+- addons_v1_keplerservicemonitor.yaml
+- system_v1_keplerdependencies.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

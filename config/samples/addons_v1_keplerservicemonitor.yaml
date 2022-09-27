@@ -1,0 +1,6 @@
+apiVersion: addons.operator.com/v1
+kind: KeplerServiceMonitor
+metadata:
+  name: keplerservicemonitor-sample
+spec:
+  # TODO(user): Add fields here

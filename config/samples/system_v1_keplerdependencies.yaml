@@ -1,0 +1,6 @@
+apiVersion: system.operator.com/v1
+kind: KeplerDependencies
+metadata:
+  name: keplerdependencies-sample
+spec:
+  # TODO(user): Add fields here

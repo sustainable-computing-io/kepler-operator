@@ -1,10 +1,38 @@
-domain: kepler.operator.com
-layout: go.kubebuilder.io/v2
-repo: github.com/sustainable-computing-io/kepler-operator
-resources:
-- group: dependency
-  kind: KeplerDependency
-  version: v1
-version: 3-alpha
+domain: operator.com
+layout:
+- go.kubebuilder.io/v3
+multigroup: true
 plugins:
-  go.operator-sdk.io/v2-alpha: {}
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
+projectName: kepler-operator-1
+repo: operator.com/kepler
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: operator.com
+  group: addons
+  kind: KeplerMachineConfig
+  path: operator.com/kepler/apis/addons/v1
+  version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: operator.com
+  group: addons
+  kind: KeplerServiceMonitor
+  path: operator.com/kepler/apis/addons/v1
+  version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: operator.com
+  group: system
+  kind: KeplerDependencies
+  path: operator.com/kepler/apis/system/v1
+  version: v1
+version: "3"

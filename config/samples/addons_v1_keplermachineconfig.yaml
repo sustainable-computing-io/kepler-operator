@@ -1,0 +1,6 @@
+apiVersion: addons.operator.com/v1
+kind: KeplerMachineConfig
+metadata:
+  name: keplermachineconfig-sample
+spec:
+  # TODO(user): Add fields here
