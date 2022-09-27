@@ -1,0 +1,24 @@
+# permissions for end users to edit keplerservicemonitors.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: keplerservicemonitor-editor-role
+rules:
+- apiGroups:
+  - addons.operator.com
+  resources:
+  - keplerservicemonitors
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - addons.operator.com
+  resources:
+  - keplerservicemonitors/status
+  verbs:
+  - get

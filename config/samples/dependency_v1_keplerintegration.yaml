@@ -1,7 +1,0 @@
-apiVersion: dependency.kepler.operator.com/v1
-kind: KeplerIntegration
-metadata:
-  name: keplerintegration-sample
-spec:
-  # Add fields here
-  foo: bar
