@@ -1,0 +1,12 @@
+apiVersion: kepler.system.sustainable.computing.io/v1alpha1
+kind: Kepler
+metadata:
+  labels:
+    app.kubernetes.io/name: kepler
+    app.kubernetes.io/instance: kepler-sample
+    app.kubernetes.io/part-of: kepler-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: kepler-operator
+  name: kepler-sample
+spec:
+  # TODO(user): Add fields here

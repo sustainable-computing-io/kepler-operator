@@ -1,0 +1,33 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - kepler.system.sustainable.computing.io
+  resources:
+  - keplers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - kepler.system.sustainable.computing.io
+  resources:
+  - keplers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - kepler.system.sustainable.computing.io
+  resources:
+  - keplers/status
+  verbs:
+  - get
+  - patch
+  - update

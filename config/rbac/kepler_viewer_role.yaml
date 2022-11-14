@@ -1,0 +1,27 @@
+# permissions for end users to view keplers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: kepler-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: kepler-operator
+    app.kubernetes.io/part-of: kepler-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: kepler-viewer-role
+rules:
+- apiGroups:
+  - kepler.system.sustainable.computing.io
+  resources:
+  - keplers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - kepler.system.sustainable.computing.io
+  resources:
+  - keplers/status
+  verbs:
+  - get
