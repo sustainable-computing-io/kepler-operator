@@ -59,15 +59,18 @@ type KeplerSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of Kepler. Edit kepler_types.go to remove/update
-	ModelServer ModelServerSpec `json:"modelServer,omitempty"`
-	Estimator   EstimatorSpec   `json:"estimatorSpec,omitempty"`
-	Collector   CollectorSpec   `json:"collectorSpec,omitempty"`
+	ModelServer *ModelServerSpec `json:"modelServer,omitempty"`
+	Estimator   *EstimatorSpec   `json:"estimatorSpec,omitempty"`
+	Collector   *CollectorSpec   `json:"collectorSpec,omitempty"`
 }
 
 // KeplerStatus defines the observed state of Kepler
 type KeplerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// conditions represent the latest available observations of the kepler-system
+	Conditions metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
 //+kubebuilder:object:root=true

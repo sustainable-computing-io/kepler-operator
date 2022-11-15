@@ -24,13 +24,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
+	keplerv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/klog/v2"
 )
 
 // KeplerReconciler reconciles a Kepler object
 type KeplerReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	Log    klog.Logger
 }
 
 //+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=keplers,verbs=get;list;watch;create;update;patch;delete
@@ -49,14 +54,67 @@ type KeplerReconciler struct {
 func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	logger := r.Log.WithValues("kepler-system", req.NamespacedName)
+	inst := &keplerv1alpha1.Kepler{}
+	if err := r.Client.Get(ctx, req.NamespacedName, inst); err != nil {
+		if kerrors.IsNotFound(err) {
+			klog.Error(err, "Failed to get namespace")
+		}
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	var result ctrl.Result
+	var err error
 
-	return ctrl.Result{}, nil
+	if inst.Spec.Collector != nil {
+		result, err = CollectorReconciler(ctx, inst, r, logger)
+	} else if inst.Spec.Estimator != nil {
+		// result, err = EstimatorReconciler(ctx, inst, r, logger)
+	} else if inst.Spec.ModelServer != nil {
+		// result, err = ModelServerReconciler(ctx, inst, r, logger)
+	} else {
+
+		return result, nil
+	}
+
+	// Set reconcile status condition
+	if err == nil {
+		inst.Status.Conditions = metav1.Condition{
+			Type:    keplerv1alpha1.ConditionReconciled,
+			Status:  metav1.ConditionTrue,
+			Reason:  keplerv1alpha1.ReconciledReasonComplete,
+			Message: "Reconcile complete",
+		}
+	} else {
+		inst.Status.Conditions = metav1.Condition{
+			Type:    keplerv1alpha1.ConditionReconciled,
+			Status:  metav1.ConditionTrue,
+			Reason:  keplerv1alpha1.ReconciledReasonError,
+			Message: err.Error(),
+		}
+	}
+	// Update instance status
+	statusErr := r.Client.Status().Update(ctx, inst)
+	if err == nil { // Don't mask previous error
+		err = statusErr
+	}
+
+	return result, err
+}
+
+//nolint:dupl
+func CollectorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, kr *KeplerReconciler, logger klog.Logger) (ctrl.Result, error) {
+	// r := collectorReconciler{}
+
+	l := logger.WithValues("method", "Collector")
+	_, err := reconcileBatch(l) // apply all resoucres here like service account, scc etc here eg r.applyServiceAccount
+
+	return ctrl.Result{}, err
+
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&keplersystemv1alpha1.Kepler{}).
+		For(&keplerv1alpha1.Kepler{}).
 		Complete(r)
 }
