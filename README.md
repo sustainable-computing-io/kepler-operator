@@ -73,6 +73,12 @@ After modifying the *_types.go file always run the following command to update t
 make generate
 ```
 
+To update the crd run 
+
+```sh
+make manifests
+```
+
 ### Modifying the API definitions
 If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
 

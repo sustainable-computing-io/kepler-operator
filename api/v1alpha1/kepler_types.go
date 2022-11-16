@@ -59,7 +59,7 @@ type KeplerSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of Kepler. Edit kepler_types.go to remove/update
-	ModelServer *ModelServerSpec `json:"modelServer,omitempty"`
+	ModelServer *ModelServerSpec `json:"model-server,omitempty"`
 	Estimator   *EstimatorSpec   `json:"estimator,omitempty"`
 	Collector   *CollectorSpec   `json:"collector,omitempty"`
 }

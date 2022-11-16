@@ -45,7 +45,7 @@ spec:
                   foo:
                     type: string
                 type: object
-              modelServer:
+              model-server:
                 description: Foo is an example field of Kepler. Edit kepler_types.go
                   to remove/update
                 properties:
