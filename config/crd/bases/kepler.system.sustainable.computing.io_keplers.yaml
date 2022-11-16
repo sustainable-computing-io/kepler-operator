@@ -35,39 +35,17 @@ spec:
           spec:
             description: KeplerSpec defines the desired state of Kepler
             properties:
-              collectorSpec:
+              collector:
                 properties:
                   image:
                     type: string
-                  ratioMetrics:
-                    properties:
-                      core:
-                        type: string
-                      dram:
-                        type: string
-                      global:
-                        type: string
-                      uncore:
-                        type: string
-                    type: object
-                  sources:
-                    properties:
-                      bpf:
-                        type: string
-                      cgroupv2:
-                        type: string
-                      counters:
-                        type: string
-                      kubelet:
-                        type: string
-                    type: object
                 type: object
-              estimatorSpec:
+              estimator:
                 properties:
                   foo:
                     type: string
                 type: object
-              modelServer:
+              model-server:
                 description: Foo is an example field of Kepler. Edit kepler_types.go
                   to remove/update
                 properties:

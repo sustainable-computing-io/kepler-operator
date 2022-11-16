@@ -65,6 +65,20 @@ make run
 
 **NOTE:** You can also run this in one step by running: `make install run`
 
+
+### Modifying the `*_types.go`
+After modifying the *_types.go file always run the following command to update the generated code for that resource type:
+
+```sh
+make generate
+```
+
+To update the crd run 
+
+```sh
+make manifests
+```
+
 ### Modifying the API definitions
 If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
 

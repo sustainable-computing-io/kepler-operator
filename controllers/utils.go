@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 )
 
@@ -17,4 +19,11 @@ func reconcileBatch(l klog.Logger, reconcileFuncs ...reconcileFunc) (bool, error
 		}
 	}
 	return true, nil
+}
+
+func nameFor(obj metav1.Object) types.NamespacedName {
+	return types.NamespacedName{
+		Name:      obj.GetName(),
+		Namespace: obj.GetNamespace(),
+	}
 }

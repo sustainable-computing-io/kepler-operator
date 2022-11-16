@@ -40,9 +40,9 @@ type Sources struct {
 }
 
 type CollectorSpec struct {
-	Image        string       `json:"image,omitempty"`
-	Sources      Sources      `json:"sources,omitempty"`
-	RatioMetrics RatioMetrics `json:"ratioMetrics,omitempty"`
+	Image string `json:"image,omitempty"`
+	// Sources      Sources      `json:"sources,omitempty"`
+	// RatioMetrics RatioMetrics `json:"ratioMetrics,omitempty"`
 }
 
 type ModelServerSpec struct {
@@ -59,9 +59,9 @@ type KeplerSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of Kepler. Edit kepler_types.go to remove/update
-	ModelServer *ModelServerSpec `json:"modelServer,omitempty"`
-	Estimator   *EstimatorSpec   `json:"estimatorSpec,omitempty"`
-	Collector   *CollectorSpec   `json:"collectorSpec,omitempty"`
+	ModelServer *ModelServerSpec `json:"model-server,omitempty"`
+	Estimator   *EstimatorSpec   `json:"estimator,omitempty"`
+	Collector   *CollectorSpec   `json:"collector,omitempty"`
 }
 
 // KeplerStatus defines the observed state of Kepler
