@@ -8,5 +8,9 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: kepler-operator
   name: kepler-sample
+  # namespace: kepler
 spec:
   # TODO(user): Add fields here
+  collector:
+    image: busybox:1.28
+    
