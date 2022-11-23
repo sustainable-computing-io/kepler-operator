@@ -42,14 +42,53 @@ spec:
                 type: object
               estimator:
                 properties:
-                  foo:
+                  filterConditions:
+                    type: string
+                  initUrl:
+                    type: string
+                  modelName:
                     type: string
                 type: object
-              model-server:
-                description: Foo is an example field of Kepler. Edit kepler_types.go
-                  to remove/update
+              model-server-exporter:
                 properties:
-                  foo:
+                  model-server-trainer:
+                    properties:
+                      initialModelNames:
+                        items:
+                          type: string
+                        type: array
+                      initialModelsEndpoint:
+                        default: https://raw.githubusercontent.com/sustainable-computing-io/kepler-model-server/main/tests/test_models
+                        type: string
+                      promHeaders:
+                        items:
+                          properties:
+                            headerKey:
+                              type: string
+                            headerValue:
+                              type: string
+                          type: object
+                        type: array
+                      promQueryInternal:
+                        default: 20
+                        type: integer
+                      promQueryStep:
+                        default: 3
+                        type: integer
+                      promSSLDisable:
+                        default: true
+                        type: boolean
+                    type: object
+                  modelPath:
+                    default: models
+                    type: string
+                  modelServerEndpoint:
+                    type: string
+                  port:
+                    default: 8100
+                    type: integer
+                  promServer:
+                    default: http://prometheus-k8s.monitoring.svc.cluster.local:9090/
                     type: string
                 type: object
             type: object

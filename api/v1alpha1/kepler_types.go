@@ -45,12 +45,50 @@ type CollectorSpec struct {
 	// RatioMetrics RatioMetrics `json:"ratioMetrics,omitempty"`
 }
 
-type ModelServerSpec struct {
-	Foo string `json:"foo,omitempty"`
+type CustomHeader struct {
+	HeaderKey   string `json:"headerKey,omitempty"`
+	HeaderValue string `json:"headerValue,omitempty"`
+}
+
+type ModelServerTrainer struct {
+
+	// +kubebuilder:default=20
+	PromQueryInterval int `json:"promQueryInternal,omitempty"`
+
+	// +kubebuilder:default=3
+	PromQueryStep int `json:"promQueryStep,omitempty"`
+
+	PromHeaders []CustomHeader `json:"promHeaders,omitempty"`
+
+	// +kubebuilder:default=true
+	PromSSLDisable bool `json:"promSSLDisable,omitempty"`
+
+	// +kubebuilder:default="https://raw.githubusercontent.com/sustainable-computing-io/kepler-model-server/main/tests/test_models"
+	InitialModelsEndpoint string `json:"initialModelsEndpoint,omitempty"`
+
+	InitialModelNames []string `json:"initialModelNames,omitempty"`
+}
+
+type ModelServerExporterSpec struct {
+
+	// +kubebuilder:default=8100
+	Port int `json:"port,omitempty"`
+
+	// +kubebuilder:default="http://prometheus-k8s.monitoring.svc.cluster.local:9090/"
+	PromServer string `json:"promServer,omitempty"`
+
+	// +kubebuilder:default="models"
+	ModelPath string `json:"modelPath,omitempty"`
+
+	ModelServerEndpoint string `json:"modelServerEndpoint,omitempty"`
+
+	ModelServerTrainer *ModelServerTrainer `json:"model-server-trainer,omitempty"`
 }
 
 type EstimatorSpec struct {
-	Foo string `json:"foo,omitempty"`
+	ModelName        string `json:"modelName,omitempty"`
+	FilterConditions string `json:"filterConditions,omitempty"`
+	InitUrl          string `json:"initUrl,omitempty"`
 }
 
 // KeplerSpec defines the desired state of Kepler
@@ -58,10 +96,9 @@ type KeplerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of Kepler. Edit kepler_types.go to remove/update
-	ModelServer *ModelServerSpec `json:"model-server,omitempty"`
-	Estimator   *EstimatorSpec   `json:"estimator,omitempty"`
-	Collector   *CollectorSpec   `json:"collector,omitempty"`
+	ModelServerExporter *ModelServerExporterSpec `json:"model-server-exporter,omitempty"`
+	Estimator           *EstimatorSpec           `json:"estimator,omitempty"`
+	Collector           *CollectorSpec           `json:"collector,omitempty"`
 }
 
 // KeplerStatus defines the observed state of Kepler

@@ -27,9 +27,13 @@ import (
 	"github.com/go-logr/logr"
 	keplerv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+
+	//appsv1 "k8s.io/api/apps/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"strconv"
 
 	"k8s.io/klog/v2"
 )
@@ -85,8 +89,8 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		result, err = CollectorReconciler(ctx, inst, r, logger)
 	} else if inst.Spec.Estimator != nil {
 		// result, err = EstimatorReconciler(ctx, inst, r, logger)
-	} else if inst.Spec.ModelServer != nil {
-		// result, err = ModelServerReconciler(ctx, inst, r, logger)
+	} else if inst.Spec.ModelServerExporter != nil {
+		result, err = ModelServerExporterReconciler(ctx, inst, r, logger)
 	} else {
 
 		return result, nil
@@ -137,6 +141,47 @@ func CollectorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, k
 	return ctrl.Result{}, err
 
 }
+
+type modelServerExporterReconciler struct {
+	KeplerReconciler
+	Ctx      context.Context
+	Instance *keplerv1alpha1.Kepler
+}
+
+func (mser *modelServerExporterReconciler) ensureModelServerDeployment(logger klog.Logger) (bool, error) {
+	portNum := mser.Instance.Spec.ModelServerExporter.Port
+	promEndpoint := mser.Instance.Spec.ModelServerExporter.PromServer
+	modelPath := mser.Instance.Spec.ModelServerExporter.ModelPath
+	modelServerEndpoint := mser.Instance.Spec.ModelServerExporter.ModelServerEndpoint
+	modelServerTrainerPath := mser.Instance.Spec.ModelServerExporter.ModelServerTrainer
+	if modelServerEndpoint == "" {
+		modelServerEndpoint = "http://kepler-model-server.monitoring.cluster.local:" + strconv.Itoa(portNum) + "/model"
+	}
+
+	modelServerDeployment := ModelServerDeployment{
+		Context: mser.Ctx,
+	}
+}
+
+func ModelServerExporterReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, kr *KeplerReconciler, logger klog.Logger) (ctrl.Result, error) {
+	modelServerReconciler := modelServerExporterReconciler{
+		KeplerReconciler: *kr,
+		Ctx:              ctx,
+		Instance:         instance,
+	}
+	log := logger.WithValues("method", "Model Server")
+	_, err := reconcileBatch(
+		log,
+		modelServerReconciler.ensureModelServerDeployment,
+	)
+	return ctrl.Result{}, err
+
+}
+
+/*
+func EstimatorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, kr *KeplerReconciler, logger klog.Logger) (ctrl.Result, error) {
+
+}*/
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
