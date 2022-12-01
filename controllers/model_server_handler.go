@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"reflect"
 	"strconv"
 
 	keplerv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
@@ -15,19 +16,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	//ctrl "sigs.k8s.io/controller-runtime"
 )
 
-var ModelServerEndpoint string
-
-type ReconciliationResult byte
-
 const (
-	UnexpectedError ReconciliationResult = iota
-	NoObjectExistedCreateNew
-	ObjectExistedUpdatedorReplaced
-	ObjectExistedIgnore
+	PersistentVolumeName      = "kepler-model-server-pv"
+	PersistentVolumeClaimName = "kepler-model-server-pvc"
+	ConfigMapName             = "kepler-model-server-cfm"
+	ModelServerServiceName    = "kepler-model-server"
+	ModelServerDeploymentName = "kepler-model-server"
 )
 
 type ModelServerDeployment struct {
@@ -91,7 +90,7 @@ func (msd *ModelServerDeployment) buildModelServerConfigMap() {
 			APIVersion: msd.Instance.APIVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kepler-model-server-cfm",
+			Name:      ConfigMapName,
 			Namespace: msd.Instance.Namespace,
 		},
 		Data: dataPairing,
@@ -107,7 +106,7 @@ func (msd *ModelServerDeployment) buildModelServerPVC() {
 			APIVersion: msd.Instance.APIVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kepler-model-server-pvc",
+			Name:      PersistentVolumeClaimName,
 			Namespace: msd.Instance.Namespace,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -128,8 +127,8 @@ func (msd *ModelServerDeployment) buildModelServerPVC() {
 func (msd *ModelServerDeployment) buildModelServerPV() {
 	labels := map[string]string{
 		"type":                        "local",
-		"app.kubernetes.io/component": "kepler-model-server-pv",
-		"app.kubernetes.io/name":      "kepler-model-server-pv",
+		"app.kubernetes.io/component": PersistentVolumeName,
+		"app.kubernetes.io/name":      PersistentVolumeName,
 	}
 	modelServerPV := corev1.PersistentVolume{
 		TypeMeta: metav1.TypeMeta{
@@ -137,7 +136,7 @@ func (msd *ModelServerDeployment) buildModelServerPV() {
 			APIVersion: msd.Instance.APIVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "kepler-model-server-pv",
+			Name:   PersistentVolumeName,
 			Labels: labels,
 		},
 		Spec: corev1.PersistentVolumeSpec{
@@ -169,7 +168,7 @@ func (msd *ModelServerDeployment) buildModelServerService() {
 			APIVersion: msd.Instance.APIVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kepler-model-server",
+			Name:      ModelServerServiceName,
 			Namespace: msd.Instance.Namespace,
 			Labels:    labels,
 		},
@@ -258,7 +257,7 @@ func (msd *ModelServerDeployment) buildModelServerDeployment() {
 			APIVersion: msd.Instance.APIVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kepler-model-server",
+			Name:      ModelServerDeploymentName,
 			Namespace: msd.Instance.Namespace,
 			Labels:    labels,
 		},
@@ -287,95 +286,68 @@ func (msd *ModelServerDeployment) ensureModelServerPersistentVolumeClaim(l klog.
 	msPVC := msd.PersistentVolumeClaim
 	msPVCResult := &corev1.PersistentVolumeClaim{}
 
-	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: "kepler-model-server-pvc", Namespace: msd.Instance.Namespace}, msPVCResult)
+	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: PersistentVolumeClaimName, Namespace: msd.Instance.Namespace}, msPVCResult)
 
 	if err != nil && errors.IsNotFound(err) {
 		if errors.IsNotFound(err) {
-			l.Info("PVC does not exist. Creating...")
 			ctrlutil.SetControllerReference(msd.Instance, msPVC, msd.Scheme)
 			err = msd.Client.Create(msd.Context, msPVC)
 			if err != nil {
-				//return UnexpectedError, err
 				return false, err
 			}
 		} else {
-			l.Error(err, "failed to get PVC")
 			return false, err
 		}
 	}
-
-	// TODO: if it does exist, only modify mutable fields when they become variable in future
-	//return ObjectExistedIgnore, nil
 	return true, nil
 }
 
 func (msd *ModelServerDeployment) ensureModelServerPersistentVolume(l klog.Logger) (bool, error) { //(ReconciliationResult, error) {
-	// Create PV and PVC
 	msd.buildModelServerPV()
 	msPV := msd.PersistentVolume
 	msPVResult := &corev1.PersistentVolume{}
 
-	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: "kepler-model-server-pv"}, msPVResult)
+	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: PersistentVolumeName}, msPVResult)
 
 	if err != nil && errors.IsNotFound(err) {
 		if errors.IsNotFound(err) {
-			l.Info("PV does not exist. Creating...")
 			ctrlutil.SetControllerReference(msd.Instance, msPV, msd.Scheme)
 			err = msd.Client.Create(msd.Context, msPV)
 			if err != nil {
-				//return UnexpectedError, err
 				return false, err
 			}
 		} else {
-			l.Error(err, "failed to get PV")
 			return false, err
 		}
 	}
 
-	// TODO: if it does exist, only modify mutable fields when they become variable in future
-
-	//return ObjectExistedIgnore, nil
 	return true, nil
 }
 
 func (msd *ModelServerDeployment) ensureModelServerConfigMap(l klog.Logger) (bool, error) { //(ReconciliationResult, error) {
-
 	msd.buildModelServerConfigMap()
 	msCFM := msd.ConfigMap
 	msCFMResult := &corev1.ConfigMap{}
 
-	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: "kepler-model-server-cfm", Namespace: msd.Instance.Namespace}, msCFMResult)
+	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: ConfigMapName, Namespace: msd.Instance.Namespace}, msCFMResult)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			l.Info("ConfigMap does not exist. Creating...")
 			ctrlutil.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
 			err = msd.Client.Create(msd.Context, msCFM)
 			if err != nil {
-				l.Error(err, "failed to create Config Map")
-				//return UnexpectedError, err
 				return false, err
 			}
 		} else {
-			l.Error(err, "failed to get Config Map")
-			//return UnexpectedError, err
+			return false, err
+		}
+	} else if !reflect.DeepEqual(msCFM, msCFMResult) {
+		controllerutil.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
+		err = msd.Client.Update(msd.Context, msCFM)
+		if err != nil {
 			return false, err
 		}
 	}
 	return true, nil
-	//return NoObjectExistedCreateNew, nil
-	/*} else if !reflect.DeepEqual(msCFM.Data, msCFMResult.Data) {
-		// If they are different, we must delete ConfigMap and Deployment (we then redeploy )
-		// here we just delete and add new ConfigMap and return with the fact that object has existed and was changed
-		// so the deployment must be updated!
-
-
-		//if ConfigMap has changed, deployment must be reset to remount!
-		//if deployment containerPort is different, new service must be made with updated port!
-		return ObjectExistedUpdatedorReplaced, nil
-	}*/
-
-	// Note that only the ConfigMap data values can be changed
-	// Operator CRD enforces certain restrictions (do not need to worry about metadata being changed like Name or Namespace by user)
 
 }
 
@@ -385,24 +357,24 @@ func (msd *ModelServerDeployment) ensureModelServerService(l klog.Logger) (bool,
 	msService := msd.Service
 	msServiceResult := &corev1.Service{}
 
-	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: "kepler-model-server", Namespace: msd.Instance.Namespace}, msServiceResult)
+	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: ModelServerServiceName, Namespace: msd.Instance.Namespace}, msServiceResult)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			l.Info("Service does not exist. Creating...")
 			ctrlutil.SetControllerReference(msd.Instance, msService, msd.Scheme)
 			err = msd.Client.Create(msd.Context, msService)
 			if err != nil {
-				l.Error(err, "failed to create Service")
-				//return UnexpectedError, err
 				return false, err
 			}
 		} else {
-			l.Error(err, "failed to get Service")
-			//return UnexpectedError, err
+			return false, err
+		}
+	} else if !reflect.DeepEqual(msService, msServiceResult) {
+		controllerutil.SetControllerReference(msd.Instance, msService, msd.Scheme)
+		err = msd.Client.Update(msd.Context, msService)
+		if err != nil {
 			return false, err
 		}
 	}
-
 	return true, nil
 
 }
@@ -413,48 +385,24 @@ func (msd *ModelServerDeployment) ensureModelServerDeployment(l klog.Logger) (bo
 	msDeployment := msd.Deployment
 	msDeploymentResult := &appsv1.Deployment{}
 
-	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: "kepler-model-server", Namespace: msd.Instance.Namespace}, msDeploymentResult)
+	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: ModelServerDeploymentName, Namespace: msd.Instance.Namespace}, msDeploymentResult)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			l.Info("Deployment does not exist. Creating...")
 			ctrlutil.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
 			err = msd.Client.Create(msd.Context, msDeployment)
 			if err != nil {
-				l.Error(err, "failed to create Deployment")
-				//return UnexpectedError, err
 				return false, err
 			}
 		} else {
-			l.Error(err, "failed to get Deployment")
-			//return UnexpectedError, err
+			return false, err
+		}
+	} else if !reflect.DeepEqual(msDeployment, msDeploymentResult) {
+		controllerutil.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
+		err = msd.Client.Update(msd.Context, msDeployment)
+		if err != nil {
 			return false, err
 		}
 	}
-	if err == nil {
-		l.Info("Deployment Name and Type", msDeploymentResult.TypeMeta.Kind, msDeploymentResult.Kind)
-	}
+	msd.Client.Status().Update(msd.Context, msd.Instance)
 	return true, nil
-
 }
-
-/*
-
-func (msd *ModelServerDeployment) ensureModelServer(l klog.Logger) (bool, error) {
-
-	return reconcileBatch(l,
-		msd.ensureModelServerPersistentVolume,
-		msd.ensureModelServerPersistentVolumeClaim,
-		msd.ensureModelServerConfigMap,
-		msd.ensureModelServerService,
-		msd.ensureModelServerDeployment,
-	)
-	// Create PV and PVC if not exist
-
-	// Create Or Update ConfigMap
-
-	// Changes to ConfigMap will result in deletion of Deployment and Service
-
-	// Launch Deployment and Service
-
-}
-*/
