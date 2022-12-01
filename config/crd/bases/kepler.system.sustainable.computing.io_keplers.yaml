@@ -51,38 +51,8 @@ spec:
                 type: object
               model-server-exporter:
                 properties:
-                  model-server-trainer:
-                    properties:
-                      initialModelNames:
-                        items:
-                          type: string
-                        type: array
-                      initialModelsEndpoint:
-                        default: https://raw.githubusercontent.com/sustainable-computing-io/kepler-model-server/main/tests/test_models
-                        type: string
-                      promHeaders:
-                        items:
-                          properties:
-                            headerKey:
-                              type: string
-                            headerValue:
-                              type: string
-                          type: object
-                        type: array
-                      promQueryInternal:
-                        default: 20
-                        type: integer
-                      promQueryStep:
-                        default: 3
-                        type: integer
-                      promSSLDisable:
-                        default: true
-                        type: boolean
-                    type: object
                   modelPath:
                     default: models
-                    type: string
-                  modelServerEndpoint:
                     type: string
                   port:
                     default: 8100
@@ -90,6 +60,33 @@ spec:
                   promServer:
                     default: http://prometheus-k8s.monitoring.svc.cluster.local:9090/
                     type: string
+                type: object
+              model-server-trainer:
+                properties:
+                  initialModelNames:
+                    default: ""
+                    type: string
+                  initialModelsEndpoint:
+                    default: https://raw.githubusercontent.com/sustainable-computing-io/kepler-model-server/main/tests/test_models
+                    type: string
+                  promHeaders:
+                    items:
+                      properties:
+                        headerKey:
+                          type: string
+                        headerValue:
+                          type: string
+                      type: object
+                    type: array
+                  promQueryInternal:
+                    default: 20
+                    type: integer
+                  promQueryStep:
+                    default: 3
+                    type: integer
+                  promSSLDisable:
+                    default: true
+                    type: boolean
                 type: object
             type: object
           status:

@@ -50,7 +50,7 @@ type CustomHeader struct {
 	HeaderValue string `json:"headerValue,omitempty"`
 }
 
-type ModelServerTrainer struct {
+type ModelServerTrainerSpec struct {
 
 	// +kubebuilder:default=20
 	PromQueryInterval int `json:"promQueryInternal,omitempty"`
@@ -66,7 +66,8 @@ type ModelServerTrainer struct {
 	// +kubebuilder:default="https://raw.githubusercontent.com/sustainable-computing-io/kepler-model-server/main/tests/test_models"
 	InitialModelsEndpoint string `json:"initialModelsEndpoint,omitempty"`
 
-	InitialModelNames []string `json:"initialModelNames,omitempty"`
+	// +kubebuilder:default=""
+	InitialModelNames string `json:"initialModelNames,omitempty"`
 }
 
 type ModelServerExporterSpec struct {
@@ -79,10 +80,6 @@ type ModelServerExporterSpec struct {
 
 	// +kubebuilder:default="models"
 	ModelPath string `json:"modelPath,omitempty"`
-
-	ModelServerEndpoint string `json:"modelServerEndpoint,omitempty"`
-
-	ModelServerTrainer *ModelServerTrainer `json:"model-server-trainer,omitempty"`
 }
 
 type EstimatorSpec struct {
@@ -97,6 +94,7 @@ type KeplerSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	ModelServerExporter *ModelServerExporterSpec `json:"model-server-exporter,omitempty"`
+	ModelServerTrainer  *ModelServerTrainerSpec  `json:"model-server-trainer,omitempty"`
 	Estimator           *EstimatorSpec           `json:"estimator,omitempty"`
 	Collector           *CollectorSpec           `json:"collector,omitempty"`
 }
