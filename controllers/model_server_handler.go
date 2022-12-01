@@ -403,6 +403,5 @@ func (msd *ModelServerDeployment) ensureModelServerDeployment(l klog.Logger) (bo
 			return false, err
 		}
 	}
-	msd.Client.Status().Update(msd.Context, msd.Instance)
 	return true, nil
 }
