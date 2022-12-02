@@ -285,20 +285,24 @@ func (msd *ModelServerDeployment) ensureModelServerPersistentVolumeClaim(l klog.
 	msd.buildModelServerPVC()
 	msPVC := msd.PersistentVolumeClaim
 	msPVCResult := &corev1.PersistentVolumeClaim{}
-
+	logger := l.WithValues("PVC", nameFor(msPVC))
 	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: PersistentVolumeClaimName, Namespace: msd.Instance.Namespace}, msPVCResult)
 
 	if err != nil && errors.IsNotFound(err) {
 		if errors.IsNotFound(err) {
+			logger.Info("PVC does not exist. creating...")
 			ctrlutil.SetControllerReference(msd.Instance, msPVC, msd.Scheme)
 			err = msd.Client.Create(msd.Context, msPVC)
 			if err != nil {
+				logger.Error(err, "failed to create PVC")
 				return false, err
 			}
 		} else {
+			logger.Error(err, "error is not a missing error")
 			return false, err
 		}
 	}
+	logger.Info("PVC reconciled")
 	return true, nil
 }
 
@@ -306,21 +310,24 @@ func (msd *ModelServerDeployment) ensureModelServerPersistentVolume(l klog.Logge
 	msd.buildModelServerPV()
 	msPV := msd.PersistentVolume
 	msPVResult := &corev1.PersistentVolume{}
-
+	logger := l.WithValues("PV", nameFor(msPV))
 	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: PersistentVolumeName}, msPVResult)
 
 	if err != nil && errors.IsNotFound(err) {
 		if errors.IsNotFound(err) {
+			logger.Info("PV does not exist. Creating...")
 			ctrlutil.SetControllerReference(msd.Instance, msPV, msd.Scheme)
 			err = msd.Client.Create(msd.Context, msPV)
 			if err != nil {
+				logger.Error(err, "failed to create PV")
 				return false, err
 			}
 		} else {
+			logger.Error(err, "error not related to missing PV")
 			return false, err
 		}
 	}
-
+	logger.Info("PV reconciled")
 	return true, nil
 }
 
@@ -328,80 +335,96 @@ func (msd *ModelServerDeployment) ensureModelServerConfigMap(l klog.Logger) (boo
 	msd.buildModelServerConfigMap()
 	msCFM := msd.ConfigMap
 	msCFMResult := &corev1.ConfigMap{}
-
+	logger := l.WithValues("ConfigMap", nameFor(msCFM))
 	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: ConfigMapName, Namespace: msd.Instance.Namespace}, msCFMResult)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			logger.Info("ConfigMap does not exist. Creating...")
 			ctrlutil.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
 			err = msd.Client.Create(msd.Context, msCFM)
 			if err != nil {
+				logger.Error(err, "failed to create configmap")
 				return false, err
 			}
 		} else {
+			logger.Error(err, "error not related to missing configmap")
 			return false, err
 		}
 	} else if !reflect.DeepEqual(msCFM, msCFMResult) {
+		logger.Info("ConfigMap found. Updating...")
 		controllerutil.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
 		err = msd.Client.Update(msd.Context, msCFM)
 		if err != nil {
+			logger.Error(err, "failed to update configmap")
 			return false, err
 		}
 	}
+	logger.Info("ConfigMap reconciled")
 	return true, nil
 
 }
 
 func (msd *ModelServerDeployment) ensureModelServerService(l klog.Logger) (bool, error) { //(ReconciliationResult, error) {
 	msd.buildModelServerService()
-
 	msService := msd.Service
 	msServiceResult := &corev1.Service{}
-
+	logger := l.WithValues("ModelServerService", nameFor(msService))
 	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: ModelServerServiceName, Namespace: msd.Instance.Namespace}, msServiceResult)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			logger.Info("Service does not exist. Creating...")
 			ctrlutil.SetControllerReference(msd.Instance, msService, msd.Scheme)
 			err = msd.Client.Create(msd.Context, msService)
 			if err != nil {
+				logger.Error(err, "failed to create service")
 				return false, err
 			}
 		} else {
+			logger.Error(err, "error not related to missing service")
 			return false, err
 		}
 	} else if !reflect.DeepEqual(msService, msServiceResult) {
+		logger.Info("Service found. Updating...")
 		controllerutil.SetControllerReference(msd.Instance, msService, msd.Scheme)
 		err = msd.Client.Update(msd.Context, msService)
 		if err != nil {
+			logger.Error(err, "failed to update service")
 			return false, err
 		}
 	}
+	logger.Info("Service Reconciled")
 	return true, nil
 
 }
 
 func (msd *ModelServerDeployment) ensureModelServerDeployment(l klog.Logger) (bool, error) {
 	msd.buildModelServerDeployment()
-
 	msDeployment := msd.Deployment
 	msDeploymentResult := &appsv1.Deployment{}
-
+	logger := l.WithValues("ModelServerDeployment", nameFor(msDeployment))
 	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: ModelServerDeploymentName, Namespace: msd.Instance.Namespace}, msDeploymentResult)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			logger.Info("Deployment does not exist. Creating...")
 			ctrlutil.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
 			err = msd.Client.Create(msd.Context, msDeployment)
 			if err != nil {
+				logger.Error(err, "failed to create deployment")
 				return false, err
 			}
 		} else {
+			logger.Error(err, "error not related to missing deployment")
 			return false, err
 		}
 	} else if !reflect.DeepEqual(msDeployment, msDeploymentResult) {
+		logger.Info("Deployment found. Updating...")
 		controllerutil.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
 		err = msd.Client.Update(msd.Context, msDeployment)
 		if err != nil {
+			logger.Error(err, "failed to update deployment")
 			return false, err
 		}
 	}
+	logger.Info("Deployment Reconciled")
 	return true, nil
 }
