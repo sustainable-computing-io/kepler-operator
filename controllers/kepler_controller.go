@@ -41,7 +41,7 @@ var (
 	// EstimatorContainerImage is the container image name of the estimator
 	EstimatorContainerImage string
 	// ModelServerContainerImage is the container image name of the model-server
-	ModelServerContainerImage string
+	ModelServerContainerImage = "quay.io/sustainable_computing_io/kepler_model_server:latest"
 	// SCCName is the name of the scribe security context constraint
 	SCCName string
 )

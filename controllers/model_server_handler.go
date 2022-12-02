@@ -85,10 +85,6 @@ func (msd *ModelServerDeployment) buildModelServerConfigMap() {
 	}
 
 	configMap := corev1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ConfigMap",
-			APIVersion: msd.Instance.APIVersion,
-		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ConfigMapName,
 			Namespace: msd.Instance.Namespace,
@@ -101,10 +97,6 @@ func (msd *ModelServerDeployment) buildModelServerConfigMap() {
 func (msd *ModelServerDeployment) buildModelServerPVC() {
 	storageClassName := "default"
 	modelServerPVC := corev1.PersistentVolumeClaim{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "PersistentVolumeClaim",
-			APIVersion: msd.Instance.APIVersion,
-		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      PersistentVolumeClaimName,
 			Namespace: msd.Instance.Namespace,
@@ -131,10 +123,6 @@ func (msd *ModelServerDeployment) buildModelServerPV() {
 		"app.kubernetes.io/name":      PersistentVolumeName,
 	}
 	modelServerPV := corev1.PersistentVolume{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "PersistentVolume",
-			APIVersion: msd.Instance.APIVersion,
-		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   PersistentVolumeName,
 			Labels: labels,
@@ -163,10 +151,6 @@ func (msd *ModelServerDeployment) buildModelServerService() {
 		"app.kubernetes.io/name":      "kepler-model-server",
 	}
 	modelServerService := corev1.Service{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Service",
-			APIVersion: msd.Instance.APIVersion,
-		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ModelServerServiceName,
 			Namespace: msd.Instance.Namespace,
@@ -252,10 +236,6 @@ func (msd *ModelServerDeployment) buildModelServerDeployment() {
 	}
 
 	deployment := appsv1.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Deployment",
-			APIVersion: msd.Instance.APIVersion,
-		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ModelServerDeploymentName,
 			Namespace: msd.Instance.Namespace,
@@ -291,7 +271,11 @@ func (msd *ModelServerDeployment) ensureModelServerPersistentVolumeClaim(l klog.
 	if err != nil && errors.IsNotFound(err) {
 		if errors.IsNotFound(err) {
 			logger.Info("PVC does not exist. creating...")
-			ctrlutil.SetControllerReference(msd.Instance, msPVC, msd.Scheme)
+			err = ctrlutil.SetControllerReference(msd.Instance, msPVC, msd.Scheme)
+			if err != nil {
+				logger.Error(err, "failed to set controller reference")
+				return false, err
+			}
 			err = msd.Client.Create(msd.Context, msPVC)
 			if err != nil {
 				logger.Error(err, "failed to create PVC")
@@ -316,7 +300,11 @@ func (msd *ModelServerDeployment) ensureModelServerPersistentVolume(l klog.Logge
 	if err != nil && errors.IsNotFound(err) {
 		if errors.IsNotFound(err) {
 			logger.Info("PV does not exist. Creating...")
-			ctrlutil.SetControllerReference(msd.Instance, msPV, msd.Scheme)
+			err = ctrlutil.SetControllerReference(msd.Instance, msPV, msd.Scheme)
+			if err != nil {
+				logger.Error(err, "failed to set controller reference")
+				return false, err
+			}
 			err = msd.Client.Create(msd.Context, msPV)
 			if err != nil {
 				logger.Error(err, "failed to create PV")
@@ -340,7 +328,11 @@ func (msd *ModelServerDeployment) ensureModelServerConfigMap(l klog.Logger) (boo
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("ConfigMap does not exist. Creating...")
-			ctrlutil.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
+			err = ctrlutil.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
+			if err != nil {
+				logger.Error(err, "failed to set controller reference")
+				return false, err
+			}
 			err = msd.Client.Create(msd.Context, msCFM)
 			if err != nil {
 				logger.Error(err, "failed to create configmap")
@@ -352,7 +344,11 @@ func (msd *ModelServerDeployment) ensureModelServerConfigMap(l klog.Logger) (boo
 		}
 	} else if !reflect.DeepEqual(msCFM, msCFMResult) {
 		logger.Info("ConfigMap found. Updating...")
-		controllerutil.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
+		err = controllerutil.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
+		if err != nil {
+			logger.Error(err, "failed to set controller reference")
+			return false, err
+		}
 		err = msd.Client.Update(msd.Context, msCFM)
 		if err != nil {
 			logger.Error(err, "failed to update configmap")
@@ -373,7 +369,11 @@ func (msd *ModelServerDeployment) ensureModelServerService(l klog.Logger) (bool,
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("Service does not exist. Creating...")
-			ctrlutil.SetControllerReference(msd.Instance, msService, msd.Scheme)
+			err = ctrlutil.SetControllerReference(msd.Instance, msService, msd.Scheme)
+			if err != nil {
+				logger.Error(err, "failed to set controller reference")
+				return false, err
+			}
 			err = msd.Client.Create(msd.Context, msService)
 			if err != nil {
 				logger.Error(err, "failed to create service")
@@ -385,7 +385,11 @@ func (msd *ModelServerDeployment) ensureModelServerService(l klog.Logger) (bool,
 		}
 	} else if !reflect.DeepEqual(msService, msServiceResult) {
 		logger.Info("Service found. Updating...")
-		controllerutil.SetControllerReference(msd.Instance, msService, msd.Scheme)
+		err = controllerutil.SetControllerReference(msd.Instance, msService, msd.Scheme)
+		if err != nil {
+			logger.Error(err, "failed to set controller reference")
+			return false, err
+		}
 		err = msd.Client.Update(msd.Context, msService)
 		if err != nil {
 			logger.Error(err, "failed to update service")
@@ -406,7 +410,11 @@ func (msd *ModelServerDeployment) ensureModelServerDeployment(l klog.Logger) (bo
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("Deployment does not exist. Creating...")
-			ctrlutil.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
+			err = ctrlutil.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
+			if err != nil {
+				logger.Error(err, "failed to set controller reference")
+				return false, err
+			}
 			err = msd.Client.Create(msd.Context, msDeployment)
 			if err != nil {
 				logger.Error(err, "failed to create deployment")
@@ -418,7 +426,11 @@ func (msd *ModelServerDeployment) ensureModelServerDeployment(l klog.Logger) (bo
 		}
 	} else if !reflect.DeepEqual(msDeployment, msDeploymentResult) {
 		logger.Info("Deployment found. Updating...")
-		controllerutil.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
+		err = controllerutil.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
+		if err != nil {
+			logger.Error(err, "failed to set controller reference")
+			return false, err
+		}
 		err = msd.Client.Update(msd.Context, msDeployment)
 		if err != nil {
 			logger.Error(err, "failed to update deployment")
