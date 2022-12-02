@@ -15,10 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	//ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -271,7 +269,7 @@ func (msd *ModelServerDeployment) ensureModelServerPersistentVolumeClaim(l klog.
 	if err != nil && errors.IsNotFound(err) {
 		if errors.IsNotFound(err) {
 			logger.Info("PVC does not exist. creating...")
-			err = ctrlutil.SetControllerReference(msd.Instance, msPVC, msd.Scheme)
+			err = ctrl.SetControllerReference(msd.Instance, msPVC, msd.Scheme)
 			if err != nil {
 				logger.Error(err, "failed to set controller reference")
 				return false, err
@@ -300,7 +298,7 @@ func (msd *ModelServerDeployment) ensureModelServerPersistentVolume(l klog.Logge
 	if err != nil && errors.IsNotFound(err) {
 		if errors.IsNotFound(err) {
 			logger.Info("PV does not exist. Creating...")
-			err = ctrlutil.SetControllerReference(msd.Instance, msPV, msd.Scheme)
+			err = ctrl.SetControllerReference(msd.Instance, msPV, msd.Scheme)
 			if err != nil {
 				logger.Error(err, "failed to set controller reference")
 				return false, err
@@ -328,7 +326,7 @@ func (msd *ModelServerDeployment) ensureModelServerConfigMap(l klog.Logger) (boo
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("ConfigMap does not exist. Creating...")
-			err = ctrlutil.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
+			err = ctrl.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
 			if err != nil {
 				logger.Error(err, "failed to set controller reference")
 				return false, err
@@ -344,7 +342,7 @@ func (msd *ModelServerDeployment) ensureModelServerConfigMap(l klog.Logger) (boo
 		}
 	} else if !reflect.DeepEqual(msCFM, msCFMResult) {
 		logger.Info("ConfigMap found. Updating...")
-		err = controllerutil.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
+		err = ctrl.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
 		if err != nil {
 			logger.Error(err, "failed to set controller reference")
 			return false, err
@@ -369,7 +367,7 @@ func (msd *ModelServerDeployment) ensureModelServerService(l klog.Logger) (bool,
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("Service does not exist. Creating...")
-			err = ctrlutil.SetControllerReference(msd.Instance, msService, msd.Scheme)
+			err = ctrl.SetControllerReference(msd.Instance, msService, msd.Scheme)
 			if err != nil {
 				logger.Error(err, "failed to set controller reference")
 				return false, err
@@ -385,7 +383,7 @@ func (msd *ModelServerDeployment) ensureModelServerService(l klog.Logger) (bool,
 		}
 	} else if !reflect.DeepEqual(msService, msServiceResult) {
 		logger.Info("Service found. Updating...")
-		err = controllerutil.SetControllerReference(msd.Instance, msService, msd.Scheme)
+		err = ctrl.SetControllerReference(msd.Instance, msService, msd.Scheme)
 		if err != nil {
 			logger.Error(err, "failed to set controller reference")
 			return false, err
@@ -410,7 +408,7 @@ func (msd *ModelServerDeployment) ensureModelServerDeployment(l klog.Logger) (bo
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("Deployment does not exist. Creating...")
-			err = ctrlutil.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
+			err = ctrl.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
 			if err != nil {
 				logger.Error(err, "failed to set controller reference")
 				return false, err
@@ -426,7 +424,7 @@ func (msd *ModelServerDeployment) ensureModelServerDeployment(l klog.Logger) (bo
 		}
 	} else if !reflect.DeepEqual(msDeployment, msDeploymentResult) {
 		logger.Info("Deployment found. Updating...")
-		err = controllerutil.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
+		err = ctrl.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
 		if err != nil {
 			logger.Error(err, "failed to set controller reference")
 			return false, err
