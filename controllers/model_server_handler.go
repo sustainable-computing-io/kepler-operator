@@ -2,21 +2,19 @@ package controllers
 
 import (
 	"context"
-	"reflect"
 	"strconv"
 
 	keplerv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	resource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
@@ -44,13 +42,13 @@ func (msd *ModelServerDeployment) Reconcile(l klog.Logger) (bool, error) {
 	return reconcileBatch(l,
 		msd.ensureModelServerPersistentVolume,
 		msd.ensureModelServerPersistentVolumeClaim,
-		msd.ensureModelServerConfigMap,
-		msd.ensureModelServerService,
-		msd.ensureModelServerDeployment,
+		//msd.ensureModelServerConfigMap,
+		//msd.ensureModelServerService,
+		//msd.ensureModelServerDeployment,
 	)
 }
 
-func (msd *ModelServerDeployment) buildModelServerConfigMap() {
+func (msd *ModelServerDeployment) buildModelServerConfigMap() corev1.ConfigMap {
 	dataPairing := make(map[string]string)
 	modelServerExporter := msd.Instance.Spec.ModelServerExporter
 	modelServerTrainer := msd.Instance.Spec.ModelServerTrainer
@@ -89,10 +87,10 @@ func (msd *ModelServerDeployment) buildModelServerConfigMap() {
 		},
 		Data: dataPairing,
 	}
-	msd.ConfigMap = &configMap
+	return configMap
 }
 
-func (msd *ModelServerDeployment) buildModelServerPVC() {
+func (msd *ModelServerDeployment) buildModelServerPVC() corev1.PersistentVolumeClaim {
 	storageClassName := "default"
 	modelServerPVC := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -111,10 +109,10 @@ func (msd *ModelServerDeployment) buildModelServerPVC() {
 			},
 		},
 	}
-	msd.PersistentVolumeClaim = &modelServerPVC
+	return modelServerPVC
 }
 
-func (msd *ModelServerDeployment) buildModelServerPV() {
+func (msd *ModelServerDeployment) buildModelServerPV() corev1.PersistentVolume {
 	labels := map[string]string{
 		"type":                        "local",
 		"app.kubernetes.io/component": PersistentVolumeName,
@@ -140,10 +138,10 @@ func (msd *ModelServerDeployment) buildModelServerPV() {
 			},
 		},
 	}
-	msd.PersistentVolume = &modelServerPV
+	return modelServerPV
 }
 
-func (msd *ModelServerDeployment) buildModelServerService() {
+func (msd *ModelServerDeployment) buildModelServerService() corev1.Service {
 	labels := map[string]string{
 		"app.kubernetes.io/component": "model-server",
 		"app.kubernetes.io/name":      "kepler-model-server",
@@ -166,10 +164,10 @@ func (msd *ModelServerDeployment) buildModelServerService() {
 			},
 		},
 	}
-	msd.Service = &modelServerService
+	return modelServerService
 }
 
-func (msd *ModelServerDeployment) buildModelServerDeployment() {
+func (msd *ModelServerDeployment) buildModelServerDeployment() appsv1.Deployment {
 	labels := map[string]string{
 		"app.kubernetes.io/component": "model-server",
 		"app.kubernetes.io/name":      "kepler-model-server",
@@ -255,68 +253,58 @@ func (msd *ModelServerDeployment) buildModelServerDeployment() {
 		},
 	}
 
-	msd.Deployment = &deployment
+	return deployment
 
 }
 
 func (msd *ModelServerDeployment) ensureModelServerPersistentVolumeClaim(l klog.Logger) (bool, error) { //(ReconciliationResult, error) {
-	msd.buildModelServerPVC()
-	msPVC := msd.PersistentVolumeClaim
-	msPVCResult := &corev1.PersistentVolumeClaim{}
-	logger := l.WithValues("PVC", nameFor(msPVC))
-	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: PersistentVolumeClaimName, Namespace: msd.Instance.Namespace}, msPVCResult)
-
-	if err != nil && errors.IsNotFound(err) {
-		if errors.IsNotFound(err) {
-			logger.Info("PVC does not exist. creating...")
-			err = ctrl.SetControllerReference(msd.Instance, msPVC, msd.Scheme)
-			if err != nil {
-				logger.Error(err, "failed to set controller reference")
-				return false, err
-			}
-			err = msd.Client.Create(msd.Context, msPVC)
-			if err != nil {
-				logger.Error(err, "failed to create PVC")
-				return false, err
-			}
-		} else {
-			logger.Error(err, "error is not a missing error")
-			return false, err
-		}
+	newMSPVC := msd.buildModelServerPVC()
+	msd.PersistentVolumeClaim = &corev1.PersistentVolumeClaim{
+		ObjectMeta: newMSPVC.ObjectMeta,
 	}
-	logger.Info("PVC reconciled")
+
+	logger := l.WithValues("PVC", nameFor(msd.PersistentVolumeClaim))
+	result, err := ctrlutil.CreateOrUpdate(msd.Context, msd.Client, msd.PersistentVolumeClaim, func() error {
+		if err := ctrl.SetControllerReference(msd.Instance, msd.PersistentVolumeClaim, msd.Scheme); err != nil {
+			logger.Error(err, "failed to set controller reference")
+			return err
+		}
+		msd.PersistentVolumeClaim.Spec = newMSPVC.Spec
+		return nil
+	})
+	if err != nil {
+		logger.Error(err, "create/update failed")
+		return false, err
+	}
+
+	logger.Info("PVC reconciled", "operation", result)
 	return true, nil
 }
 
 func (msd *ModelServerDeployment) ensureModelServerPersistentVolume(l klog.Logger) (bool, error) { //(ReconciliationResult, error) {
-	msd.buildModelServerPV()
-	msPV := msd.PersistentVolume
-	msPVResult := &corev1.PersistentVolume{}
-	logger := l.WithValues("PV", nameFor(msPV))
-	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: PersistentVolumeName}, msPVResult)
-
-	if err != nil && errors.IsNotFound(err) {
-		if errors.IsNotFound(err) {
-			logger.Info("PV does not exist. Creating...")
-			err = ctrl.SetControllerReference(msd.Instance, msPV, msd.Scheme)
-			if err != nil {
-				logger.Error(err, "failed to set controller reference")
-				return false, err
-			}
-			err = msd.Client.Create(msd.Context, msPV)
-			if err != nil {
-				logger.Error(err, "failed to create PV")
-				return false, err
-			}
-		} else {
-			logger.Error(err, "error not related to missing PV")
-			return false, err
-		}
+	newMSPV := msd.buildModelServerPV()
+	msd.PersistentVolume = &corev1.PersistentVolume{
+		ObjectMeta: newMSPV.ObjectMeta,
 	}
-	logger.Info("PV reconciled")
+	logger := l.WithValues("PV", nameFor(msd.PersistentVolume))
+	result, err := ctrlutil.CreateOrUpdate(msd.Context, msd.Client, msd.PersistentVolume, func() error {
+		if err := ctrl.SetControllerReference(msd.Instance, msd.PersistentVolume, msd.Scheme); err != nil {
+			logger.Error(err, "failed to set controller reference")
+			return err
+		}
+		msd.PersistentVolume.Spec = newMSPV.Spec
+		return nil
+	})
+	if err != nil {
+		logger.Error(err, "create/update failed")
+		return false, err
+	}
+
+	logger.Info("PV reconciled", "operation", result)
 	return true, nil
 }
 
+/*
 func (msd *ModelServerDeployment) ensureModelServerConfigMap(l klog.Logger) (bool, error) { //(ReconciliationResult, error) {
 	msd.buildModelServerConfigMap()
 	msCFM := msd.ConfigMap
@@ -438,3 +426,4 @@ func (msd *ModelServerDeployment) ensureModelServerDeployment(l klog.Logger) (bo
 	logger.Info("Deployment Reconciled")
 	return true, nil
 }
+*/
