@@ -7,14 +7,14 @@ import (
 	keplerv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	resource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
@@ -261,23 +261,28 @@ func (msd *ModelServerDeployment) ensureModelServerPersistentVolumeClaim(l klog.
 	newMSPVC := msd.buildModelServerPVC()
 	msd.PersistentVolumeClaim = &corev1.PersistentVolumeClaim{
 		ObjectMeta: newMSPVC.ObjectMeta,
+		Spec:       newMSPVC.Spec,
 	}
-
+	msPVCResult := &corev1.PersistentVolumeClaim{}
 	logger := l.WithValues("PVC", nameFor(msd.PersistentVolumeClaim))
-	result, err := ctrlutil.CreateOrUpdate(msd.Context, msd.Client, msd.PersistentVolumeClaim, func() error {
-		if err := ctrl.SetControllerReference(msd.Instance, msd.PersistentVolumeClaim, msd.Scheme); err != nil {
-			logger.Error(err, "failed to set controller reference")
-			return err
-		}
-		msd.PersistentVolumeClaim.Spec = newMSPVC.Spec
-		return nil
-	})
+	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: PersistentVolumeClaimName, Namespace: msd.Instance.Namespace}, msPVCResult)
 	if err != nil {
-		logger.Error(err, "create/update failed")
-		return false, err
+		if errors.IsNotFound(err) {
+			logger.Info("PVC does not exist. Creating...")
+			err = msd.Client.Create(msd.Context, msd.PersistentVolumeClaim)
+			if err != nil {
+				logger.Error(err, "failed to create PVC")
+				return false, err
+			}
+		} else {
+			logger.Error(err, "error not related to missing PVC")
+			return false, err
+		}
+	} else {
+		logger.Info("PVC already exists")
 	}
 
-	logger.Info("PVC reconciled", "operation", result)
+	logger.Info("PVC reconciled")
 	return true, nil
 }
 
@@ -285,22 +290,27 @@ func (msd *ModelServerDeployment) ensureModelServerPersistentVolume(l klog.Logge
 	newMSPV := msd.buildModelServerPV()
 	msd.PersistentVolume = &corev1.PersistentVolume{
 		ObjectMeta: newMSPV.ObjectMeta,
+		Spec:       newMSPV.Spec,
 	}
+	msPVResult := &corev1.PersistentVolume{}
 	logger := l.WithValues("PV", nameFor(msd.PersistentVolume))
-	result, err := ctrlutil.CreateOrUpdate(msd.Context, msd.Client, msd.PersistentVolume, func() error {
-		if err := ctrl.SetControllerReference(msd.Instance, msd.PersistentVolume, msd.Scheme); err != nil {
-			logger.Error(err, "failed to set controller reference")
-			return err
-		}
-		msd.PersistentVolume.Spec = newMSPV.Spec
-		return nil
-	})
+	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: PersistentVolumeName}, msPVResult)
 	if err != nil {
-		logger.Error(err, "create/update failed")
-		return false, err
+		if errors.IsNotFound(err) {
+			logger.Info("PV does not exist. Creating...")
+			err = msd.Client.Create(msd.Context, msd.PersistentVolume)
+			if err != nil {
+				logger.Error(err, "failed to create PV")
+				return false, err
+			}
+		} else {
+			logger.Error(err, "error not related to missing PV")
+			return false, err
+		}
+	} else {
+		logger.Info("PV already exists")
 	}
-
-	logger.Info("PV reconciled", "operation", result)
+	logger.Info("PV reconciled")
 	return true, nil
 }
 
