@@ -14,7 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
@@ -54,9 +56,14 @@ func (msd *ModelServerDeployment) buildModelServerConfigMap() corev1.ConfigMap {
 	modelServerTrainer := msd.Instance.Spec.ModelServerTrainer
 	dataPairing["MNT_PATH"] = "/mnt"
 	if modelServerExporter != nil {
+		dataPairing["MODEL_SERVER_ENABLE"] = "true"
 		dataPairing["PROM_SERVER"] = modelServerExporter.PromServer
 		dataPairing["MODEL_PATH"] = modelServerExporter.ModelPath
 		dataPairing["MODEL_SERVER_PORT"] = strconv.Itoa(modelServerExporter.Port)
+		if modelServerExporter.ModelServerURL == "" {
+			dataPairing["MODEL_SERVER_URL"] = "http://kepler-model-server." + msd.Instance.Namespace + ".cluster.local:" + strconv.Itoa(modelServerExporter.Port)
+		}
+		dataPairing["MODEL_SERVER_MODEL_REQ_PATH"] = modelServerExporter.ModelServerRequiredPath
 	}
 	if modelServerTrainer != nil {
 		customHeaders := ""
@@ -314,126 +321,93 @@ func (msd *ModelServerDeployment) ensureModelServerPersistentVolume(l klog.Logge
 	return true, nil
 }
 
-/*
-func (msd *ModelServerDeployment) ensureModelServerConfigMap(l klog.Logger) (bool, error) { //(ReconciliationResult, error) {
-	msd.buildModelServerConfigMap()
-	msCFM := msd.ConfigMap
-	msCFMResult := &corev1.ConfigMap{}
-	logger := l.WithValues("ConfigMap", nameFor(msCFM))
-	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: ConfigMapName, Namespace: msd.Instance.Namespace}, msCFMResult)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("ConfigMap does not exist. Creating...")
-			err = ctrl.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
-			if err != nil {
-				logger.Error(err, "failed to set controller reference")
-				return false, err
-			}
-			err = msd.Client.Create(msd.Context, msCFM)
-			if err != nil {
-				logger.Error(err, "failed to create configmap")
-				return false, err
-			}
-		} else {
-			logger.Error(err, "error not related to missing configmap")
-			return false, err
-		}
-	} else if !reflect.DeepEqual(msCFM, msCFMResult) {
-		logger.Info("ConfigMap found. Updating...")
-		err = ctrl.SetControllerReference(msd.Instance, msCFM, msd.Scheme)
+func (msd *ModelServerDeployment) ensureModelServerConfigMap(l klog.Logger) (bool, error) {
+	newMSCFM := msd.buildModelServerConfigMap()
+	msd.ConfigMap = &corev1.ConfigMap{
+		ObjectMeta: newMSCFM.ObjectMeta,
+	}
+	logger := l.WithValues("ConfigMap", nameFor(msd.ConfigMap))
+	op, err := ctrlutil.CreateOrUpdate(msd.Context, msd.Client, msd.ConfigMap, func() error {
+		err := ctrl.SetControllerReference(msd.Instance, msd.ConfigMap, msd.Scheme)
 		if err != nil {
 			logger.Error(err, "failed to set controller reference")
-			return false, err
+			return err
 		}
-		err = msd.Client.Update(msd.Context, msCFM)
-		if err != nil {
-			logger.Error(err, "failed to update configmap")
-			return false, err
-		}
+		// regardless of whether I am creating or updating, data is to be changed
+		// test to see if updates occur
+		msd.ConfigMap.Data = newMSCFM.Data
+		return nil
+	})
+	if err != nil {
+		logger.Error(err, "create/update failed for ConfigMap")
+		return false, err
 	}
-	logger.Info("ConfigMap reconciled")
+	logger.Info("ConfigMap reconciled", "Operation", op)
 	return true, nil
 
 }
 
-func (msd *ModelServerDeployment) ensureModelServerService(l klog.Logger) (bool, error) { //(ReconciliationResult, error) {
-	msd.buildModelServerService()
-	msService := msd.Service
-	msServiceResult := &corev1.Service{}
-	logger := l.WithValues("ModelServerService", nameFor(msService))
-	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: ModelServerServiceName, Namespace: msd.Instance.Namespace}, msServiceResult)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("Service does not exist. Creating...")
-			err = ctrl.SetControllerReference(msd.Instance, msService, msd.Scheme)
-			if err != nil {
-				logger.Error(err, "failed to set controller reference")
-				return false, err
-			}
-			err = msd.Client.Create(msd.Context, msService)
-			if err != nil {
-				logger.Error(err, "failed to create service")
-				return false, err
-			}
-		} else {
-			logger.Error(err, "error not related to missing service")
-			return false, err
-		}
-	} else if !reflect.DeepEqual(msService, msServiceResult) {
-		logger.Info("Service found. Updating...")
-		err = ctrl.SetControllerReference(msd.Instance, msService, msd.Scheme)
+func (msd *ModelServerDeployment) ensureModelServerService(l klog.Logger) (bool, error) {
+	newMSS := msd.buildModelServerService()
+
+	msd.Service = &corev1.Service{
+		ObjectMeta: newMSS.ObjectMeta,
+	}
+
+	logger := l.WithValues("ModelServerService", nameFor(msd.Service))
+	op, err := ctrlutil.CreateOrUpdate(msd.Context, msd.Client, msd.Service, func() error {
+		err := ctrl.SetControllerReference(msd.Instance, msd.Service, msd.Scheme)
 		if err != nil {
 			logger.Error(err, "failed to set controller reference")
-			return false, err
+			return err
 		}
-		err = msd.Client.Update(msd.Context, msService)
-		if err != nil {
-			logger.Error(err, "failed to update service")
-			return false, err
+		// for immutable fields
+		if msd.Service.ObjectMeta.CreationTimestamp.IsZero() {
+			msd.Service.Spec.ClusterIP = newMSS.Spec.ClusterIP
+			msd.Service.Spec.Selector = newMSS.Spec.Selector
 		}
+		// for mutable fields
+		msd.Service.Spec.Ports = newMSS.Spec.Ports
+		return nil
+	})
+	if err != nil {
+		logger.Error(err, "create/update failed for Service")
+		return false, err
 	}
-	logger.Info("Service Reconciled")
+	logger.Info("Service Reconciled", "Operation", op)
 	return true, nil
 
 }
 
 func (msd *ModelServerDeployment) ensureModelServerDeployment(l klog.Logger) (bool, error) {
-	msd.buildModelServerDeployment()
-	msDeployment := msd.Deployment
-	msDeploymentResult := &appsv1.Deployment{}
-	logger := l.WithValues("ModelServerDeployment", nameFor(msDeployment))
-	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: ModelServerDeploymentName, Namespace: msd.Instance.Namespace}, msDeploymentResult)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("Deployment does not exist. Creating...")
-			err = ctrl.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
-			if err != nil {
-				logger.Error(err, "failed to set controller reference")
-				return false, err
-			}
-			err = msd.Client.Create(msd.Context, msDeployment)
-			if err != nil {
-				logger.Error(err, "failed to create deployment")
-				return false, err
-			}
-		} else {
-			logger.Error(err, "error not related to missing deployment")
-			return false, err
-		}
-	} else if !reflect.DeepEqual(msDeployment, msDeploymentResult) {
-		logger.Info("Deployment found. Updating...")
-		err = ctrl.SetControllerReference(msd.Instance, msDeployment, msd.Scheme)
+	newMSD := msd.buildModelServerDeployment()
+	msd.Deployment = &appsv1.Deployment{
+		ObjectMeta: newMSD.ObjectMeta,
+	}
+	logger := l.WithValues("ModelServerDeployment", nameFor(msd.Deployment))
+
+	op, err := ctrlutil.CreateOrUpdate(msd.Context, msd.Client, msd.Deployment, func() error {
+		err := ctrl.SetControllerReference(msd.Instance, msd.Deployment, msd.Scheme)
 		if err != nil {
 			logger.Error(err, "failed to set controller reference")
-			return false, err
+			return err
 		}
-		err = msd.Client.Update(msd.Context, msDeployment)
-		if err != nil {
-			logger.Error(err, "failed to update deployment")
-			return false, err
+		// for immutable fields
+		if msd.Deployment.ObjectMeta.CreationTimestamp.IsZero() {
+			msd.Deployment.Spec.Selector = newMSD.Spec.Selector
+			msd.Deployment.Spec.Template.ObjectMeta = newMSD.Spec.Template.ObjectMeta
+
 		}
+		// for mutable fields
+		msd.Deployment.Spec.Template.Spec.Volumes = newMSD.Spec.Template.Spec.Volumes
+		msd.Deployment.Spec.Template.Spec.Containers = newMSD.Spec.Template.Spec.Containers
+		return nil
+	})
+	if err != nil {
+		logger.Error(err, "create/update failed for Deployment")
+		return false, err
 	}
-	logger.Info("Deployment Reconciled")
+	logger.Info("Deployment Reconciled", "Operation", op)
 	return true, nil
+
 }
-*/

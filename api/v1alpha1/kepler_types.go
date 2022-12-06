@@ -80,6 +80,12 @@ type ModelServerExporterSpec struct {
 
 	// +kubebuilder:default="models"
 	ModelPath string `json:"modelPath,omitempty"`
+
+	//+kubebuilder:default=""
+	ModelServerURL string `json:"modelServerURL,omitempty"`
+
+	//+kubebuilder:default="/model"
+	ModelServerRequiredPath string `json:"modelServerRequiredPath,omitempty"`
 }
 
 type EstimatorSpec struct {
