@@ -21,8 +21,10 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/go-logr/logr"
@@ -35,6 +37,9 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	appsv1 "k8s.io/api/apps/v1"
+
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
 )
 
@@ -136,6 +141,9 @@ func CollectorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, k
 	l := logger.WithValues("method", "Collector")
 	_, err := reconcileBatch(l,
 		r.ensureServiceAccount,
+		r.ensureService,
+		r.ensureDaemonSet,
+
 		// apply all resoucres here like service account, scc etc here eg r.applyServiceAccount
 
 	)
@@ -202,6 +210,8 @@ type collectorReconciler struct {
 	serviceAccount *corev1.ServiceAccount
 	Instance       *keplerv1alpha1.Kepler
 	Ctx            context.Context
+	daemonSet      *appsv1.DaemonSet
+	service        *corev1.Service
 }
 
 func (r *collectorReconciler) ensureServiceAccount(l klog.Logger) (bool, error) {
@@ -219,4 +229,175 @@ func (r *collectorReconciler) ensureServiceAccount(l klog.Logger) (bool, error) 
 		Owner:   r.Instance,
 	}
 	return kepDesc.Reconcile(l)
+}
+
+func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
+
+	dsName := types.NamespacedName{
+		Name:      r.Instance.Name + "-exporter",
+		Namespace: r.Instance.Namespace,
+	}
+	logger := l.WithValues("daemonSet", dsName)
+	r.daemonSet = &appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dsName.Name,
+			Namespace: dsName.Namespace,
+		},
+	}
+
+	op, err := ctrlutil.CreateOrUpdate(r.Ctx, r.Client, r.daemonSet, func() error {
+		if err := ctrl.SetControllerReference(r.Instance, r.daemonSet, r.Scheme); err != nil {
+			logger.Error(err, "unable to set controller reference")
+			return err
+		}
+
+		r.daemonSet.Spec.Template.ObjectMeta.Name = dsName.Name
+
+		r.daemonSet.Spec.Template.Spec.HostNetwork = true
+
+		r.daemonSet.Spec.Template.Spec.ServiceAccountName = r.serviceAccount.Name
+		r.daemonSet.Spec.Template.Spec.Containers = []corev1.Container{{
+			Name:    "kepler-exporter",
+			Image:   "quay.io/sustainable_computing_io/kepler:latest",
+			Command: []string{"/usr/bin/kepler", "-address", "0.0.0.0:9102", "-enable-gpu=true", "enable-cgroup-id=true", "v=1"},
+			Ports: []corev1.ContainerPort{{
+				ContainerPort: 9102,
+				HostPort:      9102,
+				Name:          "http",
+			}},
+		}}
+
+		httpget := corev1.HTTPGetAction{
+			Path:   "/healthz",
+			Port:   intstr.IntOrString{Type: intstr.Int, IntVal: int32(9102)},
+			Scheme: "HTTP",
+		}
+
+		probeHandler := corev1.ProbeHandler{
+			HTTPGet: &httpget,
+		}
+
+		probe := corev1.Probe{
+			ProbeHandler:        probeHandler,
+			FailureThreshold:    5,
+			InitialDelaySeconds: 10,
+			PeriodSeconds:       60,
+			SuccessThreshold:    1,
+			TimeoutSeconds:      10,
+		}
+		r.daemonSet.Spec.Template.Spec.Containers[0].LivenessProbe = &probe
+
+		envFromSource := corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "spec.nodeName",
+			},
+		}
+		r.daemonSet.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
+			{Name: "NODE_NAME", ValueFrom: &envFromSource},
+		}
+
+		r.daemonSet.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{
+			{Name: "lib-modules", MountPath: "/lib/modules"},
+			{Name: "tracing", MountPath: "/sys"},
+			{Name: "proc", MountPath: "/proc"},
+		}
+
+		r.daemonSet.Spec.Template.Spec.Volumes = []corev1.Volume{
+			{Name: "lib-modules",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/lib/modules",
+					}},
+			},
+			{Name: "tracing",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/sys",
+					},
+				}},
+			{Name: "proc",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/proc",
+					},
+				}},
+		}
+
+		var matchLabels = make(map[string]string)
+
+		matchLabels["app.kubernetes.io/component"] = "exporter"
+		matchLabels["app.kubernetes.io/name"] = "kepler-exporter"
+
+		r.daemonSet.Spec.Selector = &metav1.LabelSelector{
+			MatchLabels: matchLabels,
+		}
+
+		r.daemonSet.Spec.Template.ObjectMeta = metav1.ObjectMeta{
+			Labels: matchLabels,
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		logger.Error(err, "Daemonset Reconcilation failed", "OperationResult: ", op)
+		return false, err
+	}
+	logger.Info("Daemonset reconciled", "OperationResult: ", op)
+
+	return true, nil
+}
+
+func (r *collectorReconciler) ensureService(l logr.Logger) (bool, error) {
+
+	serviceName := types.NamespacedName{
+		Name:      r.Instance.Name + "-exporter",
+		Namespace: r.Instance.Namespace,
+	}
+	logger := l.WithValues("Service", serviceName)
+	r.service = &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      serviceName.Name,
+			Namespace: serviceName.Namespace,
+		},
+	}
+	op, err := ctrlutil.CreateOrUpdate(r.Ctx, r.Client, r.service, func() error {
+		if err := ctrl.SetControllerReference(r.Instance, r.service, r.Scheme); err != nil {
+			logger.Error(err, "unable to set controller reference")
+			return err
+		}
+
+		r.service.ObjectMeta.Name = serviceName.Name
+		r.service.ObjectMeta.Namespace = serviceName.Namespace
+
+		if r.service.ObjectMeta.Labels == nil {
+			r.service.ObjectMeta.Labels = map[string]string{}
+		}
+		r.service.ObjectMeta.Labels["app.kubernetes.io/component"] = "exporter"
+		r.service.ObjectMeta.Labels["app.kubernetes.io/name"] = "kepler-exporter"
+		r.service.Spec.ClusterIP = "None"
+		if r.service.Spec.Selector == nil {
+			r.service.Spec.Selector = map[string]string{}
+		}
+		r.service.Spec.Selector["app.kubernetes.io/component"] = "exporter"
+		r.service.Spec.Selector["app.kubernetes.io/name"] = "kepler-exporter"
+
+		r.service.Spec.Ports = []corev1.ServicePort{
+			{
+				Name: "http",
+				Port: 9102,
+				TargetPort: intstr.IntOrString{
+					Type:   intstr.Int,
+					IntVal: 9102},
+			}}
+
+		return nil
+	})
+
+	if err != nil {
+		logger.Error(err, "Service Reconcilation failed", "OperationResult: ", op)
+		return false, err
+	}
+	logger.Info("kepler-exporter service reconciled", "OperationResult: ", op)
+	return true, nil
 }
