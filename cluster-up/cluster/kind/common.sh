@@ -211,6 +211,7 @@ function up() {
     _kind_up
 
     echo "${CLUSTER_PROVIDER} cluster '$CLUSTER_NAME' is ready"
+    
 }
 
 function down() {
