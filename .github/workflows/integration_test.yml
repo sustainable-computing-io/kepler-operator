@@ -3,6 +3,9 @@ name: Integration test
 on:
   pull_request:
 
+      branches:
+      - v1alpha1
+
 jobs:
   integration_test:
     runs-on: ubuntu-latest
@@ -10,8 +13,8 @@ jobs:
       matrix:
         kube_provider: [kind]
     steps:
-      - uses: actions/checkout@v1alpha1
-      - uses: actions/setup-go@v1alpha1
+      - uses: actions/checkout@main
+      - uses: actions/setup-go@main
         with:
           go-version: 1.19
 
