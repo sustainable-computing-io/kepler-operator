@@ -54,6 +54,12 @@ spec:
                   modelPath:
                     default: models
                     type: string
+                  modelServerRequiredPath:
+                    default: /model
+                    type: string
+                  modelServerURL:
+                    default: ""
+                    type: string
                   port:
                     default: 8100
                     type: integer
