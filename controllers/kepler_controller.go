@@ -28,16 +28,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/go-logr/logr"
+	monitoring "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	keplerv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 
-	//appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	//rbacv1 "k8s.io/api/rbac/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	appsv1 "k8s.io/api/apps/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
@@ -143,6 +142,7 @@ func CollectorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, k
 		r.ensureServiceAccount,
 		r.ensureService,
 		r.ensureDaemonSet,
+		r.ensureServiceMonitor,
 
 		// apply all resoucres here like service account, scc etc here eg r.applyServiceAccount
 
@@ -193,15 +193,15 @@ func EstimatorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, k
 func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&keplerv1alpha1.Kepler{}).
-		//Owns(&corev1.Service{}).
-		//Owns(&corev1.ServiceAccount{}).
-		//Owns(&rbacv1.Role{}).
-		//Owns(&rbacv1.RoleBinding{}).
 		Owns(&corev1.PersistentVolume{}).
 		Owns(&corev1.PersistentVolumeClaim{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.Service{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&corev1.ServiceAccount{}).
+		Owns(&rbacv1.Role{}).
+		Owns(&rbacv1.RoleBinding{}).
+		Owns(&monitoring.ServiceMonitor{}).
 		Complete(r)
 }
 
@@ -212,6 +212,7 @@ type collectorReconciler struct {
 	Ctx            context.Context
 	daemonSet      *appsv1.DaemonSet
 	service        *corev1.Service
+	serviceMonitor *monitoring.ServiceMonitor
 }
 
 func (r *collectorReconciler) ensureServiceAccount(l klog.Logger) (bool, error) {
