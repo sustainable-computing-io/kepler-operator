@@ -1,0 +1,63 @@
+name: Integration test
+
+on:
+  pull_request:
+
+jobs:
+  integration_test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        kube_provider: [kind]
+    steps:
+      - uses: actions/checkout@v1alpha1
+      - uses: actions/setup-go@v1alpha1
+        with:
+          go-version: 1.19
+
+      - name: install kernel headers
+        run: |
+          sudo apt-get install -y linux-headers-`uname -r`
+          sudo ls /usr/src/linux-headers-`uname -r`
+
+      - name: install bcc
+        run: |
+            wget https://github.com/sustainable-computing-io/kepler-ci-artifacts/releases/download/v0.25.0/bcc_v0.25.0.tar.gz
+            tar -zxvf bcc_v0.25.0.tar.gz
+            sudo dpkg -i libbcc_0.25.0-1_amd64.deb
+
+      - name: install kubectl
+        run: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+      - name: start local k8s cluster
+        run: make cluster-up
+        env:
+            CLUSTER_PROVIDER: ${{matrix.kube_provider}}
+            PROMETHEUS_ENABLE: "true"
+            GRAFANA_ENABLE: "false"
+
+      # - name: deploy prometheus
+      #   run: make cluster-sync
+      #   env:
+      #       CLUSTER_PROVIDER: ${{matrix.kube_provider}}
+      #       IMAGE_REPO: "localhost:5001/kepler"
+      #       IMAGE_TAG: "devel"
+      #       CTR_CMD: docker
+      #       CI_ONLY: "true"
+
+      # - name: test if kepler is still alive
+      #   run: |
+      #     sleep 60
+      #     kubectl logs $(kubectl -n kepler get pods -oname) -n kepler
+      #     kubectl get all -n kepler
+
+      - name: run integration_test
+        run: |
+          
+          mkdir -p /tmp/.kube
+          make manifests;
+          make install;
+          make deploy;
+          make run;
+        env:
+            kepler_address: localhost:9102

@@ -253,3 +253,12 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+
+
+cluster-up:	
+	./hack/cluster-up.sh
+.PHONY: cluster-up
+
+cluster-down:
+	./hack/cluster-down.sh
+.PHONY: cluster-down
