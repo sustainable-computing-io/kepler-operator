@@ -1,5 +1,4 @@
 name: Integration test
-
 on:
   pull_request:
 
@@ -12,6 +11,7 @@ env:
   GO111MODULE: "on"
   OPERATOR_IMAGE: "quay.io/sustainable_computing_io/kepler-operator"
   ARTIFACT_PATH: /tmp/kepler-operator/
+  KUBECONFIG: /tmp/kubeconfig 
 
 jobs:
   build-operator:
@@ -42,23 +42,6 @@ jobs:
           name: kepler-operator
           path: /tmp/kepler-operator/image.tar
 
-
-
-  e2e:
-    name: End-to-End
-    needs: [build-operator]
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        kube_provider: [kind]
-    env:
-        KUBECONFIG: /tmp/kubeconfig 
-        ARTIFACT_PATH: /tmp/kepler-operator/
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@main
-
       - name: Load operator image into cluster
         run: |
           ls -la ${ARTIFACT_PATH}
@@ -67,14 +50,13 @@ jobs:
           docker inspect ${OPERATOR_IMAGE}
           docker tage ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
 
-      - name: Setup tmate session
-        if: success() || failure()
-        uses: mxschmitt/action-tmate@v3
-
-      - name: Install Go
-        uses: actions/setup-go@main
-        with:
-          go-version: ${{ env.GO_VERSION }}
+      - name: Load operator image into cluster
+        run: |
+          ls -la ${ARTIFACT_PATH}
+          echo "+++++++++++++++++++++++++++++++++++++"
+          docker load -i /tmp/image.tar
+          docker inspect ${OPERATOR_IMAGE}
+          docker tage ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
 
       - name: install kernel headers
         run: |
@@ -97,8 +79,6 @@ jobs:
             PROMETHEUS_ENABLE: "true"
             GRAFANA_ENABLE: "false"
 
-      
-
       - name: Start operator
         run: |
           make deploy IMG=<some-registry>/kepler-operator:tag
@@ -106,58 +86,62 @@ jobs:
       - name: Run e2e tests
         run: |
           kubectl get nodes -o wide
+      
+      - name: Setup tmate session
+        if: success() || failure()
+        uses: mxschmitt/action-tmate@v3
 
 
-  e2e-success:
-    name: Successful e2e tests
-    needs: [build-operator, e2e]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Successful
-        run: echo "Previous steps were successful"
-  push-operator:
-    name: Push operator
-    needs: [e2e-success]
-    if: >
-      (github.event_name == 'push' || github.event_name == 'schedule') &&
-      (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
-    runs-on: ubuntu-latest
+  # e2e-success:
+  #   name: Successful e2e tests
+  #   needs: [build-operator, e2e]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Successful
+  #       run: echo "Previous steps were successful"
+  # push-operator:
+  #   name: Push operator
+  #   needs: [e2e-success]
+  #   if: >
+  #     (github.event_name == 'push' || github.event_name == 'schedule') &&
+  #     (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Load container artifact
-        uses: actions/download-artifact@main
-        with: 
-          name: kepler-operator
-          path: /tmp
+  #   steps:
+  #     - name: Load container artifact
+  #       uses: actions/download-artifact@main
+  #       with: 
+  #         name: kepler-operator
+  #         path: /tmp
 
-      - name: Import container image
-        run: |
-          docker load -i /tmp/image.tar
-          docker inspect ${OPERATOR_IMAGE}
+  #     - name: Import container image
+  #       run: |
+  #         docker load -i /tmp/image.tar
+  #         docker inspect ${OPERATOR_IMAGE}
 
-      - name: Login to registry
-        run: |
-          [[ "${OPERATOR_IMAGE}" =~ ^([^/]+)/[^/]+/[^/]+ ]] && REGISTRY="${BASH_REMATCH[1]}" || REGISTRY="docker.io"
-          echo "Attempting docker login to: ${REGISTRY}"
-          echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin ${REGISTRY}
+  #     - name: Login to registry
+  #       run: |
+  #         [[ "${OPERATOR_IMAGE}" =~ ^([^/]+)/[^/]+/[^/]+ ]] && REGISTRY="${BASH_REMATCH[1]}" || REGISTRY="docker.io"
+  #         echo "Attempting docker login to: ${REGISTRY}"
+  #         echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin ${REGISTRY}
 
-      - name: Push to registry (latest)
-        if: >
-          (github.event_name == 'push' || github.event_name == 'schedule') &&
-          github.ref == 'refs/heads/master'
-        run: |
-          docker push "${OPERATOR_IMAGE}"
+  #     - name: Push to registry (latest)
+  #       if: >
+  #         (github.event_name == 'push' || github.event_name == 'schedule') &&
+  #         github.ref == 'refs/heads/master'
+  #       run: |
+  #         docker push "${OPERATOR_IMAGE}"
 
-      - name: Push to registry (version tag)
-        if: >
-          (github.event_name == 'push' || github.event_name == 'schedule') &&
-          startsWith(github.ref, 'refs/tags/v')
-        run: |
-          [[ "${{ github.ref }}" =~ ^refs/tags/v([0-9]+\..*) ]] || exit 0
-          TAG="${BASH_REMATCH[1]}"
-          echo "Pushing to $TAG"
-          docker tag "${OPERATOR_IMAGE}" "${OPERATOR_IMAGE}:${TAG}"
-          docker push "${OPERATOR_IMAGE}:${TAG}"
+  #     - name: Push to registry (version tag)
+  #       if: >
+  #         (github.event_name == 'push' || github.event_name == 'schedule') &&
+  #         startsWith(github.ref, 'refs/tags/v')
+  #       run: |
+  #         [[ "${{ github.ref }}" =~ ^refs/tags/v([0-9]+\..*) ]] || exit 0
+  #         TAG="${BASH_REMATCH[1]}"
+  #         echo "Pushing to $TAG"
+  #         docker tag "${OPERATOR_IMAGE}" "${OPERATOR_IMAGE}:${TAG}"
+  #         docker push "${OPERATOR_IMAGE}:${TAG}"
 
 
 
