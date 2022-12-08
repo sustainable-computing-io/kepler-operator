@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install Go
         uses: actions/setup-go@main
@@ -28,49 +28,64 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Build operator container
-        run: make docker-build IMG=${OPERATOR_IMAGE}
+        run: make docker-build IMG=${OPERATOR_IMAGE}:latest
 
       - name: Load operator image into cluster
         run: |
           docker inspect ${OPERATOR_IMAGE}
           docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
 
-      - name: install kernel headers
-        run: |
-          sudo apt-get install -y linux-headers-`uname -r`
-          sudo ls /usr/src/linux-headers-`uname -r`
 
-      - name: install bcc
-        run: |
-            wget https://github.com/sustainable-computing-io/kepler-ci-artifacts/releases/download/v0.25.0/bcc_v0.25.0.tar.gz
-            tar -zxvf bcc_v0.25.0.tar.gz
-            sudo dpkg -i libbcc_0.25.0-1_amd64.deb
+      - name: Export container image
+        run: docker save -o /tmp/image.tar ${OPERATOR_IMAGE}
 
-      - name: install kubectl
-        run: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      - name: Save container as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: kepler-operator
+          path: /tmp/image.tar
 
-      - name: start local k8s cluster
-        run: make cluster-up
-        env:
-            CLUSTER_PROVIDER: ${{matrix.kube_provider}}
-            PROMETHEUS_ENABLE: "true"
-            GRAFANA_ENABLE: "false"
+      # - name: install kernel headers
+      #   run: |
+      #     sudo apt-get install -y linux-headers-`uname -r`
+      #     sudo ls /usr/src/linux-headers-`uname -r`
 
-      - name: Start operator
-        run: |
-          make deploy IMG=${OPERATOR_IMAGE}:ci-build
+      # - name: install bcc
+      #   run: |
+      #       wget https://github.com/sustainable-computing-io/kepler-ci-artifacts/releases/download/v0.25.0/bcc_v0.25.0.tar.gz
+      #       tar -zxvf bcc_v0.25.0.tar.gz
+      #       sudo dpkg -i libbcc_0.25.0-1_amd64.deb
 
-      - name: Run e2e tests
-        run: |
-          kubectl get pods -n kepler-operator-system
+      # - name: install kubectl
+      #   run: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+      # - name: start local k8s cluster
+      #   run: make cluster-up
+      #   env:
+      #       CLUSTER_PROVIDER: ${{matrix.kube_provider}}
+      #       PROMETHEUS_ENABLE: "true"
+      #       GRAFANA_ENABLE: "false"
+
+      # - name: Start operator
+      #   run: |
+      #     make deploy IMG=${OPERATOR_IMAGE}:ci-build
+
+      # - name: Run e2e tests
+      #   run: |
+      #     kubectl get pods -n kepler-operator-system
   push-image:
     name: Push operator image to "quay.io/sustainable_computing_io/kepler-operator"
     needs: [build-operator]
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect image
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: kepler-operator
+
+      - name: Test artifact download
         run : |
-          docker inspect {{ env.OPERATOR_IMAGE}}:ci-build
+          ls -R
 
 
 
