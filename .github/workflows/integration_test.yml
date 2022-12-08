@@ -33,9 +33,6 @@ jobs:
       - name: Create artifact path
         run: mkdir -p ${{ env.ARTIFACT_PATH }}
 
-      - name: Export container image
-        run: docker save -o ${{ env.ARTIFACT_PATH }} ${OPERATOR_IMAGE}
-
       - name: Save container as artifact
         uses: actions/upload-artifact@v3
         with:
@@ -48,7 +45,7 @@ jobs:
           echo "+++++++++++++++++++++++++++++++++++++"
           docker load -i ${{ env.ARTIFACT_PATH }}
           docker inspect ${OPERATOR_IMAGE}
-          docker tage ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
+          docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
 
       - name: Load operator image into cluster
         run: |
@@ -56,7 +53,7 @@ jobs:
           echo "+++++++++++++++++++++++++++++++++++++"
           docker load -i ${{ env.ARTIFACT_PATH }}
           docker inspect ${OPERATOR_IMAGE}
-          docker tage ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
+          docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
 
       - name: install kernel headers
         run: |
@@ -81,7 +78,7 @@ jobs:
 
       - name: Start operator
         run: |
-          make deploy IMG=<some-registry>/kepler-operator:tag
+          make deploy IMG=${OPERATOR_IMAGE}:ci-build
 
       - name: Run e2e tests
         run: |
@@ -111,10 +108,6 @@ jobs:
           echo "Pushing to $TAG"
           docker tag "${OPERATOR_IMAGE}" "${OPERATOR_IMAGE}:${TAG}"
           docker push "${OPERATOR_IMAGE}:${TAG}"
-      
-      - name: Setup tmate session
-        if: success() || failure()
-        uses: mxschmitt/action-tmate@v3
 
 
   e2e-success:
