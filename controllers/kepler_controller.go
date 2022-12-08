@@ -60,6 +60,78 @@ type KeplerReconciler struct {
 	Log    logr.Logger
 }
 
+const keplerFinalizer = "kepler.system.sustainable.computing.io/finalizer"
+
+func (r *KeplerReconciler) removeDeployment(logger logr.Logger, inst *keplerv1alpha1.Kepler, ctx context.Context) error {
+	msDeployment := &appsv1.Deployment{}
+	err := r.Client.Get(ctx, types.NamespacedName{Name: "kepler-model-server", Namespace: inst.Namespace}, msDeployment)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			logger.Info("Deployment has already been deleted")
+			return nil
+		} else {
+			logger.Error(err, "failed to get Deployment")
+			return err
+		}
+	}
+	// PVC has been retrieved
+	err = r.Client.Delete(ctx, msDeployment)
+	if err != nil {
+		logger.Error(err, "failed to delete Deployment")
+		return err
+	}
+
+	logger.Info("Successfully Removed Deployment")
+	return nil
+}
+
+func (r *KeplerReconciler) removePVC(logger logr.Logger, inst *keplerv1alpha1.Kepler, ctx context.Context) error {
+	msPVCResult := &corev1.PersistentVolumeClaim{}
+	err := r.Client.Get(ctx, types.NamespacedName{Name: "kepler-model-server-pvc", Namespace: inst.Namespace}, msPVCResult)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			logger.Info("PVC has already been deleted")
+			return nil
+		} else {
+			logger.Error(err, "failed to get PVC")
+			return err
+		}
+	}
+	// PVC has been retrieved
+	err = r.Client.Delete(ctx, msPVCResult)
+	if err != nil {
+		logger.Error(err, "failed to delete PVC")
+		return err
+	}
+
+	logger.Info("Successfully Removed PVC")
+	return nil
+}
+
+func (r *KeplerReconciler) removePV(logger logr.Logger, ctx context.Context) error {
+	msPVResult := &corev1.PersistentVolume{}
+	err := r.Client.Get(ctx, types.NamespacedName{Name: "kepler-model-server-pv"}, msPVResult)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			//if not found, it is already gone
+			logger.Info("PV has already been deleted")
+			return nil
+		} else {
+			logger.Error(err, "failed to get PV")
+			return err
+		}
+	}
+	// PV has been retrieved
+	err = r.Client.Delete(ctx, msPVResult)
+	if err != nil {
+		logger.Error(err, "failed to delete PV")
+		return err
+	}
+
+	logger.Info("Successfully Removed PV")
+	return nil
+}
+
 //+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=keplers,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=keplers/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=keplers/finalizers,verbs=update
@@ -91,6 +163,43 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	/*
+		//if inst set to delete, pv must also be removed when it is released
+		if inst.GetDeletionTimestamp() != nil {
+			if ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
+				//errorDeployment := r.removeDeployment(logger, inst, ctx)
+				//if errorDeployment != nil {
+				//	return ctrl.Result{}, errorDeployment
+				//}
+
+				errorPVC := r.removePVC(logger, inst, ctx)
+				if errorPVC != nil {
+					return ctrl.Result{}, errorPVC
+				}
+				errorPV := r.removePV(logger, ctx)
+				if errorPV != nil {
+					return ctrl.Result{}, errorPV
+				}
+				//	Include Additional Finalizers here
+				// Remove PV finalizer
+				ctrlutil.RemoveFinalizer(inst, keplerFinalizer)
+				updateError := r.Client.Update(ctx, inst)
+				if updateError != nil {
+					return ctrl.Result{}, updateError
+				}
+			}
+			return ctrl.Result{}, nil
+		}
+
+		// Add finalizer for this CR
+		if !ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
+			ctrlutil.AddFinalizer(inst, keplerFinalizer)
+			updateErr := r.Client.Update(ctx, inst)
+			if updateErr != nil {
+				return ctrl.Result{}, updateErr
+			}
+		}
+	*/
 	var result ctrl.Result
 	var err error
 

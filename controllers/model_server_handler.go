@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"reflect"
 	"strconv"
 
 	keplerv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
@@ -44,9 +45,9 @@ func (msd *ModelServerDeployment) Reconcile(l klog.Logger) (bool, error) {
 	return reconcileBatch(l,
 		msd.ensureModelServerPersistentVolume,
 		msd.ensureModelServerPersistentVolumeClaim,
-		//msd.ensureModelServerConfigMap,
-		//msd.ensureModelServerService,
-		//msd.ensureModelServerDeployment,
+		msd.ensureModelServerConfigMap,
+		msd.ensureModelServerService,
+		msd.ensureModelServerDeployment,
 	)
 }
 
@@ -58,9 +59,13 @@ func (msd *ModelServerDeployment) buildModelServerConfigMap() corev1.ConfigMap {
 	if modelServerExporter != nil {
 		dataPairing["MODEL_SERVER_ENABLE"] = "true"
 		dataPairing["PROM_SERVER"] = modelServerExporter.PromServer
+		if dataPairing["PROM_SERVER"] == "" {
+			dataPairing["PROM_SERVER"] = "http://prometheus-k8s." + msd.Instance.Namespace + ".svc.cluster.local:9090/"
+		}
 		dataPairing["MODEL_PATH"] = modelServerExporter.ModelPath
 		dataPairing["MODEL_SERVER_PORT"] = strconv.Itoa(modelServerExporter.Port)
-		if modelServerExporter.ModelServerURL == "" {
+		dataPairing["MODEL_SERVER_URL"] = modelServerExporter.ModelServerURL
+		if dataPairing["MODEL_SERVER_URL"] == "" {
 			dataPairing["MODEL_SERVER_URL"] = "http://kepler-model-server." + msd.Instance.Namespace + ".cluster.local:" + strconv.Itoa(modelServerExporter.Port)
 		}
 		dataPairing["MODEL_SERVER_MODEL_REQ_PATH"] = modelServerExporter.ModelServerRequiredPath
@@ -276,6 +281,12 @@ func (msd *ModelServerDeployment) ensureModelServerPersistentVolumeClaim(l klog.
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("PVC does not exist. Creating...")
+			/*err = ctrl.SetControllerReference(msd.Instance, msd.PersistentVolumeClaim, msd.Scheme)
+			if err != nil {
+				logger.Error(err, "failed to set controller reference")
+				return false, err
+			}
+			*/
 			err = msd.Client.Create(msd.Context, msd.PersistentVolumeClaim)
 			if err != nil {
 				logger.Error(err, "failed to create PVC")
@@ -287,6 +298,12 @@ func (msd *ModelServerDeployment) ensureModelServerPersistentVolumeClaim(l klog.
 		}
 	} else {
 		logger.Info("PVC already exists")
+		/*err = ctrl.SetControllerReference(msd.Instance, msd.PersistentVolumeClaim, msd.Scheme)
+		if err != nil {
+			logger.Error(err, "failed to set controller reference")
+			return false, err
+		}*/
+
 	}
 
 	logger.Info("PVC reconciled")
@@ -365,9 +382,12 @@ func (msd *ModelServerDeployment) ensureModelServerService(l klog.Logger) (bool,
 		if msd.Service.ObjectMeta.CreationTimestamp.IsZero() {
 			msd.Service.Spec.ClusterIP = newMSS.Spec.ClusterIP
 			msd.Service.Spec.Selector = newMSS.Spec.Selector
+			msd.Service.Spec.Ports = newMSS.Spec.Ports
 		}
 		// for mutable fields
-		msd.Service.Spec.Ports = newMSS.Spec.Ports
+		if !reflect.DeepEqual(msd.Service.Spec.Ports[0].Port, newMSS.Spec.Ports[0].Port) {
+			msd.Service.Spec.Ports[0].Port = newMSS.Spec.Ports[0].Port
+		}
 		return nil
 	})
 	if err != nil {
@@ -396,11 +416,14 @@ func (msd *ModelServerDeployment) ensureModelServerDeployment(l klog.Logger) (bo
 		if msd.Deployment.ObjectMeta.CreationTimestamp.IsZero() {
 			msd.Deployment.Spec.Selector = newMSD.Spec.Selector
 			msd.Deployment.Spec.Template.ObjectMeta = newMSD.Spec.Template.ObjectMeta
-
+			msd.Deployment.Spec.Template.Spec.Volumes = newMSD.Spec.Template.Spec.Volumes
 		}
 		// for mutable fields
-		msd.Deployment.Spec.Template.Spec.Volumes = newMSD.Spec.Template.Spec.Volumes
-		msd.Deployment.Spec.Template.Spec.Containers = newMSD.Spec.Template.Spec.Containers
+
+		//compare deepcopy to prevent unnecessary updates
+		if !reflect.DeepEqual(msd.Deployment.Spec.Template.Spec.Containers, newMSD.Spec.Template.Spec.Containers) {
+			msd.Deployment.Spec.Template.Spec.Containers = newMSD.Spec.Template.Spec.Containers
+		}
 		return nil
 	})
 	if err != nil {
