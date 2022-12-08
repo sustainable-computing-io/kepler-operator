@@ -86,10 +86,11 @@ jobs:
       - name: Test artifact download
         run : |
           ls -R
+          pwd
 
       - name: Import container image into cluster
         run: |
-          docker load -i /tmp/image.tar
+          docker load -i image.tar
           docker inspect ${OPERATOR_IMAGE}
           docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
           
