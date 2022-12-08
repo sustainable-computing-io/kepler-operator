@@ -10,8 +10,10 @@ env:
   KIND_VERSION: "0.15.0"
   GO111MODULE: "on"
   OPERATOR_IMAGE: "quay.io/sustainable_computing_io/kepler-operator"
-  ARTIFACT_PATH: /tmp/kepler-operator/image.tar
+  ARTIFACT_PATH: /tmp/kepler-operator/
+  ARTIFACT_NAME: image.tar
   KUBECONFIG: /tmp/kubeconfig 
+ 
 
 jobs:
   build-operator:
@@ -37,21 +39,13 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: kepler-operator
-          path: ${{ env.ARTIFACT_PATH }}
+          path: ${{ env.ARTIFACT_PATH }}/${{ env.ARTIFACT_NAME }}
 
       - name: Load operator image into cluster
         run: |
           ls -la ${ARTIFACT_PATH}
           echo "+++++++++++++++++++++++++++++++++++++"
-          docker load -i ${{ env.ARTIFACT_PATH }}
-          docker inspect ${OPERATOR_IMAGE}
-          docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
-
-      - name: Load operator image into cluster
-        run: |
-          ls -la ${ARTIFACT_PATH}
-          echo "+++++++++++++++++++++++++++++++++++++"
-          docker load -i ${{ env.ARTIFACT_PATH }}
+          docker load -i ${{ env.ARTIFACT_PATH }}/${{ env.ARTIFACT_NAME }}
           docker inspect ${OPERATOR_IMAGE}
           docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
 
