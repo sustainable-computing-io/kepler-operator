@@ -2,15 +2,15 @@ name: Integration test
 on:
   pull_request:
 
-      branches:
-      - v1alpha1
+    branches:
+    - v1alpha1
 
 env:
   GO_VERSION: "1.19"
   KIND_VERSION: "0.15.0"
   GO111MODULE: "on"
   OPERATOR_IMAGE: "quay.io/sustainable_computing_io/kepler-operator"
-  ARTIFACT_PATH: /tmp/kepler-operator/
+  ARTIFACT_PATH: /tmp/kepler-operator/image.tar
   KUBECONFIG: /tmp/kubeconfig 
 
 jobs:
@@ -31,22 +31,22 @@ jobs:
         run: make docker-build IMG=${OPERATOR_IMAGE}
 
       - name: Create artifact path
-        run: mkdir -p ${{ env.ARTIFACT_PATH}}
+        run: mkdir -p ${{ env.ARTIFACT_PATH }}
 
       - name: Export container image
-        run: docker save -o /tmp/kepler-operator/image.tar ${OPERATOR_IMAGE}
+        run: docker save -o ${{ env.ARTIFACT_PATH }} ${OPERATOR_IMAGE}
 
       - name: Save container as artifact
         uses: actions/upload-artifact@v3
         with:
           name: kepler-operator
-          path: /tmp/kepler-operator/image.tar
+          path: ${{ env.ARTIFACT_PATH }}
 
       - name: Load operator image into cluster
         run: |
           ls -la ${ARTIFACT_PATH}
           echo "+++++++++++++++++++++++++++++++++++++"
-          docker load -i /tmp/image.tar
+          docker load -i ${{ env.ARTIFACT_PATH }}
           docker inspect ${OPERATOR_IMAGE}
           docker tage ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
 
@@ -54,7 +54,7 @@ jobs:
         run: |
           ls -la ${ARTIFACT_PATH}
           echo "+++++++++++++++++++++++++++++++++++++"
-          docker load -i /tmp/image.tar
+          docker load -i ${{ env.ARTIFACT_PATH }}
           docker inspect ${OPERATOR_IMAGE}
           docker tage ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
 
@@ -86,62 +86,41 @@ jobs:
       - name: Run e2e tests
         run: |
           kubectl get nodes -o wide
+
+      - name: Login to Quay
+        uses: docker/login-action@v1
+        with:
+          registry: quay.io/sustainable_computing_io
+          username: ${{ secrets.BOT_NAME }}
+          password: ${{ secrets.BOT_TOKEN }}
+
+      - name: Push to registry (latest)
+        if: >
+          (github.event_name == 'push' || github.event_name == 'schedule') &&
+          github.ref == 'refs/heads/v1alpha1'
+        run: |
+          docker push "${OPERATOR_IMAGE}"
+
+      - name: Push to registry (version tag)
+        if: >
+          (github.event_name == 'push' || github.event_name == 'schedule') &&
+          startsWith(github.ref, 'refs/tags/v')
+        run: |
+          [[ "${{ github.ref }}" =~ ^refs/tags/v([0-9]+\..*) ]] || exit 0
+          TAG="${BASH_REMATCH[1]}"
+          echo "Pushing to $TAG"
+          docker tag "${OPERATOR_IMAGE}" "${OPERATOR_IMAGE}:${TAG}"
+          docker push "${OPERATOR_IMAGE}:${TAG}"
       
       - name: Setup tmate session
         if: success() || failure()
         uses: mxschmitt/action-tmate@v3
 
 
-  # e2e-success:
-  #   name: Successful e2e tests
-  #   needs: [build-operator, e2e]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Successful
-  #       run: echo "Previous steps were successful"
-  # push-operator:
-  #   name: Push operator
-  #   needs: [e2e-success]
-  #   if: >
-  #     (github.event_name == 'push' || github.event_name == 'schedule') &&
-  #     (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
-  #   runs-on: ubuntu-latest
-
-  #   steps:
-  #     - name: Load container artifact
-  #       uses: actions/download-artifact@main
-  #       with: 
-  #         name: kepler-operator
-  #         path: /tmp
-
-  #     - name: Import container image
-  #       run: |
-  #         docker load -i /tmp/image.tar
-  #         docker inspect ${OPERATOR_IMAGE}
-
-  #     - name: Login to registry
-  #       run: |
-  #         [[ "${OPERATOR_IMAGE}" =~ ^([^/]+)/[^/]+/[^/]+ ]] && REGISTRY="${BASH_REMATCH[1]}" || REGISTRY="docker.io"
-  #         echo "Attempting docker login to: ${REGISTRY}"
-  #         echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin ${REGISTRY}
-
-  #     - name: Push to registry (latest)
-  #       if: >
-  #         (github.event_name == 'push' || github.event_name == 'schedule') &&
-  #         github.ref == 'refs/heads/master'
-  #       run: |
-  #         docker push "${OPERATOR_IMAGE}"
-
-  #     - name: Push to registry (version tag)
-  #       if: >
-  #         (github.event_name == 'push' || github.event_name == 'schedule') &&
-  #         startsWith(github.ref, 'refs/tags/v')
-  #       run: |
-  #         [[ "${{ github.ref }}" =~ ^refs/tags/v([0-9]+\..*) ]] || exit 0
-  #         TAG="${BASH_REMATCH[1]}"
-  #         echo "Pushing to $TAG"
-  #         docker tag "${OPERATOR_IMAGE}" "${OPERATOR_IMAGE}:${TAG}"
-  #         docker push "${OPERATOR_IMAGE}:${TAG}"
-
-
-
+  e2e-success:
+    name: Successful e2e tests
+    needs: [build-operator]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Successful
+        run: echo "Previous steps were successful"
