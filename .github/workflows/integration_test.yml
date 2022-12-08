@@ -33,7 +33,7 @@ jobs:
         run: docker save -o /tmp/image.tar ${OPERATOR_IMAGE}
 
       - name: Save container as artifact
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@main
         with:
           name: kepler-operator
           path: /tmp/image.tar
@@ -82,6 +82,8 @@ jobs:
 
       - name: Load operator image into cluster
         run: |
+          ls -la /tmp
+          echo "+++++++++++++++++++++++++++++++++++++"
           docker load -i /tmp/image.tar
           docker inspect ${OPERATOR_IMAGE}
           docker tage ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
