@@ -30,15 +30,6 @@ jobs:
       - name: Build operator container
         run: make docker-build IMG=${OPERATOR_IMAGE}
 
-      # - name: Create artifact path
-      #   run: mkdir -p /tmp/kepler-operator/
-
-      # - name: Save container as artifact
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: kepler-operator
-      #     path: /tmp/kepler-operator/image.tar
-
       - name: Load operator image into cluster
         run: |
           docker inspect ${OPERATOR_IMAGE}
@@ -72,31 +63,15 @@ jobs:
       - name: Run e2e tests
         run: |
           kubectl get pods -n kepler-operator-system
+  push-image:
+    name: Push operator image to "quay.io/sustainable_computing_io/kepler-operator"
+    needs: [build-operator]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect image
+        run : |
+          docker inspect {{ env.OPERATOR_IMAGE}}:ci-build
 
-      - name: Login to Quay
-        uses: docker/login-action@v1
-        with:
-          registry: quay.io/sustainable_computing_io
-          username: ${{ secrets.BOT_NAME }}
-          password: ${{ secrets.BOT_TOKEN }}
-
-      - name: Push to registry (latest)
-        if: >
-          (github.event_name == 'push' || github.event_name == 'schedule') &&
-          github.ref == 'refs/heads/v1alpha1'
-        run: |
-          docker push "${OPERATOR_IMAGE}"
-
-      - name: Push to registry (version tag)
-        if: >
-          (github.event_name == 'push' || github.event_name == 'schedule') &&
-          startsWith(github.ref, 'refs/tags/v')
-        run: |
-          [[ "${{ github.ref }}" =~ ^refs/tags/v([0-9]+\..*) ]] || exit 0
-          TAG="${BASH_REMATCH[1]}"
-          echo "Pushing to $TAG"
-          docker tag "${OPERATOR_IMAGE}" "${OPERATOR_IMAGE}:${TAG}"
-          docker push "${OPERATOR_IMAGE}:${TAG}"
 
 
   e2e-success:
