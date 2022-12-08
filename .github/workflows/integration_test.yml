@@ -73,8 +73,8 @@ jobs:
       # - name: Run e2e tests
       #   run: |
       #     kubectl get pods -n kepler-operator-system
-  push-image:
-    name: Push operator image to "quay.io/sustainable_computing_io/kepler-operator"
+  e2e:
+    name: End-to-End Testing
     needs: [build-operator]
     runs-on: ubuntu-latest
     steps:
@@ -86,6 +86,15 @@ jobs:
       - name: Test artifact download
         run : |
           ls -R
+
+      - name: Import container image into cluster
+        run: |
+          docker load -i /tmp/image.tar
+          docker inspect ${OPERATOR_IMAGE}
+          docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
+          
+
+      
 
 
 
