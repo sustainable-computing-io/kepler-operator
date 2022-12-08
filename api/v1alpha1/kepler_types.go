@@ -75,7 +75,7 @@ type ModelServerExporterSpec struct {
 	// +kubebuilder:default=8100
 	Port int `json:"port,omitempty"`
 
-	// +kubebuilder:default="http://prometheus-k8s.monitoring.svc.cluster.local:9090/"
+	// +kubebuilder:default=""
 	PromServer string `json:"promServer,omitempty"`
 
 	// +kubebuilder:default="models"
