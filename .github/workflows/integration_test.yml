@@ -45,7 +45,7 @@ jobs:
           name: kepler-operator
           path: /tmp/image.tar
 
-      
+    
   e2e:
     name: End-to-End Testing
     needs: [build-operator]
@@ -54,7 +54,7 @@ jobs:
       
       - name: Checkout source
         uses: actions/checkout@v3
-        
+
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
@@ -99,10 +99,38 @@ jobs:
       - name: Run e2e tests
         run: |
           echo "Waiting for all containers to become ready ..."
-          kubectl wait --for=condition=Ready pod --all -n kepler-operator-system --timeout 12m
+          kubectl wait --for=condition=Ready pod --all -n kepler-operator-system --timeout 5m
           kubectl get pods -n kepler-operator-system
           echo "Operator ready ..."
                
+  push-image:
+    name: Push operator container image to quay.io/sustainable_computing_io/kepler-operator
+    needs: [build-operator-operator , e2e]
+    runs-on: ubuntu-latest
+    steps: 
+      - name: Download image bundle
+        uses: actions/checkout@v3
+        
+      - name: Test artifact download
+        run : |
+          ls -R
+          pwd
+
+      - name: Import container image into cluster
+        run: |
+          docker load -i image.tar
+          docker inspect ${OPERATOR_IMAGE}
+          docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:latest
+
+      - name: Login to quay.io/sustainable_computing_io/
+        uses: docker/login-action@v1
+        with:
+          registry: quay.io/sustainable_computing_io
+          username: ${{ secrets.BOT_NAME }}
+          password: ${{ secrets.BOT_TOKEN }}
+      
+      - name: Push to quay
+        run: podman push ${OPERATOR_IMAGE}:latest 
 
   e2e-success:
     name: Successful e2e tests
