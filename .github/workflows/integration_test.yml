@@ -105,7 +105,7 @@ jobs:
                
   push-image:
     name: Push operator container image to quay.io/sustainable_computing_io/kepler-operator
-    needs: [build-operator-operator , e2e]
+    needs: [build-operator , e2e]
     runs-on: ubuntu-latest
     steps: 
       - name: Download image bundle
