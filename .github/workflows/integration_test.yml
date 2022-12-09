@@ -45,34 +45,7 @@ jobs:
           name: kepler-operator
           path: /tmp/image.tar
 
-      # - name: install kernel headers
-      #   run: |
-      #     sudo apt-get install -y linux-headers-`uname -r`
-      #     sudo ls /usr/src/linux-headers-`uname -r`
-
-      # - name: install bcc
-      #   run: |
-      #       wget https://github.com/sustainable-computing-io/kepler-ci-artifacts/releases/download/v0.25.0/bcc_v0.25.0.tar.gz
-      #       tar -zxvf bcc_v0.25.0.tar.gz
-      #       sudo dpkg -i libbcc_0.25.0-1_amd64.deb
-
-      # - name: install kubectl
-      #   run: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-
-      # - name: start local k8s cluster
-      #   run: make cluster-up
-      #   env:
-      #       CLUSTER_PROVIDER: ${{matrix.kube_provider}}
-      #       PROMETHEUS_ENABLE: "true"
-      #       GRAFANA_ENABLE: "false"
-
-      # - name: Start operator
-      #   run: |
-      #     make deploy IMG=${OPERATOR_IMAGE}:ci-build
-
-      # - name: Run e2e tests
-      #   run: |
-      #     kubectl get pods -n kepler-operator-system
+      
   e2e:
     name: End-to-End Testing
     needs: [build-operator]
@@ -93,15 +66,43 @@ jobs:
           docker load -i image.tar
           docker inspect ${OPERATOR_IMAGE}
           docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
-          
 
-      
+      - name: Install kernel headers
+        run: |
+          sudo apt-get install -y linux-headers-`uname -r`
+          sudo ls /usr/src/linux-headers-`uname -r`
 
+      - name: Install bcc
+        run: |
+            wget https://github.com/sustainable-computing-io/kepler-ci-artifacts/releases/download/v0.25.0/bcc_v0.25.0.tar.gz
+            tar -zxvf bcc_v0.25.0.tar.gz
+            sudo dpkg -i libbcc_0.25.0-1_amd64.deb
 
+      - name: Install kubectl
+        run: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+      - name: Start local k8s cluster
+        run: make cluster-up
+        env:
+            CLUSTER_PROVIDER: ${{matrix.kube_provider}}
+            PROMETHEUS_ENABLE: "true"
+            GRAFANA_ENABLE: "false"
+
+      - name: Start operator
+        run: |
+          make deploy IMG=${OPERATOR_IMAGE}:ci-build
+
+      - name: Run e2e tests
+        run: |
+          echo "Waiting for all containers to become ready ..."
+          kubectl wait --for=condition=Ready pod --all -n kepler-operator-system --timeout 12m
+          kubectl get pods -n kepler-operator-system
+          echo "Operator ready ..."
+               
 
   e2e-success:
     name: Successful e2e tests
-    needs: [build-operator]
+    needs: [build-operator , e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Successful
