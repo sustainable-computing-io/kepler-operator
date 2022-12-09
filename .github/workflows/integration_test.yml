@@ -100,12 +100,14 @@ jobs:
         run: |
           echo "Waiting for all containers to become ready ..."
           kubectl wait --for=condition=Ready pod --all -n kepler-operator-system --timeout 5m
-          kubectl get pods -n kepler-operator-system
+          kubectl get namespaces
+          kubectl get all --all-namespaces
+          kubectl get pods --all-namespaces | grep kepler
           echo "Operator ready ..."
                
   push-image:
     name: Push operator container image to quay.io/sustainable_computing_io/kepler-operator
-    needs: [build-operator , e2e]
+    needs: [build-operator]
     runs-on: ubuntu-latest
     steps: 
       - name: Download image bundle
@@ -129,8 +131,8 @@ jobs:
           username: ${{ secrets.BOT_NAME }}
           password: ${{ secrets.BOT_TOKEN }}
       
-      - name: Push to quay
-        run: podman push ${OPERATOR_IMAGE}:latest 
+      # - name: Push to quay
+      #   run: podman push ${OPERATOR_IMAGE}:latest 
 
   e2e-success:
     name: Successful e2e tests
