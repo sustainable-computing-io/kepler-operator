@@ -19,19 +19,17 @@ package controllers
 import (
 	"context"
 
+	"github.com/go-logr/logr"
+	monitoring "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	keplerv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/go-logr/logr"
-	monitoring "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	keplerv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
-
-	corev1 "k8s.io/api/core/v1"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -345,13 +343,15 @@ func (r *collectorReconciler) ensureServiceAccount(l klog.Logger) (bool, error) 
 }
 
 func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
-
 	dsName := types.NamespacedName{
 		Name:      r.Instance.Name + "-exporter",
 		Namespace: r.Instance.Namespace,
 	}
 	logger := l.WithValues("daemonSet", dsName)
 	r.daemonSet = &appsv1.DaemonSet{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "DaemonSet",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      dsName.Name,
 			Namespace: dsName.Namespace,
