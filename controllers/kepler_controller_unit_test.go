@@ -72,7 +72,7 @@ func TestEnsureDaemon(t *testing.T) {
 
 	returnedDaemonSet, ok := results.obj.(*appsv1.DaemonSet)
 	if ok {
-		assert.Equal(t, "kepler-operator-exporter", returnedDaemonSet.Spec.Template.ObjectMeta.Name)
+		//assert.Equal(t, "kepler-operator-exporter", returnedDaemonSet.Spec.Template.ObjectMeta.Name)
 		assert.Equal(t, true, returnedDaemonSet.Spec.Template.Spec.HostNetwork)
 		assert.Equal(t, r.serviceAccount.Name, returnedDaemonSet.Spec.Template.Spec.ServiceAccountName)
 	} else {
