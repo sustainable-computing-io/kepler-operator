@@ -51,6 +51,9 @@ func (d *keplerSADescription) ensureSA(l klog.Logger) (bool, error) {
 
 func (d *keplerSADescription) ensureRole(l klog.Logger) (bool, error) {
 	d.role = &rbacv1.Role{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "Role",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      d.SA.Name,
 			Namespace: d.SA.Namespace,
@@ -84,6 +87,9 @@ func (d *keplerSADescription) ensureRole(l klog.Logger) (bool, error) {
 
 func (d *keplerSADescription) ensureRoleBinding(l klog.Logger) (bool, error) {
 	d.roleBinding = &rbacv1.RoleBinding{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "RoleBinding",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      d.SA.Name,
 			Namespace: d.SA.Namespace,

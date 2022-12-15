@@ -3,9 +3,6 @@ package controllers
 import (
 	"context"
 
-	"fmt"
-
-	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -106,12 +103,7 @@ func (k *KeplerClient) Create(ctx context.Context, obj client.Object, opts ...cl
 		patch: nil,
 		list:  nil,
 	}
-	result := k.NameSpacedNameToObject[KeplerKey{Name: obj.GetName(),
-		Namespace:  obj.GetNamespace(),
-		ObjectType: obj.GetObjectKind().GroupVersionKind().Kind}]
-	returned := result.obj.(*appsv1.DaemonSet)
-	fmt.Print("goodmorning\n")
-	fmt.Print(returned.Spec.Template.Spec.Containers[0].VolumeMounts)
+
 	return nil
 }
 

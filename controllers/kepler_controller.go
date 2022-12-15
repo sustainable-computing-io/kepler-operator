@@ -327,6 +327,9 @@ type collectorReconciler struct {
 
 func (r *collectorReconciler) ensureServiceAccount(l klog.Logger) (bool, error) {
 	r.serviceAccount = &corev1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "ServiceAccount",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      r.Instance.Name,
 			Namespace: r.Instance.Namespace,
@@ -363,8 +366,6 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 			logger.Error(err, "unable to set controller reference")
 			return err
 		}
-
-		r.daemonSet.Spec.Template.ObjectMeta.Name = dsName.Name
 
 		r.daemonSet.Spec.Template.Spec.HostNetwork = true
 
@@ -447,6 +448,7 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 
 		r.daemonSet.Spec.Template.ObjectMeta = metav1.ObjectMeta{
 			Labels: matchLabels,
+			Name:   dsName.Name,
 		}
 
 		return nil
