@@ -208,7 +208,6 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	} else if inst.Spec.ModelServerExporter != nil || inst.Spec.ModelServerTrainer != nil {
 		result, err = ModelServerReconciler(ctx, inst, r, logger)
 	} else {
-
 		return result, nil
 	}
 
@@ -471,6 +470,9 @@ func (r *collectorReconciler) ensureService(l logr.Logger) (bool, error) {
 	}
 	logger := l.WithValues("Service", serviceName)
 	r.service = &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "Service",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceName.Name,
 			Namespace: serviceName.Namespace,
