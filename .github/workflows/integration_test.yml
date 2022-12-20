@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install Go
         uses: actions/setup-go@main
@@ -28,37 +28,64 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Build operator container
-        run: make docker-build IMG=${OPERATOR_IMAGE}
-
-      # - name: Create artifact path
-      #   run: mkdir -p /tmp/kepler-operator/
-
-      # - name: Save container as artifact
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: kepler-operator
-      #     path: /tmp/kepler-operator/image.tar
+        run: make docker-build IMG=${OPERATOR_IMAGE}:latest
 
       - name: Load operator image into cluster
         run: |
           docker inspect ${OPERATOR_IMAGE}
           docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
 
-      - name: install kernel headers
+
+      - name: Export container image
+        run: docker save -o /tmp/image.tar ${OPERATOR_IMAGE}
+
+      - name: Save container as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: kepler-operator
+          path: /tmp/image.tar
+
+    
+  e2e:
+    name: End-to-End Testing
+    needs: [build-operator]
+    runs-on: ubuntu-latest
+    steps:
+      
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: kepler-operator
+
+      - name: Test artifact download
+        run : |
+          ls -R
+          pwd
+
+      - name: Import container image into cluster
+        run: |
+          docker load -i image.tar
+          docker inspect ${OPERATOR_IMAGE}
+          docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
+
+      - name: Install kernel headers
         run: |
           sudo apt-get install -y linux-headers-`uname -r`
           sudo ls /usr/src/linux-headers-`uname -r`
 
-      - name: install bcc
+      - name: Install bcc
         run: |
             wget https://github.com/sustainable-computing-io/kepler-ci-artifacts/releases/download/v0.25.0/bcc_v0.25.0.tar.gz
             tar -zxvf bcc_v0.25.0.tar.gz
             sudo dpkg -i libbcc_0.25.0-1_amd64.deb
 
-      - name: install kubectl
+      - name: Install kubectl
         run: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 
-      - name: start local k8s cluster
+      - name: Start local k8s cluster
         run: make cluster-up
         env:
             CLUSTER_PROVIDER: ${{matrix.kube_provider}}
@@ -67,42 +94,56 @@ jobs:
 
       - name: Start operator
         run: |
+          kind load docker-image "${OPERATOR_IMAGE}:ci-build"
           make deploy IMG=${OPERATOR_IMAGE}:ci-build
 
       - name: Run e2e tests
         run: |
-          kubectl get pods -n kepler-operator-system
+          echo "Waiting for all containers to become ready ..."
+          kubectl wait --for=condition=Ready pod --all -n kepler-operator-system --timeout 3m
 
-      - name: Login to Quay
+          echo "Operator ready ..."
+
+               
+  push-image:
+    name: Push operator container image to quay.io/sustainable_computing_io/kepler-operator
+    needs: [build-operator,e2e]
+    runs-on: ubuntu-latest
+    steps: 
+      
+      - name: Login to quay.io/sustainable_computing_io/
         uses: docker/login-action@v1
+        if: ${{ (github.repository_owner == 'sustainable-computing-io') && (github.ref == 'refs/heads/v1alpha1') }}
         with:
           registry: quay.io/sustainable_computing_io
           username: ${{ secrets.BOT_NAME }}
           password: ${{ secrets.BOT_TOKEN }}
+      
+      - name: Download image bundle
+        uses: actions/download-artifact@v3
+        with:
+          name: kepler-operator
 
-      - name: Push to registry (latest)
-        if: >
-          (github.event_name == 'push' || github.event_name == 'schedule') &&
-          github.ref == 'refs/heads/v1alpha1'
+      - name: Test artifact download
+        run : |
+          ls -R
+          pwd
+
+      - name: Push to quay
+        if: ${{ (github.repository_owner == 'sustainable-computing-io') && (github.ref == 'refs/heads/v1alpha1') }}
         run: |
-          docker push "${OPERATOR_IMAGE}"
-
-      - name: Push to registry (version tag)
-        if: >
-          (github.event_name == 'push' || github.event_name == 'schedule') &&
-          startsWith(github.ref, 'refs/tags/v')
-        run: |
-          [[ "${{ github.ref }}" =~ ^refs/tags/v([0-9]+\..*) ]] || exit 0
-          TAG="${BASH_REMATCH[1]}"
-          echo "Pushing to $TAG"
-          docker tag "${OPERATOR_IMAGE}" "${OPERATOR_IMAGE}:${TAG}"
-          docker push "${OPERATOR_IMAGE}:${TAG}"
-
+          docker load -i image.tar
+          docker inspect ${OPERATOR_IMAGE}
+          docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:latest
+          docker push ${OPERATOR_IMAGE}:latest 
 
   e2e-success:
     name: Successful e2e tests
-    needs: [build-operator]
+    needs: [build-operator , e2e, push-image]
     runs-on: ubuntu-latest
     steps:
       - name: Successful
         run: echo "Previous steps were successful"
+
+#TO-DO
+# Add tests for e2e that checks if all the kepler metrics are present
