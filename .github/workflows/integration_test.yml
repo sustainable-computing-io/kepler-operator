@@ -130,6 +130,7 @@ jobs:
           pwd
 
       - name: Push to quay
+        if: ${{ (github.repository_owner == 'sustainable-computing-io') && (github.ref == 'refs/heads/v1alpha1') }}
         run: |
           docker load -i image.tar
           docker inspect ${OPERATOR_IMAGE}
