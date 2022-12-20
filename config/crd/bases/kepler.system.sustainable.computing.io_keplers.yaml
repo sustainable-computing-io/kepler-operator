@@ -64,7 +64,7 @@ spec:
                     default: 8100
                     type: integer
                   promServer:
-                    default: http://prometheus-k8s.monitoring.svc.cluster.local:9090/
+                    default: ""
                     type: string
                 type: object
               model-server-trainer:
