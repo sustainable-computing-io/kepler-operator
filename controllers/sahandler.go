@@ -54,7 +54,7 @@ func (d *keplerSADescription) ensureSA(l klog.Logger) (bool, error) {
 func (d *keplerSADescription) ensureRole(l klog.Logger) (bool, error) {
 
 	d.clusterRole = &rbacv1.ClusterRole{
-    TypeMeta: metav1.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			Kind: "ClusterRole",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -74,9 +74,9 @@ func (d *keplerSADescription) ensureRole(l klog.Logger) (bool, error) {
 
 func (d *keplerSADescription) ensureRoleBinding(l klog.Logger) (bool, error) {
 	d.clusterRoleBinding = &rbacv1.ClusterRoleBinding{
-    TypeMeta: metav1.TypeMeta{
-      Kind: "ClusterRoleBinding",
-    }
+		TypeMeta: metav1.TypeMeta{
+			Kind: "ClusterRoleBinding",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "kepler-clusterrole-binding",
 		},
