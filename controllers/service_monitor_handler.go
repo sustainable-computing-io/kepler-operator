@@ -16,6 +16,9 @@ func (r *collectorReconciler) ensureServiceMonitor(l klog.Logger) (bool, error) 
 	}
 	logger := l.WithValues("serviceMonitor", smName)
 	r.serviceMonitor = &monitoring.ServiceMonitor{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "ServiceMonitor",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      smName.Name,
 			Namespace: smName.Namespace,

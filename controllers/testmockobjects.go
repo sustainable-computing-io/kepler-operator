@@ -1,5 +1,6 @@
 package controllers
 
+/*
 import (
 	"context"
 
@@ -8,8 +9,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
-)
+)*/
 
 type KeplerKey struct {
 	Name       string
@@ -17,6 +19,7 @@ type KeplerKey struct {
 	ObjectType string
 }
 
+/*
 type KeplerValues struct {
 	ctx   context.Context
 	obj   client.Object
@@ -142,3 +145,4 @@ func (k *KeplerClient) RESTMapper() meta.RESTMapper {
 func (k *KeplerClient) Scheme() *runtime.Scheme {
 	return nil
 }
+*/

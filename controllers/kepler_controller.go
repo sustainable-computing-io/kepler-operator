@@ -234,7 +234,6 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if err == nil { // Don't mask previous error
 		err = statusErr
 	}
-
 	return result, err
 }
 
@@ -414,8 +413,7 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 		}
 
 		var scc_value bool = true
-	
-    
+
 		r.daemonSet.Spec.Template.Spec.HostNetwork = true
 		r.daemonSet.Spec.Template.Spec.ServiceAccountName = r.serviceAccount.Name
 		r.daemonSet.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -491,11 +489,11 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 				VolumeSource: corev1.VolumeSource{
 					ConfigMap: &corev1.ConfigMapVolumeSource{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "kepler-exporter-cfm",
+							//Name: "kepler-exporter-cfm",
+							Name: r.Instance.Name + "-exporter-cfm",
 						},
 					}}},
 		}
-
 		var matchLabels = make(map[string]string)
 
 		matchLabels["app.kubernetes.io/component"] = "exporter"

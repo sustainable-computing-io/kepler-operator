@@ -23,7 +23,7 @@ import (
 const (
 	PersistentVolumeName      = "kepler-model-server-pv"
 	PersistentVolumeClaimName = "kepler-model-server-pvc"
-	ConfigMapName             = "kepler-model-server-cfm"
+	ModelServerConfigMapName  = "kepler-model-server-cfm"
 	ModelServerServiceName    = "kepler-model-server"
 	ModelServerDeploymentName = "kepler-model-server"
 )
@@ -94,7 +94,7 @@ func (msd *ModelServerDeployment) buildModelServerConfigMap() corev1.ConfigMap {
 
 	configMap := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ConfigMapName,
+			Name:      ModelServerConfigMapName,
 			Namespace: msd.Instance.Namespace,
 		},
 		Data: dataPairing,
