@@ -32,6 +32,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -207,7 +208,6 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	} else if inst.Spec.ModelServerExporter != nil || inst.Spec.ModelServerTrainer != nil {
 		result, err = ModelServerReconciler(ctx, inst, r, logger)
 	} else {
-
 		return result, nil
 	}
 
@@ -234,7 +234,6 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if err == nil { // Don't mask previous error
 		err = statusErr
 	}
-
 	return result, err
 }
 
@@ -291,11 +290,6 @@ func ModelServerReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler,
 
 }
 
-/*
-func EstimatorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, kr *KeplerReconciler, logger klog.Logger) (ctrl.Result, error) {
-
-}*/
-
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
@@ -327,6 +321,9 @@ type collectorReconciler struct {
 
 func (r *collectorReconciler) ensureServiceAccount(l klog.Logger) (bool, error) {
 	r.serviceAccount = &corev1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "ServiceAccount",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      r.Instance.Name,
 			Namespace: r.Instance.Namespace,
@@ -389,13 +386,15 @@ func (r *collectorReconciler) ensureConfigMap(l klog.Logger) (bool, error) {
 }
 
 func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
-
 	dsName := types.NamespacedName{
 		Name:      r.Instance.Name + "-exporter",
 		Namespace: r.Instance.Namespace,
 	}
 	logger := l.WithValues("daemonSet", dsName)
 	r.daemonSet = &appsv1.DaemonSet{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "DaemonSet",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      dsName.Name,
 			Namespace: dsName.Namespace,
@@ -407,8 +406,9 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 			logger.Error(err, "unable to set controller reference")
 			return err
 		}
+
 		var scc_value bool = true
-		r.daemonSet.Spec.Template.ObjectMeta.Name = dsName.Name
+
 		r.daemonSet.Spec.Template.Spec.HostNetwork = true
 		r.daemonSet.Spec.Template.Spec.ServiceAccountName = r.serviceAccount.Name
 		r.daemonSet.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -484,11 +484,11 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 				VolumeSource: corev1.VolumeSource{
 					ConfigMap: &corev1.ConfigMapVolumeSource{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "kepler-exporter-cfm",
+							//Name: "kepler-exporter-cfm",
+							Name: r.Instance.Name + "-exporter-cfm",
 						},
 					}}},
 		}
-
 		var matchLabels = make(map[string]string)
 
 		matchLabels["app.kubernetes.io/component"] = "exporter"
@@ -499,6 +499,7 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 		}
 		r.daemonSet.Spec.Template.ObjectMeta = metav1.ObjectMeta{
 			Labels: matchLabels,
+			Name:   dsName.Name,
 		}
 
 		return nil
@@ -521,6 +522,9 @@ func (r *collectorReconciler) ensureService(l logr.Logger) (bool, error) {
 	}
 	logger := l.WithValues("Service", serviceName)
 	r.service = &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "Service",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceName.Name,
 			Namespace: serviceName.Namespace,
