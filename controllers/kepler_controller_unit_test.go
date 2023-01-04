@@ -182,45 +182,50 @@ func testVerifyServiceSpec(t *testing.T, returnedService corev1.Service) {
 
 }
 
-/*
-	func testVerifyServiceAccountSpec(t *testing.T, returnedServiceAccount corev1.ServiceAccount, returnedRole rbacv1.ClusterRole, returnedRoleBinding rbacv1.ClusterRoleBinding) {
-		// check SetControllerReference has been set (all objects require owners) properly for SA, Role, RoleBinding
-		assert.Equal(t, 1, len(returnedServiceAccount.GetOwnerReferences()))
-		//assert.Equal(t, 1, len(returnedRole.GetOwnerReferences()))
-		//assert.Equal(t, 1, len(returnedRoleBinding.GetOwnerReferences()))
-		assert.Equal(t, KeplerOperatorName, returnedServiceAccount.GetOwnerReferences()[0].Name)
-		//assert.Equal(t, KeplerOperatorName, returnedRole.GetOwnerReferences()[0].Name)
-		//assert.Equal(t, KeplerOperatorName, returnedRoleBinding.GetOwnerReferences()[0].Name)
+func testVerifyServiceAccountSpec(t *testing.T, returnedServiceAccount corev1.ServiceAccount, returnedClusterRole rbacv1.ClusterRole, returnedClusterRoleBinding rbacv1.ClusterRoleBinding) {
+	// check SetControllerReference has been set (all objects require owners) properly for SA, Role, RoleBinding
+	result := CheckSetControllerReference(KeplerOperatorName, "Kepler", &returnedServiceAccount)
+	if !result {
+		t.Fatal("Failed to Set Controller Reference")
+	}
 
-		assert.Equal(t, "Kepler", returnedServiceAccount.GetOwnerReferences()[0].Kind)
-		//assert.Equal(t, "Kepler", returnedRole.GetOwnerReferences()[0].Kind)
-		//assert.Equal(t, "Kepler", returnedRoleBinding.GetOwnerReferences()[0].Kind)
+	//assert.Equal(t, 1, len(returnedServiceAccount.GetOwnerReferences()))
+	//assert.Equal(t, 1, len(returnedRole.GetOwnerReferences()))
+	//assert.Equal(t, 1, len(returnedRoleBinding.GetOwnerReferences()))
+	//assert.Equal(t, KeplerOperatorName, returnedServiceAccount.GetOwnerReferences()[0].Name)
+	//assert.Equal(t, KeplerOperatorName, returnedRole.GetOwnerReferences()[0].Name)
+	//assert.Equal(t, KeplerOperatorName, returnedRoleBinding.GetOwnerReferences()[0].Name)
 
-		//check if CreateOrUpdate Object has properly set up required fields, nested fields, and variable fields for SA
-		assert.NotEmpty(t, returnedServiceAccount.ObjectMeta)
-		assert.Equal(t, ServiceAccountName, returnedServiceAccount.ObjectMeta.Name)
-		assert.Equal(t, ServiceAccountNameSpace, returnedServiceAccount.ObjectMeta.Namespace)
+	//assert.Equal(t, "Kepler", returnedServiceAccount.GetOwnerReferences()[0].Kind)
+	//assert.Equal(t, "Kepler", returnedRole.GetOwnerReferences()[0].Kind)
+	//assert.Equal(t, "Kepler", returnedRoleBinding.GetOwnerReferences()[0].Kind)
 
-		//check if CreateOrUpdate Object has properly set up required fields, nested fields, and variable fields for Role
-		assert.NotEmpty(t, returnedRole.ObjectMeta)
-		assert.Equal(t, RoleName, returnedRole.ObjectMeta.Name)
-		assert.Equal(t, RoleNameSpace, returnedRole.ObjectMeta.Namespace)
-		assert.NotEmpty(t, returnedRole.Rules)
+	//check if CreateOrUpdate Object has properly set up required fields, nested fields, and variable fields for SA
+	assert.NotEmpty(t, returnedServiceAccount.ObjectMeta)
+	assert.Equal(t, ServiceAccountName, returnedServiceAccount.ObjectMeta.Name)
+	assert.Equal(t, ServiceAccountNameSpace, returnedServiceAccount.ObjectMeta.Namespace)
 
-		//check if CreateOrUpdate Object has properly set up required fields, nested fields, and variable fields for RoleBinding
-		assert.NotEmpty(t, returnedRoleBinding.ObjectMeta)
-		assert.Equal(t, RoleBindingName, returnedRoleBinding.ObjectMeta.Name)
-		assert.Equal(t, RoleBindingNameSpace, returnedRoleBinding.ObjectMeta.Namespace)
-		assert.NotEmpty(t, returnedRoleBinding.RoleRef)
-		assert.NotEmpty(t, returnedRoleBinding.Subjects)
-		assert.Equal(t, "ServiceAccount", returnedRoleBinding.Subjects[0].Kind)
-		assert.Equal(t, returnedServiceAccount.Name, returnedRoleBinding.Subjects[0].Name)
-		assert.Equal(t, "rbac.authorization.k8s.io", returnedRoleBinding.RoleRef.APIGroup)
-		assert.Equal(t, "ClusterRole", returnedRoleBinding.RoleRef.Kind)
-		assert.Equal(t, returnedRole.Name, returnedRoleBinding.RoleRef.Name)
+	//check if CreateOrUpdate Object has properly set up required fields, nested fields, and variable fields for ClusterRole
+	assert.NotEmpty(t, returnedClusterRole.ObjectMeta)
+	assert.Equal(t, ClusterRoleName, returnedClusterRole.ObjectMeta.Name)
+	assert.Equal(t, ClusterRoleNameSpace, returnedClusterRole.ObjectMeta.Namespace)
+	assert.NotEmpty(t, returnedClusterRole.Rules)
+
+	//check if CreateOrUpdate Object has properly set up required fields, nested fields, and variable fields for ClusterRoleBinding
+	assert.NotEmpty(t, returnedClusterRoleBinding.ObjectMeta)
+	assert.Equal(t, ClusterRoleBindingName, returnedClusterRoleBinding.ObjectMeta.Name)
+	assert.Equal(t, ClusterRoleBindingNameSpace, returnedClusterRoleBinding.ObjectMeta.Namespace)
+	assert.NotEmpty(t, returnedClusterRoleBinding.RoleRef)
+	assert.NotEmpty(t, returnedClusterRoleBinding.Subjects)
+	assert.Equal(t, returnedServiceAccount.Kind, returnedClusterRoleBinding.Subjects[0].Kind)
+	assert.Equal(t, returnedServiceAccount.Name, returnedClusterRoleBinding.Subjects[0].Name)
+	assert.Equal(t, returnedServiceAccount.Namespace, returnedClusterRoleBinding.Subjects[0].Namespace)
+	assert.Equal(t, "rbac.authorization.k8s.io", returnedClusterRoleBinding.RoleRef.APIGroup)
+	assert.Equal(t, returnedClusterRole.Kind, returnedClusterRoleBinding.RoleRef.Kind)
+	assert.Equal(t, returnedClusterRole.Name, returnedClusterRoleBinding.RoleRef.Name)
 
 }
-*/
+
 func testVerifyDaemonSpec(t *testing.T, returnedServiceAccount corev1.ServiceAccount, returnedDaemonSet appsv1.DaemonSet) {
 	// check SetControllerReference has been set (all objects require owners) properly
 	result := CheckSetControllerReference(KeplerOperatorName, "Kepler", &returnedDaemonSet)
@@ -360,34 +365,8 @@ func testVerifyDaemonSpec(t *testing.T, returnedServiceAccount corev1.ServiceAcc
 }
 
 func TestEnsureKeplerOperator(t *testing.T) {
-	ctx := context.Background()
-	_ = log.FromContext(ctx)
-
-	logger := log.Log.WithValues("kepler", types.NamespacedName{Name: "kepler-operator", Namespace: "kepler"})
-
-	keplerInstance := &keplersystemv1alpha1.Kepler{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      KeplerOperatorName,
-			Namespace: KeplerOperatorNameSpace,
-		},
-		Spec: keplersystemv1alpha1.KeplerSpec{
-			Collector: &keplersystemv1alpha1.CollectorSpec{
-				Image: "quay.io/sustainable_computing_io/kepler:latest",
-			},
-		},
-	}
-
-	keplerobjs := []runtime.Object{keplerInstance}
-
-	s := scheme.Scheme
-	s.AddKnownTypes(keplersystemv1alpha1.SchemeBuilder.GroupVersion, keplerInstance)
-
-	clientBuilder := fake.NewClientBuilder()
-	clientBuilder = clientBuilder.WithRuntimeObjects(keplerobjs...)
-	clientBuilder = clientBuilder.WithScheme(s)
-	cl := clientBuilder.Build()
-	monitoring.AddToScheme(s)
-	r := &KeplerReconciler{Client: cl, Scheme: s, Log: logger}
+	ctx, keplerReconciler, _, _, _ := generateDefaultOperatorSettings()
+	r := keplerReconciler
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      KeplerOperatorName,
@@ -470,47 +449,45 @@ func TestEnsureDaemon(t *testing.T) {
 
 }
 
-/*
-	func TestEnsureServiceAccount(t *testing.T) {
-		_, _, _, r, logger, client := generateDefaultOperatorSettings()
+func TestEnsureServiceAccount(t *testing.T) {
+	ctx, keplerReconciler, keplerInstance, logger, client := generateDefaultOperatorSettings()
+	r := collectorReconciler{
+		KeplerReconciler: *keplerReconciler,
+		Instance:         keplerInstance,
+		Ctx:              ctx,
+	}
+	//numOfReconciliations := 3
+	//for i := 0; i < numOfReconciliations; i++ {
+	//should also affect role and role binding
+	res, err := r.ensureServiceAccount(logger)
+	//basic check
+	assert.True(t, res)
+	if err != nil {
+		t.Fatalf("service account reconciler has failed which should not happen: %v", err)
+	}
+	foundServiceAccount := &corev1.ServiceAccount{}
+	serviceAccountError := client.Get(ctx, types.NamespacedName{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace}, foundServiceAccount)
+	foundClusterRole := &rbacv1.ClusterRole{}
+	clusterRoleError := client.Get(ctx, types.NamespacedName{Name: ClusterRoleName, Namespace: ClusterRoleNameSpace}, foundClusterRole)
+	foundClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
+	clusterRoleBindingError := client.Get(ctx, types.NamespacedName{Name: ClusterRoleBindingName, Namespace: ClusterRoleBindingNameSpace}, foundClusterRoleBinding)
 
-		numOfReconciliations := 3
-		for i := 0; i < numOfReconciliations; i++ {
-			//should also affect role and role binding
-			res, err := r.ensureServiceAccount(logger)
-			//basic check
-			assert.Equal(t, true, res)
-			if err != nil {
-				t.Fatal("ServiceAccountReconciler has failed which should not happen")
-			}
+	if serviceAccountError != nil {
+		t.Fatalf("service account has not been stored")
+	}
+	if clusterRoleError != nil {
+		t.Fatalf("cluster role has not been stored")
+	}
+	if clusterRoleBindingError != nil {
+		t.Fatalf("cluster rolebinding has not been stored")
+	}
 
-			resultsServiceAccount, okSA := client.NameSpacedNameToObject[KeplerKey{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace, ObjectType: "ServiceAccount"}]
-			resultsRole, okR := client.NameSpacedNameToObject[KeplerKey{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace, ObjectType: "Role"}]
-			resultsRoleBinding, okRB := client.NameSpacedNameToObject[KeplerKey{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace, ObjectType: "RoleBinding"}]
-			if !okSA {
-				t.Fatal("ServiceAccount has not been properly created")
-			}
-			if !okR {
-				t.Fatal("Role has not been properly created")
-			}
-			if !okRB {
-				t.Fatal("RoleBinding has not been properly created")
-			}
+	testVerifyServiceAccountSpec(t, *foundServiceAccount, *foundClusterRole, *foundClusterRoleBinding)
 
-			returnedServiceAccount, okSA := resultsServiceAccount.obj.(*corev1.ServiceAccount)
-			returnedRole, okR := resultsRole.obj.(*rbacv1.Role)
-			returnedRoleBinding, okRB := resultsRoleBinding.obj.(*rbacv1.RoleBinding)
-
-			if okSA && okR && okRB {
-				testVerifyServiceAccountSpec(t, *returnedServiceAccount, *returnedRole, *returnedRoleBinding)
-
-			} else {
-				t.Fatal("Object is not ServiceAccount, Role, or RoleBinding")
-			}
-		}
+	//}
 
 }
-*/
+
 func TestEnsureService(t *testing.T) {
 	ctx, keplerReconciler, keplerInstance, logger, client := generateDefaultOperatorSettings()
 
@@ -551,7 +528,7 @@ func TestCollectorReconciler(t *testing.T) {
 	for i := 0; i < numOfReconciliations; i++ {
 		_, err := CollectorReconciler(ctx, keplerInstance, keplerReconciler, logger)
 		if err != nil {
-			t.Fatal("CollectorReconciler has failed")
+			t.Fatalf("collector reconciler has failed: %v", err)
 		}
 		//Run testVerifyCollectorReconciler
 		testVerifyCollectorReconciler(t, ctx, client)
