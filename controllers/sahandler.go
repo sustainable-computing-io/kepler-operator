@@ -108,11 +108,12 @@ func (d *keplerSADescription) ensureRoleBinding(l klog.Logger) (bool, error) {
 			return false, err
 		}
 	}
-	err = d.Client.Update(context.TODO(), d.clusterRoleBinding)
-	if err != nil {
-		logger.Error(err, "ClusterRoleBinding reconcile failed")
-		return false, err
-	}
+	// TODO: In newer versions when updating is needed, update cluster role binding correctly
+	// err = d.Client.Update(context.TODO(), d.clusterRoleBinding)
+	// if err != nil {
+	// 	logger.Error(err, "ClusterRoleBinding reconcile failed")
+	// 	return false, err
+	// }
 	logger.V(1).Info("ClusterRoleBinding reconciled", "clusterRoleBinding", d.clusterRoleBinding)
 	return true, nil
 }
@@ -146,10 +147,11 @@ func (d *keplerSADescription) createOrUpdateClusterRole(l klog.Logger) (*rbacv1.
 			return nil, err
 		}
 	}
-	err = d.Client.Update(context.TODO(), d.clusterRole)
-	if err != nil {
-		return nil, err
-	}
+	// TODO: In newer versions when updating is needed, update cluster role correctly
+	// err = d.Client.Update(context.TODO(), d.clusterRole)
+	// if err != nil {
+	// 	return nil, err
+	// }
 	logger.V(1).Info("ClusterRole", "clusterRole", d.clusterRole)
 	return d.clusterRole, nil
 }

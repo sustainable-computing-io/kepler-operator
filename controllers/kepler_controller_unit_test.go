@@ -86,6 +86,21 @@ func CheckSetControllerReference(OwnerName string, OwnerKind string, obj client.
 	return false
 }
 
+func testVerifyMainReconciler(t *testing.T, ctx context.Context, client client.Client) {
+	//Check Kepler Instance has been updated as desired
+	foundKepler := &keplersystemv1alpha1.Kepler{}
+	foundKeplerError := client.Get(ctx, types.NamespacedName{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace}, foundKepler)
+	if foundKeplerError != nil {
+		t.Fatalf("Kepler Instance was not created: (%v)", foundKeplerError)
+	}
+	assert.Equal(t, keplersystemv1alpha1.ConditionReconciled, foundKepler.Status.Conditions.Type)
+	assert.Equal(t, "Reconcile complete", foundKepler.Status.Conditions.Message)
+	assert.Equal(t, keplersystemv1alpha1.ReconciledReasonComplete, foundKepler.Status.Conditions.Reason)
+
+	//Verify Sub-Reconcilers
+	testVerifyCollectorReconciler(t, ctx, client)
+}
+
 func testVerifyCollectorReconciler(t *testing.T, ctx context.Context, client client.Client) {
 	//Verify mock client objects exist
 	foundServiceAccount := &corev1.ServiceAccount{}
@@ -93,46 +108,49 @@ func testVerifyCollectorReconciler(t *testing.T, ctx context.Context, client cli
 	foundClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
 	serviceAccountError := client.Get(ctx, types.NamespacedName{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace}, foundServiceAccount)
 	if serviceAccountError != nil {
-		t.Fatalf("service account was not stored")
+		t.Fatalf("service account was not stored: (%v)", serviceAccountError)
 	}
 	clusterRoleError := client.Get(ctx, types.NamespacedName{Name: ClusterRoleName, Namespace: ClusterRoleNameSpace}, foundClusterRole)
 	if clusterRoleError != nil {
-		t.Fatalf("cluster role was not stored")
+		t.Fatalf("cluster role was not stored: (%v)", clusterRoleError)
 	}
 	clusterRoleBindingError := client.Get(ctx, types.NamespacedName{Name: ClusterRoleBindingName, Namespace: ClusterRoleBindingNameSpace}, foundClusterRoleBinding)
 	if clusterRoleBindingError != nil {
-		t.Fatalf("cluster role binding was not stored")
+		t.Fatalf("cluster role binding was not stored: (%v)", clusterRoleBindingError)
 	}
 
 	foundService := &corev1.Service{}
 	serviceError := client.Get(ctx, types.NamespacedName{Name: ServiceName, Namespace: KeplerOperatorNameSpace}, foundService)
 
 	if serviceError != nil {
-		t.Fatal("service was not stored")
+		t.Fatalf("service was not stored: (%v)", serviceError)
 	}
 	foundDaemonSet := &appsv1.DaemonSet{}
 	daemonSetError := client.Get(ctx, types.NamespacedName{Name: DaemonSetName, Namespace: KeplerOperatorNameSpace}, foundDaemonSet)
 	if daemonSetError != nil {
-		t.Fatal("daemon Object was not stored")
+		t.Fatalf("daemon Object was not stored: (%v)", daemonSetError)
 	}
 
 	foundConfigMap := &corev1.ConfigMap{}
 	configMapError := client.Get(ctx, types.NamespacedName{Name: CollectorConfigMapName, Namespace: CollectorConfigMapNameSpace}, foundConfigMap)
 	if configMapError != nil {
-		t.Fatal("config map was not stored")
+		t.Fatalf("config map was not stored: (%v)", configMapError)
 	}
 
 	//skip Service Monitor
 
 	//Verify Collector related produced objects are valid
 
-	//testVerifyServiceAccountSpec(t, *foundServiceAccount, *foundClusterRole, *foundClusterRoleBinding)
+	testVerifyServiceAccountSpec(t, *foundServiceAccount, *foundClusterRole, *foundClusterRoleBinding)
 	testVerifyServiceSpec(t, *foundService)
 	//Note testVerifyDaemonSpec already ensures SA is assigned to Daemonset
 	testVerifyDaemonSpec(t, *foundServiceAccount, *foundDaemonSet)
 	testVerifyConfigMap(t, *foundConfigMap)
 
 	//Verify Collector related cross object relationships are valid
+
+	//Verify ServiceAccount Specified in DaemonSet
+	assert.Equal(t, foundServiceAccount.Name, foundDaemonSet.Spec.Template.Spec.ServiceAccountName)
 
 	//Verify Service selector matches daemonset spec template labels
 	//Service Selector must exist correctly to connect to daemonset
@@ -158,7 +176,7 @@ func testVerifyConfigMap(t *testing.T, returnedConfigMap corev1.ConfigMap) {
 	// check SetControllerReference has been set (all objects require owners) properly
 	result := CheckSetControllerReference(KeplerOperatorName, "Kepler", &returnedConfigMap)
 	if !result {
-		t.Fatal("Failed to Set Controller Reference")
+		t.Fatalf("failed to set controller reference: config map")
 	}
 	//check if ConfigMap contains proper datamap
 	assert.NotEmpty(t, returnedConfigMap.Data)
@@ -169,7 +187,7 @@ func testVerifyServiceSpec(t *testing.T, returnedService corev1.Service) {
 	// check SetControllerReference has been set (all objects require owners) properly
 	result := CheckSetControllerReference(KeplerOperatorName, "Kepler", &returnedService)
 	if !result {
-		t.Fatal("Failed to Set Controller Reference")
+		t.Fatalf("failed to set controller reference: service")
 	}
 	//check if CreateOrUpdate Object has properly set up required fields, nested fields, and variable fields for SA
 	assert.NotEmpty(t, returnedService.ObjectMeta)
@@ -186,7 +204,7 @@ func testVerifyServiceAccountSpec(t *testing.T, returnedServiceAccount corev1.Se
 	// check SetControllerReference has been set (all objects require owners) properly for SA, Role, RoleBinding
 	result := CheckSetControllerReference(KeplerOperatorName, "Kepler", &returnedServiceAccount)
 	if !result {
-		t.Fatal("Failed to Set Controller Reference")
+		t.Fatalf("failed to set controller reference: service account")
 	}
 
 	//assert.Equal(t, 1, len(returnedServiceAccount.GetOwnerReferences()))
@@ -230,7 +248,7 @@ func testVerifyDaemonSpec(t *testing.T, returnedServiceAccount corev1.ServiceAcc
 	// check SetControllerReference has been set (all objects require owners) properly
 	result := CheckSetControllerReference(KeplerOperatorName, "Kepler", &returnedDaemonSet)
 	if !result {
-		t.Fatal("Failed to Set Controller Reference")
+		t.Fatalf("failed to set controller reference: daemonset")
 	}
 	// check if CreateOrUpdate Object has properly set up required fields, nested fields, and variable fields
 	assert.NotEmpty(t, returnedDaemonSet.Spec)
@@ -365,7 +383,7 @@ func testVerifyDaemonSpec(t *testing.T, returnedServiceAccount corev1.ServiceAcc
 }
 
 func TestEnsureKeplerOperator(t *testing.T) {
-	ctx, keplerReconciler, _, _, _ := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, _, _, client := generateDefaultOperatorSettings()
 	r := keplerReconciler
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -373,7 +391,7 @@ func TestEnsureKeplerOperator(t *testing.T) {
 			Namespace: KeplerOperatorNameSpace,
 		},
 	}
-
+	//should only call reconcile once (Additional reconciliations will be called if requeing is required)
 	res, err := r.Reconcile(ctx, req)
 	//continue reconcoiling until requeue has been terminated accordingly
 	for timeout := time.After(30 * time.Second); res.Requeue; {
@@ -388,7 +406,7 @@ func TestEnsureKeplerOperator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	//testVerifyMainReconciler(t, ctx, cl)
+	testVerifyMainReconciler(t, ctx, client)
 
 }
 
@@ -410,13 +428,13 @@ func TestEnsureDaemon(t *testing.T) {
 	//basic check
 	assert.True(t, res)
 	if err != nil {
-		t.Fatal("daemonset has failed which should not happen")
+		t.Fatalf("daemonset has failed which should not happen: (%v)", err)
 	}
 	foundDaemonSet := &appsv1.DaemonSet{}
 	daemonSetError := client.Get(ctx, types.NamespacedName{Name: DaemonSetName, Namespace: DaemonSetNameSpace}, foundDaemonSet)
 
 	if daemonSetError != nil {
-		t.Fatal("daemonset has not been stored")
+		t.Fatalf("daemonset has not been stored: (%v)", daemonSetError)
 	}
 
 	testVerifyDaemonSpec(t, *r.serviceAccount, *foundDaemonSet)
@@ -437,12 +455,12 @@ func TestEnsureDaemon(t *testing.T) {
 	//basic check
 	assert.True(t, res)
 	if err != nil {
-		t.Fatal("daemonset has failed which should not happen")
+		t.Fatalf("daemonset has failed which should not happen: (%v)", err)
 	}
 	foundDaemonSet = &appsv1.DaemonSet{}
 	daemonSetError = client.Get(ctx, types.NamespacedName{Name: DaemonSetName, Namespace: KeplerOperatorNameSpace}, foundDaemonSet)
 	if daemonSetError != nil {
-		t.Fatal("daemonset has not been stored")
+		t.Fatalf("daemonset has not been stored: (%v)", daemonSetError)
 	}
 
 	testVerifyDaemonSpec(t, *r.serviceAccount, *foundDaemonSet)
@@ -456,35 +474,35 @@ func TestEnsureServiceAccount(t *testing.T) {
 		Instance:         keplerInstance,
 		Ctx:              ctx,
 	}
-	//numOfReconciliations := 3
-	//for i := 0; i < numOfReconciliations; i++ {
-	//should also affect role and role binding
-	res, err := r.ensureServiceAccount(logger)
-	//basic check
-	assert.True(t, res)
-	if err != nil {
-		t.Fatalf("service account reconciler has failed which should not happen: %v", err)
-	}
-	foundServiceAccount := &corev1.ServiceAccount{}
-	serviceAccountError := client.Get(ctx, types.NamespacedName{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace}, foundServiceAccount)
-	foundClusterRole := &rbacv1.ClusterRole{}
-	clusterRoleError := client.Get(ctx, types.NamespacedName{Name: ClusterRoleName, Namespace: ClusterRoleNameSpace}, foundClusterRole)
-	foundClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
-	clusterRoleBindingError := client.Get(ctx, types.NamespacedName{Name: ClusterRoleBindingName, Namespace: ClusterRoleBindingNameSpace}, foundClusterRoleBinding)
+	numOfReconciliations := 3
+	for i := 0; i < numOfReconciliations; i++ {
+		//should also affect role and role binding
+		res, err := r.ensureServiceAccount(logger)
+		//basic check
+		assert.True(t, res)
+		if err != nil {
+			t.Fatalf("service account reconciler has failed which should not happen: (%v)", err)
+		}
+		foundServiceAccount := &corev1.ServiceAccount{}
+		serviceAccountError := client.Get(ctx, types.NamespacedName{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace}, foundServiceAccount)
+		foundClusterRole := &rbacv1.ClusterRole{}
+		clusterRoleError := client.Get(ctx, types.NamespacedName{Name: ClusterRoleName, Namespace: ClusterRoleNameSpace}, foundClusterRole)
+		foundClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
+		clusterRoleBindingError := client.Get(ctx, types.NamespacedName{Name: ClusterRoleBindingName, Namespace: ClusterRoleBindingNameSpace}, foundClusterRoleBinding)
 
-	if serviceAccountError != nil {
-		t.Fatalf("service account has not been stored")
-	}
-	if clusterRoleError != nil {
-		t.Fatalf("cluster role has not been stored")
-	}
-	if clusterRoleBindingError != nil {
-		t.Fatalf("cluster rolebinding has not been stored")
-	}
+		if serviceAccountError != nil {
+			t.Fatalf("service account has not been stored: (%v)", serviceAccountError)
+		}
+		if clusterRoleError != nil {
+			t.Fatalf("cluster role has not been stored: (%v)", clusterRoleError)
+		}
+		if clusterRoleBindingError != nil {
+			t.Fatalf("cluster rolebinding has not been stored: (%v)", clusterRoleBindingError)
+		}
 
-	testVerifyServiceAccountSpec(t, *foundServiceAccount, *foundClusterRole, *foundClusterRoleBinding)
+		testVerifyServiceAccountSpec(t, *foundServiceAccount, *foundClusterRole, *foundClusterRoleBinding)
 
-	//}
+	}
 
 }
 
@@ -504,13 +522,13 @@ func TestEnsureService(t *testing.T) {
 		//basic check
 		assert.True(t, res)
 		if err != nil {
-			t.Fatal("service has failed which should not happen")
+			t.Fatalf("service has failed which should not happen: (%v)", err)
 		}
 		foundService := &corev1.Service{}
 		serviceError := client.Get(ctx, types.NamespacedName{Name: ServiceName, Namespace: ServiceNameSpace}, foundService)
 
 		if serviceError != nil {
-			t.Fatal("service has not been stored")
+			t.Fatalf("service has not been stored: (%v)", serviceError)
 		}
 
 		testVerifyServiceSpec(t, *foundService)
@@ -528,7 +546,7 @@ func TestCollectorReconciler(t *testing.T) {
 	for i := 0; i < numOfReconciliations; i++ {
 		_, err := CollectorReconciler(ctx, keplerInstance, keplerReconciler, logger)
 		if err != nil {
-			t.Fatalf("collector reconciler has failed: %v", err)
+			t.Fatalf("collector reconciler has failed: (%v)", err)
 		}
 		//Run testVerifyCollectorReconciler
 		testVerifyCollectorReconciler(t, ctx, client)
@@ -552,13 +570,13 @@ func TestConfigMap(t *testing.T) {
 		//basic check
 		assert.True(t, res)
 		if err != nil {
-			t.Fatal("configmap has failed which should not happen")
+			t.Fatalf("configmap has failed which should not happen: (%v)", err)
 		}
 		foundConfigMap := &corev1.ConfigMap{}
 		configMapError := client.Get(ctx, types.NamespacedName{Name: CollectorConfigMapName, Namespace: CollectorConfigMapNameSpace}, foundConfigMap)
 
 		if configMapError != nil {
-			t.Fatal("configmap has not been stored")
+			t.Fatalf("configmap has not been stored: (%v)", configMapError)
 		}
 
 		testVerifyConfigMap(t, *foundConfigMap)

@@ -290,11 +290,6 @@ func ModelServerReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler,
 
 }
 
-/*
-func EstimatorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, kr *KeplerReconciler, logger klog.Logger) (ctrl.Result, error) {
-
-}*/
-
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
