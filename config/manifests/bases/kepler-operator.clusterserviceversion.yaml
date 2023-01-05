@@ -1,0 +1,68 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+  name: kepler-operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: Kepler is the Schema for the keplers API
+      displayName: Kepler
+      kind: Kepler
+      name: keplers.kepler.system.sustainable.computing.io
+      specDescriptors:
+      - displayName: Collector
+        path: collector
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:collectorFields
+      statusDescriptors:
+      - description: conditions represent the latest available observations of the
+          kepler-system
+        displayName: Conditions
+        path: conditions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:conditions
+      version: v1alpha1
+  description: Runs and Maintains the Kepler Project
+  displayName: Kepler Operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - kepler
+  - operator
+  - sustainable
+  - kubernetes
+  - sustainable computing
+  links:
+  - name: Kepler Operator
+    url: https://kepler-operator.domain
+  maintainers:
+  - email: hchen@redhat.com
+    name: huaminchen
+  - email: parsingh@redhat.com
+    name: parulsingh
+  - email: kaliu@redhat.com
+    name: kaiyiliu
+  maturity: alpha
+  provider:
+    name: Sustainable Computing
+    url: https://sustainable-computing.io/
+  version: 0.0.0
