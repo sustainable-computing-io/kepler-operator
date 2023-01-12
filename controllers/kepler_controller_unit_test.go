@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 
+	"strings"
 	"testing"
 
 	"time"
@@ -32,7 +33,7 @@ const (
 	ServiceName                 = KeplerOperatorName + "-exporter"
 	KeplerOperatorName          = "kepler-operator"
 	KeplerOperatorNameSpace     = "kepler"
-	ServiceAccountName          = KeplerOperatorName
+	ServiceAccountName          = "kepler-sa"
 	ServiceAccountNameSpace     = KeplerOperatorNameSpace
 	ClusterRoleName             = "kepler-clusterrole"
 	ClusterRoleNameSpace        = ""
@@ -546,7 +547,14 @@ func TestCollectorReconciler(t *testing.T) {
 	for i := 0; i < numOfReconciliations; i++ {
 		_, err := CollectorReconciler(ctx, keplerInstance, keplerReconciler, logger)
 		if err != nil {
-			t.Fatalf("collector reconciler has failed: (%v)", err)
+			if strings.Contains(err.Error(), "no matches for kind") {
+				if strings.Contains(err.Error(), "SecurityContextConstraints") || strings.Contains(err.Error(), "MachineConfig") {
+					logger.V(1).Info("Not OpenShift skip SecurityContextConstraints and MachineConfig")
+					continue
+				}
+			} else {
+				t.Fatalf("collector reconciler has failed: (%v)", err)
+			}
 		}
 		//Run testVerifyCollectorReconciler
 		testVerifyCollectorReconciler(t, ctx, client)

@@ -27,7 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	monitoring "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	keplerv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -134,10 +133,10 @@ func (r *KeplerReconciler) removePV(logger logr.Logger, ctx context.Context) err
 //+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=keplers/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=services;configmaps;serviceaccounts;persistentvolumes;persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=apps,resources=deployments;daemonsets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=*,verbs=*
 //+kubebuilder:rbac:groups=core,resources=nodes/metrics;nodes/proxy;nodes/stats,verbs=get;list;watch
-//+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=get;list;watch;create;update;patch;delete;use
+//+kubebuilder:rbac:groups=machineconfiguration.openshift.io,resources=machineconfigs;machineconfigpools,verbs=get;list;watch;create;update;patch;delete;use
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -247,11 +246,12 @@ func CollectorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, k
 
 	l := logger.WithValues("method", "Collector")
 	_, err := reconcileBatch(l,
+		r.ensureSCC,
+		r.ensureMachineConfig,
 		r.ensureConfigMap,
-		r.ensureServiceAccount,
 		r.ensureService,
+		r.ensureServiceAccount,
 		r.ensureDaemonSet,
-		r.ensureServiceMonitor,
 	)
 
 	return ctrl.Result{}, err
@@ -304,7 +304,6 @@ func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&rbacv1.ClusterRole{}).
 		Owns(&rbacv1.ClusterRoleBinding{}).
 		Owns(&rbacv1.RoleBinding{}).
-		Owns(&monitoring.ServiceMonitor{}).
 		Complete(r)
 }
 
@@ -315,7 +314,6 @@ type collectorReconciler struct {
 	Ctx            context.Context
 	daemonSet      *appsv1.DaemonSet
 	service        *corev1.Service
-	serviceMonitor *monitoring.ServiceMonitor
 	configMap      *corev1.ConfigMap
 }
 
@@ -325,7 +323,7 @@ func (r *collectorReconciler) ensureServiceAccount(l klog.Logger) (bool, error) 
 			Kind: "ServiceAccount",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      r.Instance.Name,
+			Name:      r.Instance.Name + "-sa",
 			Namespace: r.Instance.Namespace,
 		},
 	}
@@ -362,7 +360,7 @@ func (r *collectorReconciler) ensureConfigMap(l klog.Logger) (bool, error) {
 		var data_map = make(map[string]string)
 
 		data_map["KEPLER_NAMESPACE"] = r.Instance.Namespace
-		data_map["KEPLER_LOG_LEVEL"] = "1"
+		data_map["KEPLER_LOG_LEVEL"] = "5"
 		data_map["METRIC_PATH"] = "/metrics"
 		data_map["BIND_ADDRESS"] = "0.0.0.0:9102"
 		data_map["ENABLE_GPU"] = "true"
@@ -409,6 +407,17 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 
 		var scc_value bool = true
 
+		r.daemonSet.Spec.Template.Spec.DNSPolicy = corev1.DNSPolicy(corev1.DNSClusterFirstWithHostNet)
+
+		tolerations := []corev1.Toleration{
+			{
+				Effect: corev1.TaintEffectNoSchedule,
+				Key:    "node-role.kubernetes.io/master",
+			}}
+
+		r.daemonSet.Spec.Template.Spec.Tolerations = tolerations
+
+		r.daemonSet.Spec.Template.ObjectMeta.Name = dsName.Name
 		r.daemonSet.Spec.Template.Spec.HostNetwork = true
 		r.daemonSet.Spec.Template.Spec.ServiceAccountName = r.serviceAccount.Name
 		r.daemonSet.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -457,6 +466,8 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 		r.daemonSet.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{
 			{Name: "lib-modules", MountPath: "/lib/modules"},
 			{Name: "tracing", MountPath: "/sys"},
+			{Name: "kernel-src", MountPath: "/usr/src/kernels"},
+			{Name: "kernel-debug", MountPath: "/sys/kernel/debug"},
 			{Name: "proc", MountPath: "/proc"},
 			{Name: "cfm", MountPath: "/etc/config"},
 		}
@@ -480,6 +491,18 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 						Path: "/proc",
 					},
 				}},
+			{Name: "kernel-debug",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/sys/kernel/debug",
+					},
+				}},
+			{Name: "kernel-src",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/usr/src/kernels",
+					},
+				}},
 			{Name: "cfm",
 				VolumeSource: corev1.VolumeSource{
 					ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -493,6 +516,7 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 
 		matchLabels["app.kubernetes.io/component"] = "exporter"
 		matchLabels["app.kubernetes.io/name"] = "kepler-exporter"
+		matchLabels["sustainable-computing.io/app"] = "kepler"
 
 		r.daemonSet.Spec.Selector = &metav1.LabelSelector{
 			MatchLabels: matchLabels,

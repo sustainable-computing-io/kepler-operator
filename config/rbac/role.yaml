@@ -71,9 +71,10 @@ rules:
   - patch
   - update
 - apiGroups:
-  - monitoring.coreos.com
+  - machineconfiguration.openshift.io
   resources:
-  - servicemonitors
+  - machineconfigpools
+  - machineconfigs
   verbs:
   - create
   - delete
@@ -81,20 +82,14 @@ rules:
   - list
   - patch
   - update
+  - use
   - watch
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:
-  - rolebindings
-  - roles
+  - '*'
   verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+  - '*'
 - apiGroups:
   - security.openshift.io
   resources:
