@@ -54,10 +54,13 @@ func (r *collectorReconciler) ensureMachineConfig(l klog.Logger) (bool, error) {
 
 	found := &mcfgv1.MachineConfig{}
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "50-master-cgroupv2", Namespace: ""}, found)
-	if strings.Contains(err.Error(), "no matches for kind") {
-		fmt.Printf("resulting error not a timeout: %s", err)
-		logger.V(1).Info("Not OpenShift skipping MachineConfig")
-		return true, nil
+
+	if err != nil {
+		if strings.Contains(err.Error(), "no matches for kind") {
+			fmt.Printf("resulting error not a timeout: %s", err)
+			logger.V(1).Info("Not OpenShift skipping MachineConfig")
+			return true, nil
+		}
 	}
 
 	if err != nil && !apierrors.IsNotFound(err) {

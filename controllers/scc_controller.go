@@ -70,10 +70,12 @@ func (r *collectorReconciler) ensureSCC(l klog.Logger) (bool, error) {
 	found := &securityv1.SecurityContextConstraints{}
 
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "kepler-scc", Namespace: r.Instance.Namespace}, found)
-	if strings.Contains(err.Error(), "no matches for kind") {
-		fmt.Printf("resulting error not a timeout: %s", err)
-		logger.V(1).Info("Not OpenShift skipping SecurityContextConstraints")
-		return true, nil
+	if err != nil {
+		if strings.Contains(err.Error(), "no matches for kind") {
+			fmt.Printf("resulting error not a timeout: %s", err)
+			logger.V(1).Info("Not OpenShift skipping MachineConfig")
+			return true, nil
+		}
 	}
 	if err != nil && !apierrors.IsNotFound(err) {
 		return false, err

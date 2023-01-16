@@ -246,11 +246,12 @@ func CollectorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, k
 
 	l := logger.WithValues("method", "Collector")
 	_, err := reconcileBatch(l,
-		r.ensureSCC,
+
 		r.ensureMachineConfig,
 		r.ensureConfigMap,
 		r.ensureService,
 		r.ensureServiceAccount,
+		r.ensureSCC,
 		r.ensureDaemonSet,
 	)
 
