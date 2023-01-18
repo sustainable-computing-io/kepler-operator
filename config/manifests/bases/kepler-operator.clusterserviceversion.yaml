@@ -1,0 +1,54 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+  name: kepler-operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: Kepler is the Schema for the keplers API
+      displayName: Kepler
+      kind: Kepler
+      name: keplers.kepler.system.sustainable.computing.io
+      version: v1alpha1
+  description: Kepler (Kubernetes Efficient Power Level Exporter) uses eBPF to probe
+    energy-related system stats and exports them as Prometheus metrics.
+  displayName: Kepler
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - Kepler
+  - power
+  - energy
+  - monitoring
+  links:
+  - name: Kepler Operator
+    url: https://kepler-operator.domain
+  maintainers:
+  - email: parsingh@redhat.com
+    name: Parul Singh
+  - email: hchen@redhat.com
+    name: Huamin Chen
+  maturity: alpha
+  provider:
+    name: https://sustainable-computing.io/
+    url: https://sustainable-computing.io/
+  version: 0.0.0
