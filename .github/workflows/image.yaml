@@ -1,0 +1,55 @@
+name: image
+
+on:
+  pull_request:
+    branches: [ v1alpha1 ]
+
+jobs:
+  image_build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - uses: actions/setup-go@main
+      with:
+          go-version: 1.18
+    - name: Login to Quay
+      uses: docker/login-action@v2.1.0
+      with:
+        registry: quay.io/sustainable_computing_io
+        username: ${{ secrets.BOT_NAME }}
+        password: ${{ secrets.BOT_TOKEN }}
+
+
+# push-image:
+#     name: Push operator container image to quay.io/sustainable_computing_io/kepler-operator
+#     needs: [build-operator,e2e]
+#     runs-on: ubuntu-latest
+#     steps: 
+
+#       - name: Login to quay.io/sustainable_computing_io/
+#         uses: docker/login-action@v1
+#         if: ${{ (github.repository_owner == 'sustainable-computing-io') && (github.ref == 'refs/heads/v1alpha1') }}
+
+#         with:
+#           registry: quay.io/sustainable_computing_io
+#           username: ${{ secrets.BOT_NAME }}
+#           password: ${{ secrets.BOT_TOKEN }}
+
+#       - name: Download image bundle
+#         uses: actions/download-artifact@v3
+#         with:
+#           name: kepler-operator
+
+#       - name: Test artifact download
+#         run : |
+#           ls -R
+#           pwd
+#       - name: Push to quay
+#         if: ${{ (github.repository_owner == 'sustainable-computing-io') && (github.ref == 'refs/heads/v1alpha1') }}
+#         run: |
+#           docker load -i image.tar
+#           docker inspect ${OPERATOR_IMAGE}
+#           docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:latest
+#           docker push ${OPERATOR_IMAGE}:latest 
+    
