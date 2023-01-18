@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -32,8 +33,8 @@ import (
 const (
 	DaemonSetName               = KeplerOperatorName + "-exporter"
 	ServiceName                 = KeplerOperatorName + "-exporter"
-	KeplerOperatorName          = "kepler-operator"
-	KeplerOperatorNameSpace     = "kepler"
+	KeplerOperatorName          = "kepler"
+	KeplerOperatorNameSpace     = ""
 	ServiceAccountName          = KeplerOperatorName + "-sa"
 	ServiceAccountNameSpace     = KeplerOperatorNameSpace
 	ClusterRoleName             = "kepler-clusterrole"
@@ -44,6 +45,8 @@ const (
 	ServiceNameSpace            = KeplerOperatorNameSpace
 	CollectorConfigMapName      = KeplerOperatorName + "-exporter-cfm"
 	CollectorConfigMapNameSpace = KeplerOperatorNameSpace
+	SCCObjectName               = "kepler-scc"
+	SCCObjectNameSpace          = KeplerOperatorNameSpace
 )
 
 func generateDefaultOperatorSettings() (context.Context, *KeplerReconciler, *keplersystemv1alpha1.Kepler, logr.Logger, client.Client) {
@@ -140,9 +143,13 @@ func testVerifyCollectorReconciler(t *testing.T, ctx context.Context, client cli
 	if configMapError != nil {
 		t.Fatalf("config map was not stored: (%v)", configMapError)
 	}
-
-	//skip Service Monitor
-
+	foundSCC := &securityv1.SecurityContextConstraints{}
+	sccError := client.Get(ctx, types.NamespacedName{Name: SCCObjectName, Namespace: SCCObjectNameSpace}, foundSCC)
+	if sccError != nil {
+		t.Fatalf("scc was not stored: (%v)", sccError)
+	}
+	fmt.Print(sccError)
+	fmt.Print(foundSCC.ObjectMeta.Name)
 	//Verify Collector related produced objects are valid
 
 	testVerifyServiceAccountSpec(t, *foundServiceAccount, *foundClusterRole, *foundClusterRoleBinding)
@@ -150,6 +157,7 @@ func testVerifyCollectorReconciler(t *testing.T, ctx context.Context, client cli
 	//Note testVerifyDaemonSpec already ensures SA is assigned to Daemonset
 	testVerifyDaemonSpec(t, *foundServiceAccount, *foundDaemonSet)
 	testVerifyConfigMap(t, *foundConfigMap)
+	testVerifySCC(t, *foundSCC)
 
 	//Verify Collector related cross object relationships are valid
 
@@ -158,9 +166,23 @@ func testVerifyCollectorReconciler(t *testing.T, ctx context.Context, client cli
 
 	//Verify Service selector matches daemonset spec template labels
 	//Service Selector must exist correctly to connect to daemonset
+	// Service Selector or SCC Labels is subset of MatchLabels and Labels in Daemonset (DaemonSet MatchLbels and Labels should be superset)
 	for key, value := range foundService.Spec.Selector {
 		assert.Contains(t, foundDaemonSet.Spec.Template.ObjectMeta.Labels, key)
 		assert.Equal(t, value, foundDaemonSet.Spec.Template.ObjectMeta.Labels[key])
+	}
+	//Verify SCC Labels and Daemonset correspond
+	for key, value := range foundSCC.ObjectMeta.Labels {
+		assert.Contains(t, foundDaemonSet.Spec.Template.ObjectMeta.Labels, key)
+		assert.Equal(t, value, foundDaemonSet.Spec.Template.ObjectMeta.Labels[key])
+	}
+	//Verify SCC User includes Kepler
+	assert.Contains(t, foundSCC.Users, KeplerOperatorName)
+	//Verify SCC User includes Kepler's Service Account
+	for _, user := range foundSCC.Users {
+		if strings.Contains(user, "system:serviceaccount:") {
+			assert.Equal(t, "system:serviceaccount:"+ServiceAccountNameSpace+":"+ServiceAccountName, user)
+		}
 	}
 	//Verify ConfigMap exists in Daemonset Volumes
 	encounteredConfigMapVolume := false
@@ -173,6 +195,24 @@ func testVerifyCollectorReconciler(t *testing.T, ctx context.Context, client cli
 		}
 	}
 	assert.True(t, encounteredConfigMapVolume)
+
+}
+
+func testVerifySCC(t *testing.T, returnedSCC securityv1.SecurityContextConstraints) {
+	// ensure some basic, desired settings are in place
+	assert.NotEmpty(t, returnedSCC.ObjectMeta.Labels)
+	assert.True(t, returnedSCC.AllowPrivilegedContainer)
+	assert.Equal(t, securityv1.FSGroupStrategyOptions{
+		Type: securityv1.FSGroupStrategyRunAsAny,
+	}, returnedSCC.FSGroup)
+	assert.Equal(t, securityv1.SELinuxContextStrategyOptions{
+		Type: securityv1.SELinuxStrategyRunAsAny,
+	},
+		returnedSCC.SELinuxContext)
+	assert.Equal(t, securityv1.RunAsUserStrategyOptions{
+		Type: securityv1.RunAsUserStrategyRunAsAny,
+	},
+		returnedSCC.RunAsUser)
 
 }
 
@@ -540,29 +580,27 @@ func TestEnsureService(t *testing.T) {
 	}
 }
 
-//TODO: Test ServiceMonitor if necessary
-
 // Test CollectorReconciler As a Whole
 
 func TestCollectorReconciler(t *testing.T) {
 	ctx, keplerReconciler, keplerInstance, logger, client := generateDefaultOperatorSettings()
-	//numOfReconciliations := 3
-	//for i := 0; i < numOfReconciliations; i++ {
-	_, err := CollectorReconciler(ctx, keplerInstance, keplerReconciler, logger)
-	if err != nil {
-		if strings.Contains(err.Error(), "no matches for kind") {
-			if strings.Contains(err.Error(), "SecurityContextConstraints") || strings.Contains(err.Error(), "MachineConfig") {
-				logger.V(1).Info("Not OpenShift skip SecurityContextConstraints and MachineConfig")
-				//continue
+	numOfReconciliations := 3
+	for i := 0; i < numOfReconciliations; i++ {
+		_, err := CollectorReconciler(ctx, keplerInstance, keplerReconciler, logger)
+		if err != nil {
+			if strings.Contains(err.Error(), "no matches for kind") {
+				if strings.Contains(err.Error(), "SecurityContextConstraints") || strings.Contains(err.Error(), "MachineConfig") {
+					logger.V(1).Info("Not OpenShift skip SecurityContextConstraints and MachineConfig")
+					continue
+				}
+			} else {
+				t.Fatalf("collector reconciler has failed: (%v)", err)
 			}
-		} else {
-			t.Fatalf("collector reconciler has failed: (%v)", err)
 		}
-	}
-	//Run testVerifyCollectorReconciler
-	testVerifyCollectorReconciler(t, ctx, client)
+		//Run testVerifyCollectorReconciler
+		testVerifyCollectorReconciler(t, ctx, client)
 
-	//}
+	}
 }
 
 func TestConfigMap(t *testing.T) {
@@ -593,5 +631,38 @@ func TestConfigMap(t *testing.T) {
 		testVerifyConfigMap(t, *foundConfigMap)
 
 	}
+
+}
+
+func TestSCC(t *testing.T) {
+	ctx, keplerReconciler, keplerInstance, logger, client := generateDefaultOperatorSettings()
+
+	numOfReconciliations := 3
+
+	r := collectorReconciler{
+		KeplerReconciler: *keplerReconciler,
+		Instance:         keplerInstance,
+		Ctx:              ctx,
+	}
+
+	for i := 0; i < numOfReconciliations; i++ {
+		res, err := r.ensureSCC(logger)
+		assert.True(t, res)
+		if err != nil {
+			t.Fatalf("scc has failed which should not happen: (%v)", err)
+		}
+		foundSCC := &securityv1.SecurityContextConstraints{}
+		sccError := client.Get(ctx, types.NamespacedName{Name: SCCObjectName, Namespace: SCCObjectNameSpace}, foundSCC)
+
+		if sccError != nil {
+			t.Fatalf("scc has not been stored: (%v)", sccError)
+		}
+
+		testVerifySCC(t, *foundSCC)
+
+	}
+}
+
+func TestMachineConfig(t *testing.T) {
 
 }
