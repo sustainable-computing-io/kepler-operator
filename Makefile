@@ -254,11 +254,15 @@ catalog-build: opm ## Build a catalog image.
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
 
+tidy-vendor:
+	go mod tidy
+	go mod vendor
 
-cluster-up:	
-	./hack/cluster-up.sh
-.PHONY: cluster-up
+escapes_detect: tidy-vendor
+	@go build -tags $(GO_BUILD_TAGS) -gcflags="-m -l" ./... 2>&1 | grep "escapes to heap" || true
 
-cluster-down:
-	./hack/cluster-down.sh
-.PHONY: cluster-down
+set_govulncheck:
+	@go install golang.org/x/vuln/cmd/govulncheck@latest
+
+govulncheck: set_govulncheck tidy-vendor
+	@govulncheck -v ./... || true
