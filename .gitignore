@@ -26,3 +26,4 @@ _output/*
 *.swp
 *.swo
 *~
+.vscode/
