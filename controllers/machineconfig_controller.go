@@ -54,7 +54,6 @@ func (r *collectorReconciler) ensureMachineConfig(l klog.Logger) (bool, error) {
 
 	found := &mcfgv1.MachineConfig{}
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "50-master-cgroupv2", Namespace: ""}, found)
-
 	if err != nil {
 		if strings.Contains(err.Error(), "no matches for kind") {
 			fmt.Printf("resulting error not a timeout: %s", err)
