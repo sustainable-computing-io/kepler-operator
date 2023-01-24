@@ -324,8 +324,8 @@ func (r *collectorReconciler) ensureServiceAccount(l klog.Logger) (bool, error) 
 			Kind: "ServiceAccount",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      r.Instance.Name + "-sa",
-			Namespace: r.Instance.Namespace,
+			Name:      r.Instance.Name + ServiceAccountNameSuffix,
+			Namespace: r.Instance.Namespace + ServiceAccountNameSpaceSuffix,
 		},
 	}
 	kepDesc := keplerSADescription{
@@ -340,8 +340,8 @@ func (r *collectorReconciler) ensureServiceAccount(l klog.Logger) (bool, error) 
 
 func (r *collectorReconciler) ensureConfigMap(l klog.Logger) (bool, error) {
 	cmName := types.NamespacedName{
-		Name:      r.Instance.Name + "-exporter-cfm",
-		Namespace: r.Instance.Namespace,
+		Name:      r.Instance.Name + CollectorConfigMapNameSuffix,
+		Namespace: r.Instance.Namespace + CollectorConfigMapNameSpaceSuffix,
 	}
 	logger := l.WithValues("configmap", cmName)
 	r.configMap = &corev1.ConfigMap{
@@ -386,8 +386,8 @@ func (r *collectorReconciler) ensureConfigMap(l klog.Logger) (bool, error) {
 
 func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 	dsName := types.NamespacedName{
-		Name:      r.Instance.Name + "-exporter",
-		Namespace: r.Instance.Namespace,
+		Name:      r.Instance.Name + DaemonSetNameSuffix,
+		Namespace: r.Instance.Namespace + DaemonSetNameSpaceSuffix,
 	}
 	logger := l.WithValues("daemonSet", dsName)
 	r.daemonSet = &appsv1.DaemonSet{
@@ -422,7 +422,7 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 		r.daemonSet.Spec.Template.Spec.HostNetwork = true
 		r.daemonSet.Spec.Template.Spec.ServiceAccountName = r.serviceAccount.Name
 		r.daemonSet.Spec.Template.Spec.Containers = []corev1.Container{{
-			Name: "kepler-exporter",
+			Name: "kepler-exporter", //?
 			SecurityContext: &corev1.SecurityContext{
 				Privileged: &scc_value,
 			},
@@ -509,15 +509,15 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 					ConfigMap: &corev1.ConfigMapVolumeSource{
 						LocalObjectReference: corev1.LocalObjectReference{
 							//Name: "kepler-exporter-cfm",
-							Name: r.Instance.Name + "-exporter-cfm",
+							Name: r.Instance.Name + CollectorConfigMapNameSuffix,
 						},
 					}}},
 		}
 		var matchLabels = make(map[string]string)
 
-		matchLabels["app.kubernetes.io/component"] = "exporter"
-		matchLabels["app.kubernetes.io/name"] = "kepler-exporter"
-		matchLabels["sustainable-computing.io/app"] = "kepler"
+		matchLabels["app.kubernetes.io/component"] = "exporter"   //?
+		matchLabels["app.kubernetes.io/name"] = "kepler-exporter" //?
+		matchLabels["sustainable-computing.io/app"] = "kepler"    //?
 
 		r.daemonSet.Spec.Selector = &metav1.LabelSelector{
 			MatchLabels: matchLabels,
@@ -542,8 +542,8 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 func (r *collectorReconciler) ensureService(l logr.Logger) (bool, error) {
 
 	serviceName := types.NamespacedName{
-		Name:      r.Instance.Name + "-exporter",
-		Namespace: r.Instance.Namespace,
+		Name:      r.Instance.Name + ServiceNameSuffix,
+		Namespace: r.Instance.Namespace + ServiceNameSpaceSuffix,
 	}
 	logger := l.WithValues("Service", serviceName)
 	r.service = &corev1.Service{
@@ -567,14 +567,14 @@ func (r *collectorReconciler) ensureService(l logr.Logger) (bool, error) {
 		if r.service.ObjectMeta.Labels == nil {
 			r.service.ObjectMeta.Labels = map[string]string{}
 		}
-		r.service.ObjectMeta.Labels["app.kubernetes.io/component"] = "exporter"
-		r.service.ObjectMeta.Labels["app.kubernetes.io/name"] = "kepler-exporter"
+		r.service.ObjectMeta.Labels["app.kubernetes.io/component"] = "exporter"   //?
+		r.service.ObjectMeta.Labels["app.kubernetes.io/name"] = "kepler-exporter" //?
 		r.service.Spec.ClusterIP = "None"
 		if r.service.Spec.Selector == nil {
 			r.service.Spec.Selector = map[string]string{}
 		}
-		r.service.Spec.Selector["app.kubernetes.io/component"] = "exporter"
-		r.service.Spec.Selector["app.kubernetes.io/name"] = "kepler-exporter"
+		r.service.Spec.Selector["app.kubernetes.io/component"] = "exporter"   //?
+		r.service.Spec.Selector["app.kubernetes.io/name"] = "kepler-exporter" //?
 
 		r.service.Spec.Ports = []corev1.ServicePort{
 			{

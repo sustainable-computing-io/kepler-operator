@@ -31,32 +31,32 @@ import (
 )
 
 const (
-	DaemonSetName                          = KeplerOperatorName + "-exporter"
-	ServiceName                            = KeplerOperatorName + "-exporter"
-	KeplerOperatorName                     = "kepler"
-	KeplerOperatorNameSpace                = ""
-	ServiceAccountName                     = KeplerOperatorName + "-sa"
-	ServiceAccountNameSpace                = KeplerOperatorNameSpace
-	ClusterRoleName                        = "kepler-clusterrole"
-	ClusterRoleNameSpace                   = ""
-	ClusterRoleBindingName                 = "kepler-clusterrole-binding"
-	ClusterRoleBindingNameSpace            = ""
-	DaemonSetNameSpace                     = KeplerOperatorNameSpace
-	ServiceNameSpace                       = KeplerOperatorNameSpace
-	CollectorConfigMapName                 = KeplerOperatorName + "-exporter-cfm"
-	CollectorConfigMapNameSpace            = KeplerOperatorNameSpace
-	SCCObjectName                          = "kepler-scc"
-	SCCObjectNameSpace                     = KeplerOperatorNameSpace
-	MachineConfigCGroupKernelArgMasterName = "50-master-cgroupv2"
-	MachineConfigCGroupKernelArgWorkerName = "50-worker-cgroupv2"
-	MachineConfigDevelMasterName           = "51-master-kernel-devel"
-	MachineConfigDevelWorkerName           = "51-worker-kernel-devel"
+	DaemonSetName                          = KeplerOperatorName + DaemonSetNameSuffix
+	ServiceName                            = KeplerOperatorName + ServiceNameSuffix
+	KeplerOperatorName                     = "kepler" //Sample name
+	KeplerOperatorNameSpace                = ""       // Set to default
+	ServiceAccountName                     = KeplerOperatorName + ServiceAccountNameSuffix
+	ServiceAccountNameSpace                = KeplerOperatorNameSpace + ServiceAccountNameSpaceSuffix
+	ClusterRoleName                        = ClusterRoleNameSuffix
+	ClusterRoleNameSpace                   = ClusterRoleNameSpaceSuffix
+	ClusterRoleBindingName                 = ClusterRoleBindingNameSuffix
+	ClusterRoleBindingNameSpace            = ClusterRoleBindingNameSpaceSuffix
+	DaemonSetNameSpace                     = KeplerOperatorNameSpace + DaemonSetNameSpaceSuffix
+	ServiceNameSpace                       = KeplerOperatorNameSpace + ServiceNameSpaceSuffix
+	CollectorConfigMapName                 = KeplerOperatorName + CollectorConfigMapNameSuffix
+	CollectorConfigMapNameSpace            = KeplerOperatorNameSpace + CollectorConfigMapNameSpaceSuffix
+	SCCObjectName                          = SCCObjectNameSuffix
+	SCCObjectNameSpace                     = SCCObjectNameSpaceSuffix
+	MachineConfigCGroupKernelArgMasterName = MachineConfigCGroupKernelArgMasterNameSuffix
+	MachineConfigCGroupKernelArgWorkerName = MachineConfigCGroupKernelArgWorkerNameSuffix
+	MachineConfigDevelMasterName           = MachineConfigDevelMasterNameSuffix
+	MachineConfigDevelWorkerName           = MachineConfigDevelWorkerNameSuffix
 )
 
 func generateDefaultOperatorSettings() (context.Context, *KeplerReconciler, *keplersystemv1alpha1.Kepler, logr.Logger, client.Client) {
 	ctx := context.Background()
 	_ = log.FromContext(ctx)
-	logger := log.Log.WithValues("kepler", types.NamespacedName{Name: "kepler-operator", Namespace: "kepler"})
+	logger := log.Log.WithValues("kepler", types.NamespacedName{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace})
 
 	keplerInstance := &keplersystemv1alpha1.Kepler{
 		ObjectMeta: metav1.ObjectMeta{

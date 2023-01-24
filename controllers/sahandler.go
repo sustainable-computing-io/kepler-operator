@@ -58,7 +58,8 @@ func (d *keplerSADescription) ensureRole(l klog.Logger) (bool, error) {
 			Kind: "ClusterRole",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "kepler-clusterrole",
+			Name:      ClusterRoleNameSuffix,
+			Namespace: ClusterRoleNameSpaceSuffix,
 		},
 	}
 
@@ -78,13 +79,14 @@ func (d *keplerSADescription) ensureRoleBinding(l klog.Logger) (bool, error) {
 			Kind: "ClusterRoleBinding",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "kepler-clusterrole-binding",
+			Name:      ClusterRoleBindingNameSuffix,
+			Namespace: ClusterRoleBindingNameSpaceSuffix,
 		},
 	}
 	d.clusterRoleBinding.RoleRef = rbacv1.RoleRef{
 		APIGroup: "rbac.authorization.k8s.io",
 		Kind:     "ClusterRole",
-		Name:     "kepler-clusterrole",
+		Name:     ClusterRoleNameSuffix,
 	}
 	d.clusterRoleBinding.Subjects = []rbacv1.Subject{
 		{
@@ -97,7 +99,7 @@ func (d *keplerSADescription) ensureRoleBinding(l klog.Logger) (bool, error) {
 	logger := l.WithValues("RoleBinding", nameFor(d.clusterRoleBinding))
 
 	found := &rbacv1.ClusterRoleBinding{}
-	err := d.Client.Get(context.TODO(), types.NamespacedName{Name: "kepler-clusterrole-binding", Namespace: ""}, found)
+	err := d.Client.Get(context.TODO(), types.NamespacedName{Name: ClusterRoleBindingNameSuffix, Namespace: ClusterRoleBindingNameSpaceSuffix}, found)
 
 	if err != nil && !apierrors.IsNotFound(err) {
 		return false, err
@@ -122,7 +124,8 @@ func (d *keplerSADescription) createOrUpdateClusterRole(l klog.Logger) (*rbacv1.
 
 	d.clusterRole = &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "kepler-clusterrole",
+			Name:      ClusterRoleNameSuffix,
+			Namespace: ClusterRoleNameSpaceSuffix,
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -135,7 +138,7 @@ func (d *keplerSADescription) createOrUpdateClusterRole(l klog.Logger) (*rbacv1.
 
 	logger := l.WithValues("kepler-clusterrole", d.clusterRole.ObjectMeta.Name)
 	found := &rbacv1.ClusterRole{}
-	err := d.Client.Get(context.TODO(), types.NamespacedName{Name: "kepler-clusterrole", Namespace: ""}, found)
+	err := d.Client.Get(context.TODO(), types.NamespacedName{Name: ClusterRoleNameSuffix, Namespace: ClusterRoleNameSpaceSuffix}, found)
 
 	if err != nil && !apierrors.IsNotFound(err) {
 

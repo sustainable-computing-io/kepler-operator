@@ -44,8 +44,9 @@ func (r *collectorReconciler) ensureMachineConfig(l klog.Logger) (bool, error) {
 			APIVersion: "machineconfiguration.openshift.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "50-master-cgroupv2",
-			Labels: master_labels_map,
+			Name:      MachineConfigCGroupKernelArgMasterNameSuffix,
+			Namespace: MachineConfigCGroupKernelArgMasterNameSpaceSuffix,
+			Labels:    master_labels_map,
 		},
 		Spec: mcfgv1.MachineConfigSpec{
 			KernelArguments: []string{"systemd.unified_cgroup_hierarchy=1", "cgroup_no_v1='all'"},
@@ -53,7 +54,7 @@ func (r *collectorReconciler) ensureMachineConfig(l klog.Logger) (bool, error) {
 	}
 
 	found := &mcfgv1.MachineConfig{}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "50-master-cgroupv2", Namespace: ""}, found)
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: MachineConfigCGroupKernelArgMasterNameSuffix, Namespace: MachineConfigCGroupKernelArgMasterNameSpaceSuffix}, found)
 	if err != nil {
 		if strings.Contains(err.Error(), "no matches for kind") {
 			fmt.Printf("resulting error not a timeout: %s", err)
@@ -80,15 +81,16 @@ func (r *collectorReconciler) ensureMachineConfig(l klog.Logger) (bool, error) {
 			APIVersion: "machineconfiguration.openshift.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "50-worker-cgroupv2",
-			Labels: worker_labels_map,
+			Name:      MachineConfigCGroupKernelArgWorkerNameSuffix,
+			Namespace: MachineConfigCGroupKernelArgWorkerNameSpaceSuffix,
+			Labels:    worker_labels_map,
 		},
 		Spec: mcfgv1.MachineConfigSpec{
 			KernelArguments: []string{"systemd.unified_cgroup_hierarchy=1", "cgroup_no_v1='all'"},
 		},
 	}
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "50-worker-cgroupv2", Namespace: ""}, found)
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: MachineConfigCGroupKernelArgWorkerNameSuffix, Namespace: MachineConfigCGroupKernelArgWorkerNameSpaceSuffix}, found)
 
 	if err != nil && !apierrors.IsNotFound(err) {
 
@@ -108,15 +110,16 @@ func (r *collectorReconciler) ensureMachineConfig(l klog.Logger) (bool, error) {
 			APIVersion: "machineconfiguration.openshift.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "51-master-kernel-devel",
-			Labels: master_labels_map,
+			Name:      MachineConfigDevelMasterNameSuffix,
+			Namespace: MachineConfigDevelMasterNameSpaceSuffix,
+			Labels:    master_labels_map,
 		},
 		Spec: mcfgv1.MachineConfigSpec{
 			Extensions: []string{"kernel-devel"},
 		},
 	}
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "51-master-kernel-devel", Namespace: ""}, found)
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: MachineConfigDevelMasterNameSuffix, Namespace: MachineConfigDevelMasterNameSpaceSuffix}, found)
 
 	if err != nil && !apierrors.IsNotFound(err) {
 
@@ -136,15 +139,16 @@ func (r *collectorReconciler) ensureMachineConfig(l klog.Logger) (bool, error) {
 			APIVersion: "machineconfiguration.openshift.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "51-worker-kernel-devel",
-			Labels: worker_labels_map,
+			Name:      MachineConfigDevelWorkerNameSuffix,
+			Namespace: MachineConfigDevelWorkerNameSpaceSuffix,
+			Labels:    worker_labels_map,
 		},
 		Spec: mcfgv1.MachineConfigSpec{
 			Extensions: []string{"kernel-devel"},
 		},
 	}
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "51-worker-kernel-devel", Namespace: ""}, found)
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: MachineConfigDevelWorkerNameSuffix, Namespace: MachineConfigDevelWorkerNameSpaceSuffix}, found)
 
 	if err != nil && !apierrors.IsNotFound(err) {
 
