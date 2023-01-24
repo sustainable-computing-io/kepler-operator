@@ -24,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	//"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -53,7 +52,7 @@ const (
 	MachineConfigDevelWorkerName           = MachineConfigDevelWorkerNameSuffix
 )
 
-func generateDefaultOperatorSettings() (context.Context, *KeplerReconciler, *keplersystemv1alpha1.Kepler, logr.Logger, client.Client) {
+func generateDefaultOperatorSettings() (context.Context, *KeplerReconciler, *keplersystemv1alpha1.Kepler, logr.Logger, client.Client, error) {
 	ctx := context.Background()
 	_ = log.FromContext(ctx)
 	logger := log.Log.WithValues("kepler", types.NamespacedName{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace})
@@ -79,12 +78,24 @@ func generateDefaultOperatorSettings() (context.Context, *KeplerReconciler, *kep
 	clientBuilder = clientBuilder.WithRuntimeObjects(keplerobjs...)
 	clientBuilder = clientBuilder.WithScheme(s)
 	cl := clientBuilder.Build()
-	monitoring.AddToScheme(s)
-	mcfgv1.AddToScheme(s)
-	securityv1.AddToScheme(s)
+	err := monitoring.AddToScheme(s)
+	if err != nil {
+		logger.V(1).Error(err, "failed to add prometheus operator to scheme")
+		return ctx, nil, keplerInstance, logger, cl, err
+	}
+	err = mcfgv1.AddToScheme(s)
+	if err != nil {
+		logger.V(1).Error(err, "failed to add machineconfig operator to scheme")
+		return ctx, nil, keplerInstance, logger, cl, err
+	}
+	err = securityv1.AddToScheme(s)
+	if err != nil {
+		logger.V(1).Error(err, "failed to add openshift security to scheme")
+		return ctx, nil, keplerInstance, logger, cl, err
+	}
 	keplerReconciler := &KeplerReconciler{Client: cl, Scheme: s, Log: logger}
 
-	return ctx, keplerReconciler, keplerInstance, logger, cl
+	return ctx, keplerReconciler, keplerInstance, logger, cl, nil
 }
 
 func CheckSetControllerReference(OwnerName string, OwnerKind string, obj client.Object) bool {
@@ -503,7 +514,10 @@ func testVerifyDaemonSpec(t *testing.T, returnedServiceAccount corev1.ServiceAcc
 }
 
 func TestEnsureKeplerOperator(t *testing.T) {
-	ctx, keplerReconciler, _, _, client := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, _, _, client, err := generateDefaultOperatorSettings()
+	if err != nil {
+		t.Fatalf("generate test environment failed: (%v)", err)
+	}
 	r := keplerReconciler
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -531,7 +545,10 @@ func TestEnsureKeplerOperator(t *testing.T) {
 }
 
 func TestEnsureDaemon(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	if err != nil {
+		t.Fatalf("generate test environment failed: (%v)", err)
+	}
 	r := collectorReconciler{
 		KeplerReconciler: *keplerReconciler,
 		Instance:         keplerInstance,
@@ -588,7 +605,10 @@ func TestEnsureDaemon(t *testing.T) {
 }
 
 func TestEnsureServiceAccount(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	if err != nil {
+		t.Fatalf("generate test environment failed: (%v)", err)
+	}
 	r := collectorReconciler{
 		KeplerReconciler: *keplerReconciler,
 		Instance:         keplerInstance,
@@ -627,7 +647,10 @@ func TestEnsureServiceAccount(t *testing.T) {
 }
 
 func TestEnsureService(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	if err != nil {
+		t.Fatalf("generate test environment failed: (%v)", err)
+	}
 
 	numOfReconciliations := 3
 
@@ -659,7 +682,10 @@ func TestEnsureService(t *testing.T) {
 // Test CollectorReconciler As a Whole
 
 func TestCollectorReconciler(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	if err != nil {
+		t.Fatalf("generate test environment failed: (%v)", err)
+	}
 	numOfReconciliations := 3
 	for i := 0; i < numOfReconciliations; i++ {
 		_, err := CollectorReconciler(ctx, keplerInstance, keplerReconciler, logger)
@@ -681,7 +707,10 @@ func TestCollectorReconciler(t *testing.T) {
 }
 
 func TestConfigMap(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	if err != nil {
+		t.Fatalf("generate test environment failed: (%v)", err)
+	}
 
 	numOfReconciliations := 3
 
@@ -712,7 +741,10 @@ func TestConfigMap(t *testing.T) {
 }
 
 func TestSCC(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	if err != nil {
+		t.Fatalf("generate test environment failed: (%v)", err)
+	}
 
 	numOfReconciliations := 3
 
@@ -744,7 +776,10 @@ func TestSCC(t *testing.T) {
 }
 
 func TestBasicMachineConfig(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	if err != nil {
+		t.Fatalf("generate test environment failed: (%v)", err)
+	}
 
 	numOfReconciliations := 3
 

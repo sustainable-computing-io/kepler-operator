@@ -422,7 +422,7 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 		r.daemonSet.Spec.Template.Spec.HostNetwork = true
 		r.daemonSet.Spec.Template.Spec.ServiceAccountName = r.serviceAccount.Name
 		r.daemonSet.Spec.Template.Spec.Containers = []corev1.Container{{
-			Name: "kepler-exporter", //?
+			Name: "kepler-exporter",
 			SecurityContext: &corev1.SecurityContext{
 				Privileged: &scc_value,
 			},
@@ -515,9 +515,9 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 		}
 		var matchLabels = make(map[string]string)
 
-		matchLabels["app.kubernetes.io/component"] = "exporter"   //?
-		matchLabels["app.kubernetes.io/name"] = "kepler-exporter" //?
-		matchLabels["sustainable-computing.io/app"] = "kepler"    //?
+		matchLabels["app.kubernetes.io/component"] = "exporter"
+		matchLabels["app.kubernetes.io/name"] = "kepler-exporter"
+		matchLabels["sustainable-computing.io/app"] = "kepler"
 
 		r.daemonSet.Spec.Selector = &metav1.LabelSelector{
 			MatchLabels: matchLabels,
@@ -567,14 +567,14 @@ func (r *collectorReconciler) ensureService(l logr.Logger) (bool, error) {
 		if r.service.ObjectMeta.Labels == nil {
 			r.service.ObjectMeta.Labels = map[string]string{}
 		}
-		r.service.ObjectMeta.Labels["app.kubernetes.io/component"] = "exporter"   //?
-		r.service.ObjectMeta.Labels["app.kubernetes.io/name"] = "kepler-exporter" //?
+		r.service.ObjectMeta.Labels["app.kubernetes.io/component"] = "exporter"
+		r.service.ObjectMeta.Labels["app.kubernetes.io/name"] = "kepler-exporter"
 		r.service.Spec.ClusterIP = "None"
 		if r.service.Spec.Selector == nil {
 			r.service.Spec.Selector = map[string]string{}
 		}
-		r.service.Spec.Selector["app.kubernetes.io/component"] = "exporter"   //?
-		r.service.Spec.Selector["app.kubernetes.io/name"] = "kepler-exporter" //?
+		r.service.Spec.Selector["app.kubernetes.io/component"] = "exporter"
+		r.service.Spec.Selector["app.kubernetes.io/name"] = "kepler-exporter"
 
 		r.service.Spec.Ports = []corev1.ServicePort{
 			{

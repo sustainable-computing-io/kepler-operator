@@ -63,7 +63,7 @@ func (r *collectorReconciler) ensureSCC(l klog.Logger) (bool, error) {
 		},
 		SELinuxContext: securityv1.SELinuxContextStrategyOptions{
 			Type: securityv1.SELinuxStrategyRunAsAny,
-		}, //?
+		},
 		//Users: []string{"kepler", "system:serviceaccount:" + r.Instance.Namespace + ":kepler-sa"},
 		Users:   []string{"kepler", "system:serviceaccount:" + r.Instance.Namespace + ":" + r.Instance.Name + ServiceAccountNameSuffix},
 		Volumes: []securityv1.FSType{securityv1.FSType("configMap"), securityv1.FSType("projected"), securityv1.FSType("emptyDir"), securityv1.FSType("hostPath")},
