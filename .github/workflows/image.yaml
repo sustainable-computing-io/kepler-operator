@@ -1,0 +1,38 @@
+name: image
+
+on:
+  push:
+    branches: [ v1alpha1 ]
+
+env:  
+  OPERATOR_IMAGE: "quay.io/sustainable_computing_io/kepler-operator"
+
+
+jobs:
+  push-image:
+      name: Push operator container image to quay.io/sustainable_computing_io/kepler-operator
+      runs-on: ubuntu-latest
+      steps: 
+
+        - name: Checkout source
+          uses: actions/checkout@v3
+        
+        - uses: actions/setup-go@main
+          with:
+            go-version: 1.19
+
+        - name: Login to Quay
+          uses: docker/login-action@v1
+          with:
+            registry: quay.io/sustainable_computing_io
+            username: ${{ secrets.BOT_NAME }}
+            password: ${{ secrets.BOT_TOKEN }}
+
+        - name: make container
+          run: make docker-build IMG=${OPERATOR_IMAGE}:latest
+
+        
+        - name: Push to quay
+          run: docker push ${OPERATOR_IMAGE}:latest
+            
+    

@@ -71,27 +71,11 @@ jobs:
           docker inspect ${OPERATOR_IMAGE}
           docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
 
-      - name: Install kernel headers
-        run: |
-          sudo apt-get install -y linux-headers-`uname -r`
-          sudo ls /usr/src/linux-headers-`uname -r`
-
-      - name: Install bcc
-        run: |
-            wget https://github.com/sustainable-computing-io/kepler-ci-artifacts/releases/download/v0.25.0/bcc_v0.25.0.tar.gz
-            tar -zxvf bcc_v0.25.0.tar.gz
-            sudo dpkg -i libbcc_0.25.0-1_amd64.deb
-
-      - name: Install kubectl
-        run: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-
-      - name: Start local k8s cluster
-        run: make cluster-up
-        env:
-            CLUSTER_PROVIDER: ${{matrix.kube_provider}}
-            PROMETHEUS_ENABLE: "true"
-            GRAFANA_ENABLE: "false"
-            CI_DEPLOY: "true"
+      - name: use kepler action for kind cluster build
+        uses: sustainable-computing-io/kepler-action@main
+        with:
+          runningBranch: kind
+      # to do clean up cluster-up and hack folders and move local env set up doc to https://github.com/sustainable-computing-io/kepler-action
 
       - name: Start operator
         run: |
@@ -108,42 +92,40 @@ jobs:
           kubectl wait --for=condition=Ready pod --all -n kepler-operator-system --timeout 1m
           echo "Operator ready ..."
                
-  push-image:
-    name: Push operator container image to quay.io/sustainable_computing_io/kepler-operator
-    needs: [build-operator,e2e]
-    runs-on: ubuntu-latest
-    steps: 
+  # push-image:
+  #   name: Push operator container image to quay.io/sustainable_computing_io/kepler-operator
+  #   needs: [build-operator,e2e]
+  #   runs-on: ubuntu-latest
+  #   steps: 
       
-      - name: Login to quay.io/sustainable_computing_io/
-        uses: docker/login-action@v1
-        if: ${{ (github.repository_owner == 'sustainable-computing-io') && (github.ref == 'refs/heads/v1alpha1') }}
+  #     - name: Login to quay.io/sustainable_computing_io/
+  #       uses: docker/login-action@v1
 
-        with:
-          registry: quay.io/sustainable_computing_io
-          username: ${{ secrets.BOT_NAME }}
-          password: ${{ secrets.BOT_TOKEN }}
+  #       with:
+  #         registry: quay.io/sustainable_computing_io
+  #         username: ${{ secrets.BOT_NAME }}
+  #         password: ${{ secrets.BOT_TOKEN }}
       
-      - name: Download image bundle
-        uses: actions/download-artifact@v3
-        with:
-          name: kepler-operator
+  #     - name: Download image bundle
+  #       uses: actions/download-artifact@v3
+  #       with:
+  #         name: kepler-operator
 
-      - name: Test artifact download
-        run : |
-          ls -R
-          pwd
+  #     - name: Test artifact download
+  #       run : |
+  #         ls -R
+  #         pwd
 
-      - name: Push to quay
-        if: ${{ (github.repository_owner == 'sustainable-computing-io') && (github.ref == 'refs/heads/v1alpha1') }}
-        run: |
-          docker load -i image.tar
-          docker inspect ${OPERATOR_IMAGE}
-          docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:latest
-          docker push ${OPERATOR_IMAGE}:latest 
+  #     - name: Push to quay
+  #       run: |
+  #         docker load -i image.tar
+  #         docker inspect ${OPERATOR_IMAGE}
+  #         docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:latest
+  #         docker push ${OPERATOR_IMAGE}:latest 
 
   e2e-success:
     name: Successful e2e tests
-    needs: [build-operator , e2e, push-image]
+    needs: [build-operator , e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Successful
