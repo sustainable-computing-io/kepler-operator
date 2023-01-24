@@ -18,6 +18,8 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	mcfgv1 "github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -50,16 +52,29 @@ func (r *collectorReconciler) ensureMachineConfig(l klog.Logger) (bool, error) {
 		},
 	}
 
+	isOpenShift, failed := checkForDesiredAPIGroup(".openshift.io")
+	if failed != nil {
+		logger.V(1).Error(failed, "openshift check failed")
+		fmt.Printf("resulting error: (%v)", failed)
+	} else {
+		if isOpenShift {
+			fmt.Printf("Running On OpenShift")
+			logger.V(1).Info("Running On OpenShift")
+		} else {
+			fmt.Printf("Not Running On OpenShift")
+			logger.V(1).Info("Not Running On OpenShift")
+		}
+	}
+
 	found := &mcfgv1.MachineConfig{}
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "50-master-cgroupv2", Namespace: ""}, found)
-	/*
-		if err != nil {
-			if strings.Contains(err.Error(), "no matches for kind") {
-				fmt.Printf("resulting error not a timeout: %s", err)
-				logger.V(1).Info("Not OpenShift skipping MachineConfig")
-				return true, nil
-			}
-		}*/
+	if err != nil {
+		if strings.Contains(err.Error(), "no matches for kind") {
+			fmt.Printf("resulting error not a timeout: %s", err)
+			logger.V(1).Info("Not OpenShift skipping MachineConfig")
+			return true, nil
+		}
+	}
 
 	if err != nil && !apierrors.IsNotFound(err) {
 

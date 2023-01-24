@@ -18,11 +18,13 @@ package controllers
 
 import (
 	"context"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/discovery"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -126,6 +128,32 @@ func (r *KeplerReconciler) removePV(logger logr.Logger, ctx context.Context) err
 
 	logger.Info("Successfully Removed PV")
 	return nil
+}
+
+// This function will be used to detect possible available apis
+// Currently, it detects for openshift.io
+func checkForDesiredAPIGroup(api string) (bool, error) {
+	config, err := ctrl.GetConfig()
+	if err != nil {
+		return false, err
+	}
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
+	if err != nil {
+		return false, err
+	}
+	apiGroups, err := discoveryClient.ServerGroups()
+	if err != nil {
+		return false, err
+	}
+	for _, group := range apiGroups.Groups {
+		if strings.HasSuffix(group.Name, api) {
+			return true, nil
+		}
+
+	}
+
+	return false, nil
+
 }
 
 //+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=keplers,verbs=get;list;watch;create;update;patch;delete
