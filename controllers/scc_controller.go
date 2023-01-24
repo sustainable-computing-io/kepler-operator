@@ -67,20 +67,6 @@ func (r *collectorReconciler) ensureSCC(l klog.Logger) (bool, error) {
 		Volumes: []securityv1.FSType{securityv1.FSType("configMap"), securityv1.FSType("projected"), securityv1.FSType("emptyDir"), securityv1.FSType("hostPath")},
 	}
 
-	isOpenShift, failed := checkForDesiredAPIGroup(".openshift.io")
-	if failed != nil {
-		logger.V(1).Error(failed, "openshift check failed")
-		fmt.Printf("resulting error: (%v)", failed)
-	} else {
-		if isOpenShift {
-			fmt.Printf("Running On OpenShift")
-			logger.V(1).Info("Running On OpenShift")
-		} else {
-			fmt.Printf("Not Running On OpenShift")
-			logger.V(1).Info("Not Running On OpenShift")
-		}
-	}
-
 	found := &securityv1.SecurityContextConstraints{}
 
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "kepler-scc", Namespace: r.Instance.Namespace}, found)

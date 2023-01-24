@@ -52,20 +52,6 @@ func (r *collectorReconciler) ensureMachineConfig(l klog.Logger) (bool, error) {
 		},
 	}
 
-	isOpenShift, failed := checkForDesiredAPIGroup(".openshift.io")
-	if failed != nil {
-		logger.V(1).Error(failed, "openshift check failed")
-		fmt.Printf("resulting error: (%v)", failed)
-	} else {
-		if isOpenShift {
-			fmt.Printf("Running On OpenShift")
-			logger.V(1).Info("Running On OpenShift")
-		} else {
-			fmt.Printf("Not Running On OpenShift")
-			logger.V(1).Info("Not Running On OpenShift")
-		}
-	}
-
 	found := &mcfgv1.MachineConfig{}
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "50-master-cgroupv2", Namespace: ""}, found)
 	if err != nil {
