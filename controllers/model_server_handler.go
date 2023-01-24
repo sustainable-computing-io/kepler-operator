@@ -20,14 +20,6 @@ import (
 	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-const (
-	PersistentVolumeName      = "kepler-model-server-pv"
-	PersistentVolumeClaimName = "kepler-model-server-pvc"
-	ModelServerConfigMapName  = "kepler-model-server-cfm"
-	ModelServerServiceName    = "kepler-model-server"
-	ModelServerDeploymentName = "kepler-model-server"
-)
-
 type ModelServerDeployment struct {
 	Context               context.Context
 	Instance              *keplerv1alpha1.Kepler
