@@ -25,7 +25,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    operators.operatorframework.io/builder: operator-sdk-v1.25.1
+    operators.operatorframework.io/builder: operator-sdk-v1.23.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: kepler-operator.v0.0.1
   namespace: placeholder
@@ -37,6 +37,26 @@ spec:
       displayName: Kepler
       kind: Kepler
       name: keplers.kepler.system.sustainable.computing.io
+      specDescriptors:
+      - displayName: Collector
+        path: collector
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:collectorFields
+      - displayName: Model Server Exporter
+        path: model-server-exporter
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:modelServerExporterFields
+      - displayName: Model Server Trainer
+        path: model-server-trainer
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:modelServerTrainerFields
+      statusDescriptors:
+      - description: conditions represent the latest available observations of the
+          kepler-system
+        displayName: Conditions
+        path: conditions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:conditions
       version: v1alpha1
   description: Kepler (Kubernetes Efficient Power Level Exporter) uses eBPF to probe
     energy-related system stats and exports them as Prometheus metrics.
@@ -128,33 +148,11 @@ spec:
           - use
           - watch
         - apiGroups:
-          - monitoring.coreos.com
-          resources:
-          - servicemonitors
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
           - rbac.authorization.k8s.io
           resources:
-          - clusterrole
-          - clusterrolebindings
-          - rolebindings
-          - roles
+          - '*'
           verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - use
-          - watch
+          - '*'
         - apiGroups:
           - security.openshift.io
           resources:
@@ -250,8 +248,8 @@ spec:
                 - --leader-elect
                 command:
                 - /manager
-                image: controller:latest
-                imagePullPolicy: Always
+                image: quay.io/sustainable_computing_io/kepler-operator:latest
+                imagePullPolicy: IfNotPresent
                 livenessProbe:
                   httpGet:
                     path: /healthz

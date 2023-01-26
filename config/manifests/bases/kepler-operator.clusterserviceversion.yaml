@@ -14,6 +14,26 @@ spec:
       displayName: Kepler
       kind: Kepler
       name: keplers.kepler.system.sustainable.computing.io
+      specDescriptors:
+      - displayName: Collector
+        path: collector
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:collectorFields
+      - displayName: Model Server Exporter
+        path: model-server-exporter
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:modelServerExporterFields
+      - displayName: Model Server Trainer
+        path: model-server-trainer
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:modelServerTrainerFields
+      statusDescriptors:
+      - description: conditions represent the latest available observations of the
+          kepler-system
+        displayName: Conditions
+        path: conditions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:conditions
       version: v1alpha1
   description: Kepler (Kubernetes Efficient Power Level Exporter) uses eBPF to probe
     energy-related system stats and exports them as Prometheus metrics.
