@@ -98,11 +98,13 @@ type EstimatorSpec struct {
 type KeplerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:modelServerExporterFields"
 	ModelServerExporter *ModelServerExporterSpec `json:"model-server-exporter,omitempty"`
-	ModelServerTrainer  *ModelServerTrainerSpec  `json:"model-server-trainer,omitempty"`
-	Estimator           *EstimatorSpec           `json:"estimator,omitempty"`
-	Collector           *CollectorSpec           `json:"collector,omitempty"`
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:modelServerTrainerFields"
+	ModelServerTrainer *ModelServerTrainerSpec `json:"model-server-trainer,omitempty"`
+	Estimator          *EstimatorSpec          `json:"estimator,omitempty"`
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:collectorFields"
+	Collector *CollectorSpec `json:"collector,omitempty"`
 }
 
 // KeplerStatus defines the observed state of Kepler
@@ -111,6 +113,7 @@ type KeplerStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// conditions represent the latest available observations of the kepler-system
+	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
 	Conditions metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
