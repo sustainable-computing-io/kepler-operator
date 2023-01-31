@@ -348,6 +348,6 @@ spec:
     name: Huamin Chen
   maturity: alpha
   provider:
-    name: https://sustainable-computing.io/
+    name: Kepler Operator Contributors
     url: https://sustainable-computing.io/
   version: 0.4.0
