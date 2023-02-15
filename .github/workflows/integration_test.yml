@@ -91,37 +91,6 @@ jobs:
           kubectl logs  $PODNAME -c manager -n kepler-operator-system
           kubectl wait --for=condition=Ready pod --all -n kepler-operator-system --timeout 1m
           echo "Operator ready ..."
-               
-  # push-image:
-  #   name: Push operator container image to quay.io/sustainable_computing_io/kepler-operator
-  #   needs: [build-operator,e2e]
-  #   runs-on: ubuntu-latest
-  #   steps: 
-      
-  #     - name: Login to quay.io/sustainable_computing_io/
-  #       uses: docker/login-action@v1
-
-  #       with:
-  #         registry: quay.io/sustainable_computing_io
-  #         username: ${{ secrets.BOT_NAME }}
-  #         password: ${{ secrets.BOT_TOKEN }}
-      
-  #     - name: Download image bundle
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: kepler-operator
-
-  #     - name: Test artifact download
-  #       run : |
-  #         ls -R
-  #         pwd
-
-  #     - name: Push to quay
-  #       run: |
-  #         docker load -i image.tar
-  #         docker inspect ${OPERATOR_IMAGE}
-  #         docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:latest
-  #         docker push ${OPERATOR_IMAGE}:latest 
 
   e2e-success:
     name: Successful e2e tests
