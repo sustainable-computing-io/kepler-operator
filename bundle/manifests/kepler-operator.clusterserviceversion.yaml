@@ -25,7 +25,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    containerImage: quay.io/sustainable_computing_io/kepler-operator:0.4
+    containerImage: quay.io/sustainable_computing_io/kepler-operator:0.4.0
     createdAt: "2023-01-31 16:20:00"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.23.0
@@ -258,7 +258,7 @@ spec:
                 - --leader-elect
                 command:
                 - /manager
-                image: quay.io/sustainable_computing_io/kepler-operator:latest
+                image: quay.io/sustainable_computing_io/kepler-operator:0.4.0
                 imagePullPolicy: IfNotPresent
                 livenessProbe:
                   httpGet:
