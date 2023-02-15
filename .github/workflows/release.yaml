@@ -82,5 +82,5 @@ jobs:
       run: make docker-build IMG=${OPERATOR_IMAGE}:latest
     - name: push to quay
       run: |
-        podman tag ${OPERATOR_IMAGE}:latest ${OPERATOR_IMAGE}:${{ github.event.inputs.tag }}
-        podman push ${OPERATOR_IMAGE}:${{ github.event.inputs.tag }}
+        docker tag ${OPERATOR_IMAGE}:latest ${OPERATOR_IMAGE}:${{ github.event.inputs.tag }}
+        docker push ${OPERATOR_IMAGE}:${{ github.event.inputs.tag }}
