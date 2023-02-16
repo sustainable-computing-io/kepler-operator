@@ -1,92 +1,68 @@
 # kepler-operator
-// TODO(user): Add simple overview of use/purpose
+
+Kepler Operator installs Kepler and all required manifests on Kubernetes/OpenShift
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+Kepler (Kubernetes-based Efficient Power Level Exporter) is a Prometheus exporter. It uses eBPF to probe CPU performance counters and Linux kernel tracepoints.
+
+These data and stats from cgroup and sysfs can then be fed into ML models to estimate energy consumption by Pods.
+
+Check out the project on GitHub ➡️ [Kepler](https://github.com/sustainable-computing-io/kepler).
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
-### Automated development environment
-
-If don't have a `go` developmnt environment, or you just want a reproducible environment to start fresh, you can use [Docker Desktop](https://www.docker.com/products/docker-desktop/), [Visual Studio Code](https://code.visualstudio.com), and the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension to bring up an environment with `go`, `docker`, `kind`, `kubectl`, `kustomize`, and `oc`. To activate this, open the project from the command line with `code .` and then press the **Reopen in Container** button when prompted. (See the [Developing inside a Container](https://code.visualstudio.com/docs/devcontainers/containers) documentation for more details).
-
-### Running on the cluster
-1. Install Instances of Custom Resources:
+### To run a kind cluster locally 
 
 ```sh
+make cluster-up CLUSTER_PROVIDER='kind' CI_DEPLOY=true
+```
+
+### To run kepler-operator locally on the cluster
+
+You can use the image from [quay.io](https://quay.io/repository/sustainable_computing_io/kepler-operator?tab=tags) to deploy kepler-operator. 
+
+```sh
+make deploy IMG=quay.io/sustainable_computing_io/kepler-operator:latest
 kubectl apply -f config/samples/
 ```
 
-2. Build and push your image to the location specified by `IMG`:
+Alternatively, if you like to build and use your own image,
+
 	
 ```sh
 make docker-build docker-push IMG=<some-registry>/kepler-operator:tag
-```
-	
-3. Deploy the controller to the cluster with the image specified by `IMG`:
-
-```sh
 make deploy IMG=<some-registry>/kepler-operator:tag
+kubectl apply -f config/samples/
 ```
 
-### Uninstall CRDs
+### Uninstall the operator
 To delete the CRDs from the cluster:
 
 ```sh
 make uninstall
 ```
-
-### Undeploy controller
-UnDeploy the controller to the cluster:
+To undeploy the controller to the cluster:
 
 ```sh
 make undeploy
 ```
 
+### Automated development environment
+
+If don't have a `go` developmnt environment, or you just want a reproducible environment to start fresh, you can use [Docker Desktop](https://www.docker.com/products/docker-desktop/), [Visual Studio Code](https://code.visualstudio.com), and the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension to bring up an environment with `go`, `docker`, `kind`, `kubectl`, `kustomize`, and `oc`. To activate this, open the project from the command line with `code .` and then press the **Reopen in Container** button when prompted. (See the [Developing inside a Container](https://code.visualstudio.com/docs/devcontainers/containers) documentation for more details).
+
+
+
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
 
-### How it works
-This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
-
-It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/) 
-which provides a reconcile function responsible for synchronizing resources untile the desired state is reached on the cluster 
-
-### Test It Out
-1. Install the CRDs into the cluster:
-
-```sh
-make install
-```
-
-2. Run your controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
-
-```sh
-make run
-```
-
-**NOTE:** You can also run this in one step by running: `make install run`
+You can contribute by:
+* Raising [issues](https://github.com/sustainable-computing-io/kepler-operator/issues) related to kepler-operator
+* Fixing issues by opening [Pull Requests](https://github.com/sustainable-computing-io/kepler-operator/pulls)
 
 
-### Modifying the `*_types.go`
-After modifying the *_types.go file always run the following command to update the generated code for that resource type:
 
-```sh
-make generate
-```
-
-### Modifying the API definitions
-If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
-
-```sh
-make manifests
-```
-
-**NOTE:** Run `make --help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
 
 ## License
 

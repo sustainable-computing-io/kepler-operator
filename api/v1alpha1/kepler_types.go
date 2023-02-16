@@ -41,6 +41,8 @@ type Sources struct {
 
 type CollectorSpec struct {
 	Image string `json:"image,omitempty"`
+	// +kubebuilder:default=9103
+	CollectorPort int `json:"collectorPort,omitempty"`
 	// Sources      Sources      `json:"sources,omitempty"`
 	// RatioMetrics RatioMetrics `json:"ratioMetrics,omitempty"`
 }

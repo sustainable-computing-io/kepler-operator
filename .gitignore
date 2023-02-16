@@ -20,6 +20,7 @@ Dockerfile.cross
 !vendor/**/zz_generated.*
 config/manager/kustomization.yaml
 _output/*
+local-dev-cluster/*
 
 # editor and IDE paraphernalia
 .idea

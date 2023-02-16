@@ -37,6 +37,9 @@ spec:
             properties:
               collector:
                 properties:
+                  collectorPort:
+                    default: 9103
+                    type: integer
                   image:
                     type: string
                 type: object
