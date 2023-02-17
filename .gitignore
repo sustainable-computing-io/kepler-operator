@@ -27,3 +27,7 @@ _output/*
 *.swo
 *~
 .vscode/
+
+# Operating system metadata files
+.DS_Store
+Thumbs.db
