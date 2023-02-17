@@ -10,7 +10,7 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 
 ### Automated development environment
 
-If don't have a `go` developmnt environment, or you just want a reproducible environment to start fresh, you can use [Docker Desktop](https://www.docker.com/products/docker-desktop/), [Visual Studio Code](https://code.visualstudio.com), and the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension to bring up an environment with `go`, `docker`, `kind`, `kubectl`, `kustomize`, and `oc` simply by opening this project and pressing the **Reopen in Container** button when prompted. (See the [Developing inside a Container](https://code.visualstudio.com/docs/devcontainers/containers) documentation for more details).
+If don't have a `go` developmnt environment, or you just want a reproducible environment to start fresh, you can use [Docker Desktop](https://www.docker.com/products/docker-desktop/), [Visual Studio Code](https://code.visualstudio.com), and the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension to bring up an environment with `go`, `docker`, `kind`, `kubectl`, `kustomize`, and `oc`. To activate this, open the project from the command line with `code .` and then press the **Reopen in Container** button when prompted. (See the [Developing inside a Container](https://code.visualstudio.com/docs/devcontainers/containers) documentation for more details).
 
 ### Running on the cluster
 1. Install Instances of Custom Resources:
