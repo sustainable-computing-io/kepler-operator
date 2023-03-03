@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -339,6 +340,8 @@ func (r *collectorReconciler) ensureServiceAccount(l klog.Logger) (bool, error) 
 }
 
 func (r *collectorReconciler) ensureConfigMap(l klog.Logger) (bool, error) {
+	// strconv.Itoa(r.Instance.spe)
+	bindAddress := "0.0.0.0:" + strconv.Itoa(r.Instance.Spec.Collector.CollectorPort)
 	cmName := types.NamespacedName{
 		Name:      r.Instance.Name + CollectorConfigMapNameSuffix,
 		Namespace: r.Instance.Namespace + CollectorConfigMapNameSpaceSuffix,
@@ -363,7 +366,7 @@ func (r *collectorReconciler) ensureConfigMap(l klog.Logger) (bool, error) {
 		data_map["KEPLER_NAMESPACE"] = r.Instance.Namespace
 		data_map["KEPLER_LOG_LEVEL"] = "5"
 		data_map["METRIC_PATH"] = "/metrics"
-		data_map["BIND_ADDRESS"] = "0.0.0.0:9102"
+		data_map["BIND_ADDRESS"] = bindAddress
 		data_map["ENABLE_GPU"] = "true"
 		data_map["ENABLE_EBPF_CGROUPID"] = "true"
 		data_map["CPU_ARCH_OVERRIDE"] = ""
@@ -385,11 +388,15 @@ func (r *collectorReconciler) ensureConfigMap(l klog.Logger) (bool, error) {
 }
 
 func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
+	collectorPort := int32(r.Instance.Spec.Collector.CollectorPort)
+	bindAddress := "0.0.0.0:" + strconv.Itoa(r.Instance.Spec.Collector.CollectorPort)
+
 	dsName := types.NamespacedName{
 		Name:      r.Instance.Name + DaemonSetNameSuffix,
 		Namespace: r.Instance.Namespace + DaemonSetNameSpaceSuffix,
 	}
 	logger := l.WithValues("daemonSet", dsName)
+
 	r.daemonSet = &appsv1.DaemonSet{
 		TypeMeta: metav1.TypeMeta{
 			Kind: "DaemonSet",
@@ -427,17 +434,17 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 				Privileged: &scc_value,
 			},
 			Image:   "quay.io/sustainable_computing_io/kepler:latest",
-			Command: []string{"/usr/bin/kepler", "-address", "0.0.0.0:9102", "-enable-gpu=true", "enable-cgroup-id=true", "v=5"},
+			Command: []string{"/usr/bin/kepler", "-address", bindAddress, "-enable-gpu=true", "enable-cgroup-id=true", "v=5"},
 			Ports: []corev1.ContainerPort{{
-				ContainerPort: 9102,
-				HostPort:      9102,
+				ContainerPort: collectorPort,
+				HostPort:      collectorPort,
 				Name:          "http",
 			}},
 		}}
 
 		httpget := corev1.HTTPGetAction{
 			Path:   "/healthz",
-			Port:   intstr.IntOrString{Type: intstr.Int, IntVal: int32(9102)},
+			Port:   intstr.IntOrString{Type: intstr.Int, IntVal: collectorPort},
 			Scheme: "HTTP",
 		}
 
@@ -541,6 +548,8 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 
 func (r *collectorReconciler) ensureService(l logr.Logger) (bool, error) {
 
+	collectorPort := int32(r.Instance.Spec.Collector.CollectorPort)
+
 	serviceName := types.NamespacedName{
 		Name:      r.Instance.Name + ServiceNameSuffix,
 		Namespace: r.Instance.Namespace + ServiceNameSpaceSuffix,
@@ -579,10 +588,10 @@ func (r *collectorReconciler) ensureService(l logr.Logger) (bool, error) {
 		r.service.Spec.Ports = []corev1.ServicePort{
 			{
 				Name: "http",
-				Port: 9102,
+				Port: collectorPort,
 				TargetPort: intstr.IntOrString{
 					Type:   intstr.Int,
-					IntVal: 9102},
+					IntVal: collectorPort},
 			}}
 
 		return nil

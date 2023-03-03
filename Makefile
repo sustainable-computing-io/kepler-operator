@@ -266,3 +266,22 @@ set_govulncheck:
 
 govulncheck: set_govulncheck tidy-vendor
 	@govulncheck -v ./... || true
+	
+cluster-clean: build-manifest
+	./hack/cluster-clean.sh
+.PHONY: cluster-clean
+
+cluster-deploy: cluster-clean
+	BARE_METAL_NODE_ONLY=false ./hack/cluster-deploy.sh
+.PHONY: cluster-deploy
+
+cluster-sync:
+	./hack/cluster-sync.sh
+.PHONY: cluster-sync
+
+
+cluster-up:
+	rm -rf local-dev-cluster
+	git clone https://github.com/sustainable-computing-io/local-dev-cluster.git --depth=1
+	cd local-dev-cluster && ./main.sh
+.PHONY: cluster-up
