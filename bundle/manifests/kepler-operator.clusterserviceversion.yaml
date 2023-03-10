@@ -260,7 +260,7 @@ spec:
                 command:
                 - /manager
                 image: quay.io/sustainable_computing_io/kepler-operator:0.4.1
-                imagePullPolicy: IfNotPresent
+                imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
                     path: /healthz

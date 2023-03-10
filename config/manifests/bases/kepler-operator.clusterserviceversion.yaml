@@ -259,7 +259,7 @@ spec:
                 command:
                 - /manager
                 image: quay.io/sustainable_computing_io/kepler-operator:latest
-                imagePullPolicy: IfNotPresent
+                imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
                     path: /healthz
