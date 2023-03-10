@@ -12,6 +12,6 @@ metadata:
 spec:
   # TODO(user): Add fields here
   collector:
-    image: quay.io/sustainable_computing_io/kepler:latest
+    image: quay.io/sustainable_computing_io/kepler:release-0.4
     collectorPort: 9103
     
