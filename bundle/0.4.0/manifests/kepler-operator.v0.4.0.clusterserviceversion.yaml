@@ -26,13 +26,13 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    containerImage: quay.io/sustainable_computing_io/kepler-operator:0.4.1
-    createdAt: "2023-03-10T07:01:41Z"
+    containerImage: quay.io/sustainable_computing_io/kepler-operator:0.4.0
+    createdAt: "2023-01-31 16:20:00"
     description: 'Deploys and Manages Kepler on Kubernetes '
-    operators.operatorframework.io/builder: operator-sdk-v1.27.0
+    operators.operatorframework.io/builder: operator-sdk-v1.23.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/sustainable-computing-io/kepler-operator
-  name: kepler-operator.v0.4.1
+  name: kepler-operator.v0.4.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -47,14 +47,6 @@ spec:
         path: collector
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:collectorFields
-      - displayName: Model Server Exporter
-        path: model-server-exporter
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:modelServerExporterFields
-      - displayName: Model Server Trainer
-        path: model-server-trainer
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:modelServerTrainerFields
       statusDescriptors:
       - description: conditions represent the latest available observations of the
           kepler-system
@@ -351,5 +343,4 @@ spec:
   provider:
     name: Kepler Operator Contributors
     url: https://sustainable-computing.io/
-  version: 0.4.1
-  replaces: kepler-operator.v0.4.0
+  version: 0.4.0

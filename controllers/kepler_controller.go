@@ -438,8 +438,9 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 			SecurityContext: &corev1.SecurityContext{
 				Privileged: &scc_value,
 			},
-			Image:   image,
-			Command: []string{"/usr/bin/kepler", "-address", bindAddress, "-enable-gpu=true", "enable-cgroup-id=true", "v=5"},
+			Image:           image,
+			ImagePullPolicy: corev1.PullAlways,
+			Command:         []string{"/usr/bin/kepler", "-address", bindAddress, "-enable-gpu=true", "enable-cgroup-id=true", "v=5"},
 			Ports: []corev1.ContainerPort{{
 				ContainerPort: collectorPort,
 				HostPort:      collectorPort,

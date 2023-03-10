@@ -20,30 +20,28 @@
 
 # To-do: write a git action to create bundle on every pull request merge and make a commit to new branch
 
-# Add below to bundle/metadata/annotations.yaml
-##Annotattions for OpenShift version
-#   com.redhat.openshift.versions: "v4.9-v4.12"
-
-
 
 
 ## Uncomment below line if running this script as hack/bundle.sh
 # export VERSION=$1
 OPERATOR_IMAGE=quay.io/sustainable_computing_io/kepler-operator
 
+if [ -d bundle/${VERSION} ]; then
+    rm -rf bundle/${VERSION}
+fi
+
+mkdir -p bundle/${VERSION}
+
 make
 make docker-build IMG=$OPERATOR_IMAGE:$VERSION
 make generate
 make manifests
+operator-sdk generate kustomize manifests
 
 tree config/manifests
 
+kustomize build config/manifests | operator-sdk generate bundle --version $VERSION --manifests --metadata
 
-kustomize build config/manifests | operator-sdk generate bundle --version $VERSION
-
-tree bundle/
-
-operator-sdk bundle validate ./bundle --select-optional name=operatorhub --optional-values=k8s-version=1.25 --select-optional suite=operatorframework
 
 mv $(pwd)/bundle.Dockerfile bundle/
 
@@ -61,6 +59,42 @@ reviewers:
     - KaiyiLiu1234
 updateGraph: replaces-mode
 EOF
+
+# # Update annottaions for openshift
+# # Add below to bundle/metadata/annotations.yaml
+# # Annotattions for OpenShift version
+# #  com.redhat.openshift.versions: "v4.9-v4.12"
+
+
+
+yq -i '.annotations."com.redhat.openshift.versions"="v4.9-v4.12"' bundle/metadata/annotations.yaml && cat bundle/metadata/annotations.yaml
+
+tree bundle/
+
+mv bundle/manifests bundle/${VERSION}/
+mv bundle/metadata bundle/${VERSION}/
+mv bundle/tests bundle/${VERSION}/
+
+bundle_csvfile="bundle/${VERSION}/manifests/kepler-operator.v${VERSION}.clusterserviceversion.yaml"
+
+cp -R $(pwd)/config/manifests/bases/kepler-operator.clusterserviceversion.yaml $bundle_csvfile
+rm -rf bundle/${VERSION}/manifests/kepler-operator.clusterserviceversion.yaml
+
+operator-sdk bundle validate bundle/${VERSION}/ --select-optional name=operatorhub --optional-values=k8s-version=1.25 --select-optional suite=operatorframework
+
+if [ -d bundle/metadata ]; then
+    rm -rf bundle/metadata
+fi
+
+if [ -d bundle/manifests ]; then
+    rm -rf bundle/manifests
+fi
+
+if [ -d bundle/tests ]; then
+    rm -rf bundle/tests
+fi
+
+tree bundle/
 
 
 

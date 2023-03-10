@@ -52,49 +52,49 @@ type CustomHeader struct {
 	HeaderValue string `json:"headerValue,omitempty"`
 }
 
-type ModelServerTrainerSpec struct {
+// type ModelServerTrainerSpec struct {
 
-	// +kubebuilder:default=20
-	PromQueryInterval int `json:"promQueryInternal,omitempty"`
+// 	// +kubebuilder:default=20
+// 	PromQueryInterval int `json:"promQueryInternal,omitempty"`
 
-	// +kubebuilder:default=3
-	PromQueryStep int `json:"promQueryStep,omitempty"`
+// 	// +kubebuilder:default=3
+// 	PromQueryStep int `json:"promQueryStep,omitempty"`
 
-	PromHeaders []CustomHeader `json:"promHeaders,omitempty"`
+// 	PromHeaders []CustomHeader `json:"promHeaders,omitempty"`
 
-	// +kubebuilder:default=true
-	PromSSLDisable bool `json:"promSSLDisable,omitempty"`
+// 	// +kubebuilder:default=true
+// 	PromSSLDisable bool `json:"promSSLDisable,omitempty"`
 
-	// +kubebuilder:default="https://raw.githubusercontent.com/sustainable-computing-io/kepler-model-server/main/tests/test_models"
-	InitialModelsEndpoint string `json:"initialModelsEndpoint,omitempty"`
+// 	// +kubebuilder:default="https://raw.githubusercontent.com/sustainable-computing-io/kepler-model-server/main/tests/test_models"
+// 	InitialModelsEndpoint string `json:"initialModelsEndpoint,omitempty"`
 
-	// +kubebuilder:default=""
-	InitialModelNames string `json:"initialModelNames,omitempty"`
-}
+// 	// +kubebuilder:default=""
+// 	InitialModelNames string `json:"initialModelNames,omitempty"`
+// }
 
-type ModelServerExporterSpec struct {
+// type ModelServerExporterSpec struct {
 
-	// +kubebuilder:default=8100
-	Port int `json:"port,omitempty"`
+// 	// +kubebuilder:default=8100
+// 	Port int `json:"port,omitempty"`
 
-	// +kubebuilder:default=""
-	PromServer string `json:"promServer,omitempty"`
+// 	// +kubebuilder:default=""
+// 	PromServer string `json:"promServer,omitempty"`
 
-	// +kubebuilder:default="models"
-	ModelPath string `json:"modelPath,omitempty"`
+// 	// +kubebuilder:default="models"
+// 	ModelPath string `json:"modelPath,omitempty"`
 
-	//+kubebuilder:default=""
-	ModelServerURL string `json:"modelServerURL,omitempty"`
+// 	//+kubebuilder:default=""
+// 	ModelServerURL string `json:"modelServerURL,omitempty"`
 
-	//+kubebuilder:default="/model"
-	ModelServerRequiredPath string `json:"modelServerRequiredPath,omitempty"`
-}
+// 	//+kubebuilder:default="/model"
+// 	ModelServerRequiredPath string `json:"modelServerRequiredPath,omitempty"`
+// }
 
-type EstimatorSpec struct {
-	ModelName        string `json:"modelName,omitempty"`
-	FilterConditions string `json:"filterConditions,omitempty"`
-	InitUrl          string `json:"initUrl,omitempty"`
-}
+// type EstimatorSpec struct {
+// 	ModelName        string `json:"modelName,omitempty"`
+// 	FilterConditions string `json:"filterConditions,omitempty"`
+// 	InitUrl          string `json:"initUrl,omitempty"`
+// }
 
 // KeplerSpec defines the desired state of Kepler
 type KeplerSpec struct {
