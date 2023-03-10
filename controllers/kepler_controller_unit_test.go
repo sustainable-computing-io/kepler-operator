@@ -64,7 +64,7 @@ func generateDefaultOperatorSettings() (context.Context, *KeplerReconciler, *kep
 		},
 		Spec: keplersystemv1alpha1.KeplerSpec{
 			Collector: &keplersystemv1alpha1.CollectorSpec{
-				Image:         "quay.io/sustainable_computing_io/kepler:latest",
+				Image:         "quay.io/sustainable_computing_io/kepler:release-0.4",
 				CollectorPort: 9103,
 			},
 		},

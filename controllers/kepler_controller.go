@@ -430,12 +430,15 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 		r.daemonSet.Spec.Template.Spec.HostNetwork = true
 		r.daemonSet.Spec.Template.Spec.ServiceAccountName = r.serviceAccount.Name
 
+		image := r.Instance.Spec.Collector.Image
+		logger.V(1).Info("DaemonSet Image ", "image", image)
+
 		r.daemonSet.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name: "kepler-exporter",
 			SecurityContext: &corev1.SecurityContext{
 				Privileged: &scc_value,
 			},
-			Image:   r.Instance.Spec.Collector.Image,
+			Image:   image,
 			Command: []string{"/usr/bin/kepler", "-address", bindAddress, "-enable-gpu=true", "enable-cgroup-id=true", "v=5"},
 			Ports: []corev1.ContainerPort{{
 				ContainerPort: collectorPort,
