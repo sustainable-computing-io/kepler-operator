@@ -101,11 +101,6 @@ type KeplerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:modelServerExporterFields"
-	ModelServerExporter *ModelServerExporterSpec `json:"model-server-exporter,omitempty"`
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:modelServerTrainerFields"
-	ModelServerTrainer *ModelServerTrainerSpec `json:"model-server-trainer,omitempty"`
-	Estimator          *EstimatorSpec          `json:"estimator,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:collectorFields"
 	Collector *CollectorSpec `json:"collector,omitempty"`
 }

@@ -285,3 +285,7 @@ cluster-up:
 	git clone https://github.com/sustainable-computing-io/local-dev-cluster.git --depth=1
 	cd local-dev-cluster && ./main.sh
 .PHONY: cluster-up
+
+create-bundle:
+	./hack/bundle.sh
+.PHONY: create-bundle

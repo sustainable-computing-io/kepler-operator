@@ -203,13 +203,14 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	if inst.Spec.Collector != nil {
 		result, err = CollectorReconciler(ctx, inst, r, logger)
-	} else if inst.Spec.Estimator != nil {
-		// result, err = EstimatorReconciler(ctx, inst, r, logger)
-	} else if inst.Spec.ModelServerExporter != nil || inst.Spec.ModelServerTrainer != nil {
-		result, err = ModelServerReconciler(ctx, inst, r, logger)
 	} else {
 		return result, nil
 	}
+	// else if inst.Spec.Estimator != nil {
+	// 	// result, err = EstimatorReconciler(ctx, inst, r, logger)
+	// } else if inst.Spec.ModelServerExporter != nil || inst.Spec.ModelServerTrainer != nil {
+	// 	result, err = ModelServerReconciler(ctx, inst, r, logger)
+	// }
 
 	// Set reconcile status condition
 	if err == nil {
@@ -260,37 +261,37 @@ func CollectorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, k
 
 }
 
-type modelServerReconciler struct {
-	KeplerReconciler
-	Ctx      context.Context
-	Instance *keplerv1alpha1.Kepler
-}
+// type modelServerReconciler struct {
+// 	KeplerReconciler
+// 	Ctx      context.Context
+// 	Instance *keplerv1alpha1.Kepler
+// }
 
-func (mser *modelServerReconciler) ensureModelServer(l klog.Logger) (bool, error) {
-	modelServerDeployment := ModelServerDeployment{
-		Context:  mser.Ctx,
-		Instance: mser.Instance,
-		Image:    ModelServerContainerImage,
-		Client:   mser.Client,
-		Scheme:   mser.Scheme,
-	}
-	return modelServerDeployment.Reconcile(l)
-}
+// func (mser *modelServerReconciler) ensureModelServer(l klog.Logger) (bool, error) {
+// 	modelServerDeployment := ModelServerDeployment{
+// 		Context:  mser.Ctx,
+// 		Instance: mser.Instance,
+// 		Image:    ModelServerContainerImage,
+// 		Client:   mser.Client,
+// 		Scheme:   mser.Scheme,
+// 	}
+// 	return modelServerDeployment.Reconcile(l)
+// }
 
-func ModelServerReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, kr *KeplerReconciler, logger klog.Logger) (ctrl.Result, error) {
-	modelServerReconciler := modelServerReconciler{
-		KeplerReconciler: *kr,
-		Ctx:              ctx,
-		Instance:         instance,
-	}
-	log := logger.WithValues("method", "Model Server")
-	_, err := reconcileBatch(
-		log,
-		modelServerReconciler.ensureModelServer,
-	)
-	return ctrl.Result{}, err
+// func ModelServerReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, kr *KeplerReconciler, logger klog.Logger) (ctrl.Result, error) {
+// 	modelServerReconciler := modelServerReconciler{
+// 		KeplerReconciler: *kr,
+// 		Ctx:              ctx,
+// 		Instance:         instance,
+// 	}
+// 	log := logger.WithValues("method", "Model Server")
+// 	_, err := reconcileBatch(
+// 		log,
+// 		modelServerReconciler.ensureModelServer,
+// 	)
+// 	return ctrl.Result{}, err
 
-}
+// }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
