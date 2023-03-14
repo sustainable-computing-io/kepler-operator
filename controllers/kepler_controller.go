@@ -161,56 +161,60 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	/*
-		//if inst set to delete, pv must also be removed when it is released
-		if inst.GetDeletionTimestamp() != nil {
-			if ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
-				//errorDeployment := r.removeDeployment(logger, inst, ctx)
-				//if errorDeployment != nil {
-				//	return ctrl.Result{}, errorDeployment
-				//}
 
-				errorPVC := r.removePVC(logger, inst, ctx)
-				if errorPVC != nil {
-					return ctrl.Result{}, errorPVC
-				}
-				errorPV := r.removePV(logger, ctx)
-				if errorPV != nil {
-					return ctrl.Result{}, errorPV
-				}
-				//	Include Additional Finalizers here
-				// Remove PV finalizer
-				ctrlutil.RemoveFinalizer(inst, keplerFinalizer)
-				updateError := r.Client.Update(ctx, inst)
-				if updateError != nil {
-					return ctrl.Result{}, updateError
-				}
-			}
-			return ctrl.Result{}, nil
-		}
+	//if inst set to delete, pv must also be removed when it is released
+	// if inst.GetDeletionTimestamp() != nil {
+	// 	if ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
+	// 		//errorDeployment := r.removeDeployment(logger, inst, ctx)
+	// 		//if errorDeployment != nil {
+	// 		//	return ctrl.Result{}, errorDeployment
+	// 		//}
 
-		// Add finalizer for this CR
-		if !ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
-			ctrlutil.AddFinalizer(inst, keplerFinalizer)
-			updateErr := r.Client.Update(ctx, inst)
-			if updateErr != nil {
-				return ctrl.Result{}, updateErr
-			}
-		}
-	*/
+	// 		errorPVC := r.removePVC(logger, inst, ctx)
+	// 		if errorPVC != nil {
+	// 			return ctrl.Result{}, errorPVC
+	// 		}
+	// 		errorPV := r.removePV(logger, ctx)
+	// 		if errorPV != nil {
+	// 			return ctrl.Result{}, errorPV
+	// 		}
+	// 		//	Include Additional Finalizers here
+	// 		// Remove PV finalizer
+	// 		ctrlutil.RemoveFinalizer(inst, keplerFinalizer)
+	// 		updateError := r.Client.Update(ctx, inst)
+	// 		if updateError != nil {
+	// 			return ctrl.Result{}, updateError
+	// 		}
+	// 	}
+	// 	return ctrl.Result{}, nil
+	// }
+
+	// // Add finalizer for this CR
+	// if !ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
+	// 	ctrlutil.AddFinalizer(inst, keplerFinalizer)
+	// 	updateErr := r.Client.Update(ctx, inst)
+	// 	if updateErr != nil {
+	// 		return ctrl.Result{}, updateErr
+	// 	}
+	// }
+
 	var result ctrl.Result
 	var err error
-
 	if inst.Spec.Collector != nil {
 		result, err = CollectorReconciler(ctx, inst, r, logger)
-	} else {
+	}
+	//if inst.Spec.Estimator != nil {
+	// result, err = EstimatorReconciler(ctx, inst, r, logger)
+	//}
+	if inst.Spec.ModelServerExporter != nil {
+		result, err = ModelServerReconciler(ctx, inst, r, logger)
+	} else if inst.Spec.ModelServerTrainer != nil {
+		result, err = ModelServerReconciler(ctx, inst, r, logger)
+	}
+
+	if inst.Spec.Collector == nil && inst.Spec.Estimator == nil && inst.Spec.ModelServerExporter == nil && inst.Spec.ModelServerTrainer == nil {
 		return result, nil
 	}
-	// else if inst.Spec.Estimator != nil {
-	// 	// result, err = EstimatorReconciler(ctx, inst, r, logger)
-	// } else if inst.Spec.ModelServerExporter != nil || inst.Spec.ModelServerTrainer != nil {
-	// 	result, err = ModelServerReconciler(ctx, inst, r, logger)
-	// }
 
 	// Set reconcile status condition
 	if err == nil {
@@ -261,37 +265,37 @@ func CollectorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, k
 
 }
 
-// type modelServerReconciler struct {
-// 	KeplerReconciler
-// 	Ctx      context.Context
-// 	Instance *keplerv1alpha1.Kepler
-// }
+type modelServerReconciler struct {
+	KeplerReconciler
+	Ctx      context.Context
+	Instance *keplerv1alpha1.Kepler
+}
 
-// func (mser *modelServerReconciler) ensureModelServer(l klog.Logger) (bool, error) {
-// 	modelServerDeployment := ModelServerDeployment{
-// 		Context:  mser.Ctx,
-// 		Instance: mser.Instance,
-// 		Image:    ModelServerContainerImage,
-// 		Client:   mser.Client,
-// 		Scheme:   mser.Scheme,
-// 	}
-// 	return modelServerDeployment.Reconcile(l)
-// }
+func (mser *modelServerReconciler) ensureModelServer(l klog.Logger) (bool, error) {
+	modelServerDeployment := ModelServerDeployment{
+		Context:  mser.Ctx,
+		Instance: mser.Instance,
+		Image:    ModelServerContainerImage,
+		Client:   mser.Client,
+		Scheme:   mser.Scheme,
+	}
+	return modelServerDeployment.Reconcile(l)
+}
 
-// func ModelServerReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, kr *KeplerReconciler, logger klog.Logger) (ctrl.Result, error) {
-// 	modelServerReconciler := modelServerReconciler{
-// 		KeplerReconciler: *kr,
-// 		Ctx:              ctx,
-// 		Instance:         instance,
-// 	}
-// 	log := logger.WithValues("method", "Model Server")
-// 	_, err := reconcileBatch(
-// 		log,
-// 		modelServerReconciler.ensureModelServer,
-// 	)
-// 	return ctrl.Result{}, err
+func ModelServerReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, kr *KeplerReconciler, logger klog.Logger) (ctrl.Result, error) {
+	modelServerReconciler := modelServerReconciler{
+		KeplerReconciler: *kr,
+		Ctx:              ctx,
+		Instance:         instance,
+	}
+	log := logger.WithValues("method", "Model Server")
+	_, err := reconcileBatch(
+		log,
+		modelServerReconciler.ensureModelServer,
+	)
+	return ctrl.Result{}, err
 
-// }
+}
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -429,16 +433,12 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 		r.daemonSet.Spec.Template.ObjectMeta.Name = dsName.Name
 		r.daemonSet.Spec.Template.Spec.HostNetwork = true
 		r.daemonSet.Spec.Template.Spec.ServiceAccountName = r.serviceAccount.Name
-
-		image := r.Instance.Spec.Collector.Image
-		logger.V(1).Info("DaemonSet Image ", "image", image)
-
 		r.daemonSet.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name: "kepler-exporter",
 			SecurityContext: &corev1.SecurityContext{
 				Privileged: &scc_value,
 			},
-			Image:   image,
+			Image:   "quay.io/sustainable_computing_io/kepler:latest",
 			Command: []string{"/usr/bin/kepler", "-address", bindAddress, "-enable-gpu=true", "enable-cgroup-id=true", "v=5"},
 			Ports: []corev1.ContainerPort{{
 				ContainerPort: collectorPort,
@@ -482,7 +482,7 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 			{Name: "kernel-src", MountPath: "/usr/src/kernels"},
 			{Name: "kernel-debug", MountPath: "/sys/kernel/debug"},
 			{Name: "proc", MountPath: "/proc"},
-			{Name: "cfm", MountPath: "/etc/config"},
+			{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
 		}
 
 		r.daemonSet.Spec.Template.Spec.Volumes = []corev1.Volume{

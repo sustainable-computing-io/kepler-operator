@@ -43,6 +43,60 @@ spec:
                   image:
                     type: string
                 type: object
+              estimator:
+                properties:
+                  filterConditions:
+                    type: string
+                  initUrl:
+                    type: string
+                  modelName:
+                    type: string
+                type: object
+              model-server-exporter:
+                properties:
+                  modelPath:
+                    default: ""
+                    type: string
+                  modelServerRequiredPath:
+                    default: ""
+                    type: string
+                  modelServerURL:
+                    default: ""
+                    type: string
+                  port:
+                    default: 8100
+                    type: integer
+                  promServer:
+                    default: ""
+                    type: string
+                type: object
+              model-server-trainer:
+                properties:
+                  initialModelNames:
+                    default: ""
+                    type: string
+                  initialModelsEndpoint:
+                    default: ""
+                    type: string
+                  promHeaders:
+                    items:
+                      properties:
+                        headerKey:
+                          type: string
+                        headerValue:
+                          type: string
+                      type: object
+                    type: array
+                  promQueryInterval:
+                    default: 20
+                    type: integer
+                  promQueryStep:
+                    default: 3
+                    type: integer
+                  promSSLDisable:
+                    default: true
+                    type: boolean
+                type: object
             type: object
           status:
             description: KeplerStatus defines the observed state of Kepler

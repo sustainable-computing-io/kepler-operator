@@ -55,7 +55,7 @@ type CustomHeader struct {
 type ModelServerTrainerSpec struct {
 
 	// +kubebuilder:default=20
-	PromQueryInterval int `json:"promQueryInternal,omitempty"`
+	PromQueryInterval int `json:"promQueryInterval,omitempty"`
 
 	// +kubebuilder:default=3
 	PromQueryStep int `json:"promQueryStep,omitempty"`
@@ -65,7 +65,7 @@ type ModelServerTrainerSpec struct {
 	// +kubebuilder:default=true
 	PromSSLDisable bool `json:"promSSLDisable,omitempty"`
 
-	// +kubebuilder:default="https://raw.githubusercontent.com/sustainable-computing-io/kepler-model-server/main/tests/test_models"
+	// +kubebuilder:default=""
 	InitialModelsEndpoint string `json:"initialModelsEndpoint,omitempty"`
 
 	// +kubebuilder:default=""
@@ -80,13 +80,13 @@ type ModelServerExporterSpec struct {
 	// +kubebuilder:default=""
 	PromServer string `json:"promServer,omitempty"`
 
-	// +kubebuilder:default="models"
+	// +kubebuilder:default=""
 	ModelPath string `json:"modelPath,omitempty"`
 
 	//+kubebuilder:default=""
 	ModelServerURL string `json:"modelServerURL,omitempty"`
 
-	//+kubebuilder:default="/model"
+	//+kubebuilder:default=""
 	ModelServerRequiredPath string `json:"modelServerRequiredPath,omitempty"`
 }
 
@@ -98,17 +98,17 @@ type EstimatorSpec struct {
 
 // KeplerSpec defines the desired state of Kepler
 type KeplerSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:modelServerExporterFields"
+	ModelServerExporter *ModelServerExporterSpec `json:"model-server-exporter,omitempty"`
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:modelServerTrainerFields"
+	ModelServerTrainer *ModelServerTrainerSpec `json:"model-server-trainer,omitempty"`
+	Estimator          *EstimatorSpec          `json:"estimator,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:collectorFields"
 	Collector *CollectorSpec `json:"collector,omitempty"`
 }
 
 // KeplerStatus defines the observed state of Kepler
 type KeplerStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 
 	// conditions represent the latest available observations of the kepler-system
 	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
