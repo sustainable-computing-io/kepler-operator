@@ -19,7 +19,7 @@ spec:
       name: prometheus
       secureJsonData:
         # Update bearer token to match your environment
-        httpHeaderValue1: 'Bearer ${BearerToken}'
+        httpHeaderValue1: 'Bearer ${BEARER_TOKEN}'
       type: prometheus
       url: 'https://thanos-querier.openshift-monitoring.svc.cluster.local:9091'
   name: prometheus-grafanadatasource.yaml
