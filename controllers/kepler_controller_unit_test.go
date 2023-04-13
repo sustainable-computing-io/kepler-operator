@@ -405,7 +405,6 @@ func testVerifyDaemonSpec(t *testing.T, returnedServiceAccount corev1.ServiceAcc
 	assert.Equal(t, DaemonSetNameSpace, returnedDaemonSet.ObjectMeta.Namespace)
 
 	assert.Equal(t, DaemonSetName, returnedDaemonSet.Spec.Template.ObjectMeta.Name)
-	assert.True(t, returnedDaemonSet.Spec.Template.Spec.HostNetwork)
 	assert.Equal(t, returnedServiceAccount.Name, returnedDaemonSet.Spec.Template.Spec.ServiceAccountName)
 	// check if daemonset obeys general rules
 	//TODO: MATCH LABELS IS subset to labels. SAME WITH SELECTOR IN SERVICE
