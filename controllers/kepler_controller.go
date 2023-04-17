@@ -203,12 +203,8 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if inst.Spec.Collector != nil {
 		result, err = CollectorReconciler(ctx, inst, r, logger)
 	}
-	//if inst.Spec.Estimator != nil {
-	// result, err = EstimatorReconciler(ctx, inst, r, logger)
-	//}
-	if inst.Spec.ModelServerExporter != nil {
-		result, err = ModelServerReconciler(ctx, inst, r, logger)
-	} else if inst.Spec.ModelServerTrainer != nil {
+
+	if (inst.Spec.ModelServerTrainer != nil) || (inst.Spec.ModelServerExporter != nil) {
 		result, err = ModelServerReconciler(ctx, inst, r, logger)
 	}
 
@@ -444,7 +440,10 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 				Name:          "http",
 			}},
 		}}
+		// Check if Estimator Patch is required
+		if r.Instance.Spec.Estimator != nil {
 
+		}
 		httpget := corev1.HTTPGetAction{
 			Path:   "/healthz",
 			Port:   intstr.IntOrString{Type: intstr.Int, IntVal: collectorPort},

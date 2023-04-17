@@ -221,6 +221,15 @@ func (msd *ModelServerDeployment) buildModelServerDeployment() appsv1.Deployment
 
 	// exporter or trainer will be active
 	modelServerContainers := make([]corev1.Container, 0)
+	if msd.Instance.Spec.ModelServerTrainer != nil {
+		modelServerContainers = append(modelServerContainers, corev1.Container{
+			Image:           msd.Image,
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			Name:            "online-trainer",
+			VolumeMounts:    correspondingVolumeMounts,
+			Command:         []string{"python3.8", "online_trainer.py"},
+		})
+	}
 	if msd.Instance.Spec.ModelServerExporter != nil {
 		modelServerContainers = append(modelServerContainers, corev1.Container{
 			Image:           msd.Image,
@@ -232,16 +241,6 @@ func (msd *ModelServerDeployment) buildModelServerDeployment() appsv1.Deployment
 			}},
 			VolumeMounts: correspondingVolumeMounts,
 			Command:      []string{"python3.8", "model_server.py"},
-		})
-	}
-
-	if msd.Instance.Spec.ModelServerTrainer != nil {
-		modelServerContainers = append(modelServerContainers, corev1.Container{
-			Image:           msd.Image,
-			ImagePullPolicy: corev1.PullIfNotPresent,
-			Name:            "online-trainer",
-			VolumeMounts:    correspondingVolumeMounts,
-			Command:         []string{"python3.8", "online_trainer.py"},
 		})
 	}
 

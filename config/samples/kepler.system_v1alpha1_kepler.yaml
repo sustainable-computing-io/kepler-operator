@@ -15,8 +15,8 @@ spec:
     collectorPort: 9103
   model-server-exporter:
     port: 8100
-  #model-server-trainer:
-    #promQueryInterval: 20
+  model-server-trainer:
+    promQueryInterval: 20
 
   
     
