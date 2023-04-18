@@ -4,5 +4,7 @@ commonLabels:
 
 resources:
 - 00-openshift-monitoring-user-projects.yaml
+- 00-kepler-operator-namespaces.yaml
 - 00-servicemonitoring-kepler.yaml
 - 01-grafana-operator.yaml
+- 05-user-workload-monitoring-config.yaml
