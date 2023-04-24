@@ -162,42 +162,6 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	//if inst set to delete, pv must also be removed when it is released
-	// if inst.GetDeletionTimestamp() != nil {
-	// 	if ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
-	// 		//errorDeployment := r.removeDeployment(logger, inst, ctx)
-	// 		//if errorDeployment != nil {
-	// 		//	return ctrl.Result{}, errorDeployment
-	// 		//}
-
-	// 		errorPVC := r.removePVC(logger, inst, ctx)
-	// 		if errorPVC != nil {
-	// 			return ctrl.Result{}, errorPVC
-	// 		}
-	// 		errorPV := r.removePV(logger, ctx)
-	// 		if errorPV != nil {
-	// 			return ctrl.Result{}, errorPV
-	// 		}
-	// 		//	Include Additional Finalizers here
-	// 		// Remove PV finalizer
-	// 		ctrlutil.RemoveFinalizer(inst, keplerFinalizer)
-	// 		updateError := r.Client.Update(ctx, inst)
-	// 		if updateError != nil {
-	// 			return ctrl.Result{}, updateError
-	// 		}
-	// 	}
-	// 	return ctrl.Result{}, nil
-	// }
-
-	// // Add finalizer for this CR
-	// if !ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
-	// 	ctrlutil.AddFinalizer(inst, keplerFinalizer)
-	// 	updateErr := r.Client.Update(ctx, inst)
-	// 	if updateErr != nil {
-	// 		return ctrl.Result{}, updateErr
-	// 	}
-	// }
-
 	var result ctrl.Result
 	var err error
 	if inst.Spec.Collector != nil {
@@ -428,22 +392,20 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 
 		r.daemonSet.Spec.Template.ObjectMeta.Name = dsName.Name
 		r.daemonSet.Spec.Template.Spec.ServiceAccountName = r.serviceAccount.Name
+		image := r.Instance.Spec.Collector.Image
+		logger.V(1).Info("DaemonSet Image", "image", image)
 		r.daemonSet.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name: "kepler-exporter",
 			SecurityContext: &corev1.SecurityContext{
 				Privileged: &scc_value,
 			},
-			Image:   "quay.io/sustainable_computing_io/kepler:latest",
+			Image:   image,
 			Command: []string{"/usr/bin/kepler", "-address", bindAddress, "-enable-gpu=true", "enable-cgroup-id=true", "v=5"},
 			Ports: []corev1.ContainerPort{{
 				ContainerPort: collectorPort,
 				Name:          "http",
 			}},
 		}}
-		// Check if Estimator Patch is required
-		if r.Instance.Spec.Estimator != nil {
-
-		}
 		httpget := corev1.HTTPGetAction{
 			Path:   "/healthz",
 			Port:   intstr.IntOrString{Type: intstr.Int, IntVal: collectorPort},
