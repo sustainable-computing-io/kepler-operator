@@ -46,7 +46,7 @@ func (msd *ModelServerDeployment) Reconcile(l klog.Logger) (bool, error) {
 func (msd *ModelServerDeployment) buildModelServerConfigMap() corev1.ConfigMap {
 	dataPairing := make(map[string]string)
 	modelServerExporter := msd.Instance.Spec.ModelServerExporter
-	modelServerTrainer := msd.Instance.Spec.ModelServerTrainer
+	modelServerTrainer := msd.Instance.Spec.ModelServerExporter.ModelServerTrainer
 	dataPairing["MNT_PATH"] = "/mnt"
 	if modelServerExporter != nil {
 		dataPairing["MODEL_SERVER_ENABLE"] = "true"
@@ -219,28 +219,28 @@ func (msd *ModelServerDeployment) buildModelServerDeployment() appsv1.Deployment
 		},
 	}
 
-	// exporter or trainer will be active
+	// exporter will always be active
 	modelServerContainers := make([]corev1.Container, 0)
-	if msd.Instance.Spec.ModelServerTrainer != nil {
+
+	modelServerContainers = append(modelServerContainers, corev1.Container{
+		Image:           msd.Image,
+		ImagePullPolicy: corev1.PullAlways,
+		Name:            "model-server-api",
+		Ports: []corev1.ContainerPort{{
+			ContainerPort: int32(msd.Instance.Spec.ModelServerExporter.Port),
+			Name:          "http",
+		}},
+		VolumeMounts: correspondingVolumeMounts,
+		Command:      []string{"python3.8", "model_server.py"},
+	})
+	// trainer will be patched on
+	if msd.Instance.Spec.ModelServerExporter.ModelServerTrainer != nil {
 		modelServerContainers = append(modelServerContainers, corev1.Container{
 			Image:           msd.Image,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            "online-trainer",
 			VolumeMounts:    correspondingVolumeMounts,
 			Command:         []string{"python3.8", "online_trainer.py"},
-		})
-	}
-	if msd.Instance.Spec.ModelServerExporter != nil {
-		modelServerContainers = append(modelServerContainers, corev1.Container{
-			Image:           msd.Image,
-			ImagePullPolicy: corev1.PullAlways,
-			Name:            "model-server-api",
-			Ports: []corev1.ContainerPort{{
-				ContainerPort: int32(msd.Instance.Spec.ModelServerExporter.Port),
-				Name:          "http",
-			}},
-			VolumeMounts: correspondingVolumeMounts,
-			Command:      []string{"python3.8", "model_server.py"},
 		})
 	}
 
@@ -406,6 +406,13 @@ func (msd *ModelServerDeployment) ensureModelServerDeployment(l klog.Logger) (bo
 		ObjectMeta: newMSD.ObjectMeta,
 	}
 	logger := l.WithValues("ModelServerDeployment", nameFor(msd.Deployment))
+	if len(newMSD.Spec.Template.Spec.Containers) == 2 {
+		logger.V(1).Info("ContainerLogging", "NumOfContainers", len(newMSD.Spec.Template.Spec.Containers),
+			"FirstContainer", newMSD.Spec.Template.Spec.Containers[0].Name, "SecondContainer", newMSD.Spec.Template.Spec.Containers[1].Name)
+	} else {
+		logger.V(1).Info("ContainerLogging", "NumOfContainers", len(newMSD.Spec.Template.Spec.Containers),
+			"FirstContainer", newMSD.Spec.Template.Spec.Containers[0].Name)
+	}
 
 	op, err := ctrlutil.CreateOrUpdate(msd.Context, msd.Client, msd.Deployment, func() error {
 		err := ctrl.SetControllerReference(msd.Instance, msd.Deployment, msd.Scheme)
@@ -420,11 +427,9 @@ func (msd *ModelServerDeployment) ensureModelServerDeployment(l klog.Logger) (bo
 			msd.Deployment.Spec.Template.Spec.Volumes = newMSD.Spec.Template.Spec.Volumes
 		}
 		// for mutable fields
-
-		//compare deepcopy to prevent unnecessary updates
-		if !reflect.DeepEqual(msd.Deployment.Spec.Template.Spec.Containers, newMSD.Spec.Template.Spec.Containers) {
-			msd.Deployment.Spec.Template.Spec.Containers = newMSD.Spec.Template.Spec.Containers
-		}
+		//if !reflect.DeepEqual(msd.Deployment.Spec.Template.Spec.Containers, newMSD.Spec.Template.Spec.Containers) {
+		msd.Deployment.Spec.Template.Spec.Containers = newMSD.Spec.Template.Spec.Containers
+		//}
 		return nil
 	})
 	if err != nil {

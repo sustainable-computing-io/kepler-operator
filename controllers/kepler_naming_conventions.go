@@ -31,4 +31,5 @@ const (
 	ModelServerConfigMapNameSuffix                    = "kepler-model-server-cfm"
 	ModelServerServiceNameSuffix                      = "kepler-model-server"
 	ModelServerDeploymentNameSuffix                   = "kepler-model-server"
+	keplerFinalizer                                   = "kepler.system.sustainable.computing.io/finalizer"
 )

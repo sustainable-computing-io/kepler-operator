@@ -77,8 +77,8 @@ func generateDefaultOperatorSettings() (context.Context, *KeplerReconciler, *kep
 				Image:         "quay.io/sustainable_computing_io/kepler:latest",
 				CollectorPort: 9103,
 			},
-			ModelServerExporter: &keplersystemv1alpha1.ModelServerExporterSpec{},
-			ModelServerTrainer:  &keplersystemv1alpha1.ModelServerTrainerSpec{},
+			ModelServerExporter: &keplersystemv1alpha1.ModelServerExporterSpec{ModelServerTrainer: &keplersystemv1alpha1.ModelServerTrainerSpec{}},
+			ModelServerFeatures: &keplersystemv1alpha1.ModelServerFeaturesSpec{IncludePVandPVCFinalizers: false},
 		},
 	}
 
@@ -119,6 +119,27 @@ func CheckSetControllerReference(OwnerName string, OwnerKind string, obj client.
 		}
 	}
 	return false
+}
+
+func verifyKeplerReconciler(t *testing.T, r *KeplerReconciler, ctx context.Context) error {
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      KeplerOperatorName,
+			Namespace: KeplerOperatorNameSpace,
+		},
+	}
+	//should only call reconcile once (Additional reconciliations will be called if requeing is required)
+	res, err := r.Reconcile(ctx, req)
+	//continue reconcoiling until requeue has been terminated accordingly
+	for timeout := time.After(30 * time.Second); res.Requeue; {
+		select {
+		case <-timeout:
+			t.Fatalf("main reconciler never terminates")
+		default:
+		}
+		res, err = r.Reconcile(ctx, req)
+	}
+	return err
 }
 
 func testVerifyMainReconciler(t *testing.T, ctx context.Context, client client.Client) {
@@ -639,7 +660,7 @@ func testVerifyModelServerConfigMap(t *testing.T, returnedMSConfigMap corev1.Con
 		assert.NotEmpty(t, returnedMSConfigMap.Data["MODEL_SERVER_REQ_PATH"])
 	}
 
-	if keplerInstance.Spec.ModelServerTrainer != nil {
+	if keplerInstance.Spec.ModelServerExporter.ModelServerTrainer != nil {
 		assert.Contains(t, returnedMSConfigMap.Data, "PROM_QUERY_INTERVAL")
 		assert.NotEmpty(t, returnedMSConfigMap.Data["PROM_QUERY_INTERVAL"])
 		assert.Contains(t, returnedMSConfigMap.Data, "PROM_QUERY_STEP")
@@ -1093,7 +1114,6 @@ func TestModelServerDeployment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
-
 	m := ModelServerDeployment{
 		Context:  ctx,
 		Instance: keplerInstance,
@@ -1186,28 +1206,34 @@ func TestEnsureKeplerOperator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
-	r := keplerReconciler
-	req := reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      KeplerOperatorName,
-			Namespace: KeplerOperatorNameSpace,
-		},
-	}
-	//should only call reconcile once (Additional reconciliations will be called if requeing is required)
-	res, err := r.Reconcile(ctx, req)
-	//continue reconcoiling until requeue has been terminated accordingly
-	for timeout := time.After(30 * time.Second); res.Requeue; {
-		select {
-		case <-timeout:
-			t.Fatalf("main reconciler never terminates")
-		default:
-		}
-		res, err = r.Reconcile(ctx, req)
-	}
-	//once reconciling has terminated accordingly, perform expected tests
+	err = verifyKeplerReconciler(t, keplerReconciler, ctx)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
+	//once reconciling has terminated accordingly, perform expected tests
 	testVerifyMainReconciler(t, ctx, client)
+
+}
+
+// Test CleanUp Finalizer works as expected
+// Consider setting up reconcile in a unique function
+func TestEnsureCleanUpFinalizer(t *testing.T) {
+	ctx, keplerReconciler, _, _, _, err := generateDefaultOperatorSettings()
+	//keplerInstance.Finalizers
+	if err != nil {
+		t.Fatalf("generate test environment failed: (%v)", err)
+	}
+	//keplerInstance.Spec.ModelServerFeatures.IncludePVandPVCFinalizers = true
+	err = verifyKeplerReconciler(t, keplerReconciler, ctx)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	// check finalizers are not empty
+	//assert.NotEmpty(t, keplerInstance.GetFinalizers())
+
+	// check CleanUp Finalizer is present
+	//assert.Contains(t, keplerInstance.GetFinalizers(), keplerFinalizer)
+	//Invoke Deletion request
+	//Check desired Resources have been removed
 
 }

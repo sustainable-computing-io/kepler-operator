@@ -57,11 +57,9 @@ type KeplerReconciler struct {
 	Log    logr.Logger
 }
 
-const keplerFinalizer = "kepler.system.sustainable.computing.io/finalizer"
-
 func (r *KeplerReconciler) removeDeployment(logger logr.Logger, inst *keplerv1alpha1.Kepler, ctx context.Context) error {
 	msDeployment := &appsv1.Deployment{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: "kepler-model-server", Namespace: inst.Namespace}, msDeployment)
+	err := r.Client.Get(ctx, types.NamespacedName{Name: ModelServerDeploymentNameSuffix, Namespace: inst.Namespace}, msDeployment)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			logger.Info("Deployment has already been deleted")
@@ -71,7 +69,7 @@ func (r *KeplerReconciler) removeDeployment(logger logr.Logger, inst *keplerv1al
 			return err
 		}
 	}
-	// PVC has been retrieved
+	// Deployment has been retrieved
 	err = r.Client.Delete(ctx, msDeployment)
 	if err != nil {
 		logger.Error(err, "failed to delete Deployment")
@@ -84,7 +82,7 @@ func (r *KeplerReconciler) removeDeployment(logger logr.Logger, inst *keplerv1al
 
 func (r *KeplerReconciler) removePVC(logger logr.Logger, inst *keplerv1alpha1.Kepler, ctx context.Context) error {
 	msPVCResult := &corev1.PersistentVolumeClaim{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: "kepler-model-server-pvc", Namespace: inst.Namespace}, msPVCResult)
+	err := r.Client.Get(ctx, types.NamespacedName{Name: ModelServerPersistentVolumeClaimNameSuffix, Namespace: inst.Namespace}, msPVCResult)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			logger.Info("PVC has already been deleted")
@@ -107,7 +105,7 @@ func (r *KeplerReconciler) removePVC(logger logr.Logger, inst *keplerv1alpha1.Ke
 
 func (r *KeplerReconciler) removePV(logger logr.Logger, ctx context.Context) error {
 	msPVResult := &corev1.PersistentVolume{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: "kepler-model-server-pv"}, msPVResult)
+	err := r.Client.Get(ctx, types.NamespacedName{Name: ModelServerPersistentVolumeNameSuffix}, msPVResult)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			//if not found, it is already gone
@@ -162,17 +160,55 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	//Remove Finalizer if it exists and perform Clean-up
+	if inst.GetDeletionTimestamp() != nil {
+		if ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
+			errorDeployment := r.removeDeployment(logger, inst, ctx)
+			if errorDeployment != nil {
+				return ctrl.Result{}, errorDeployment
+			}
+
+			errorPVC := r.removePVC(logger, inst, ctx)
+			if errorPVC != nil {
+				return ctrl.Result{}, errorPVC
+			}
+			errorPV := r.removePV(logger, ctx)
+			if errorPV != nil {
+				return ctrl.Result{}, errorPV
+			}
+			// Remove finalizer
+			ctrlutil.RemoveFinalizer(inst, keplerFinalizer)
+			updateError := r.Client.Update(ctx, inst)
+			if updateError != nil {
+				return ctrl.Result{}, updateError
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+
+	//Apply Finalizer to Kepler Object
+
+	if inst.Spec.ModelServerFeatures != nil && inst.Spec.ModelServerFeatures.IncludePVandPVCFinalizers {
+		if !ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
+			ctrlutil.AddFinalizer(inst, keplerFinalizer)
+			updateErr := r.Client.Update(ctx, inst)
+			if updateErr != nil {
+				return ctrl.Result{}, updateErr
+			}
+		}
+	}
+
 	var result ctrl.Result
 	var err error
 	if inst.Spec.Collector != nil {
 		result, err = CollectorReconciler(ctx, inst, r, logger)
 	}
 
-	if (inst.Spec.ModelServerTrainer != nil) || (inst.Spec.ModelServerExporter != nil) {
+	if inst.Spec.ModelServerExporter != nil {
 		result, err = ModelServerReconciler(ctx, inst, r, logger)
 	}
 
-	if inst.Spec.Collector == nil && inst.Spec.Estimator == nil && inst.Spec.ModelServerExporter == nil && inst.Spec.ModelServerTrainer == nil {
+	if inst.Spec.Collector == nil && inst.Spec.Estimator == nil && inst.Spec.ModelServerExporter == nil {
 		return result, nil
 	}
 

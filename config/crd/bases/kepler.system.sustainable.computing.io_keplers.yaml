@@ -54,6 +54,33 @@ spec:
                 type: object
               model-server-exporter:
                 properties:
+                  model-server-trainer:
+                    properties:
+                      initialModelNames:
+                        default: ""
+                        type: string
+                      initialModelsEndpoint:
+                        default: ""
+                        type: string
+                      promHeaders:
+                        items:
+                          properties:
+                            headerKey:
+                              type: string
+                            headerValue:
+                              type: string
+                          type: object
+                        type: array
+                      promQueryInterval:
+                        default: 20
+                        type: integer
+                      promQueryStep:
+                        default: 3
+                        type: integer
+                      promSSLDisable:
+                        default: true
+                        type: boolean
+                    type: object
                   modelPath:
                     default: ""
                     type: string
@@ -70,31 +97,10 @@ spec:
                     default: ""
                     type: string
                 type: object
-              model-server-trainer:
+              model-server-features:
                 properties:
-                  initialModelNames:
-                    default: ""
-                    type: string
-                  initialModelsEndpoint:
-                    default: ""
-                    type: string
-                  promHeaders:
-                    items:
-                      properties:
-                        headerKey:
-                          type: string
-                        headerValue:
-                          type: string
-                      type: object
-                    type: array
-                  promQueryInterval:
-                    default: 20
-                    type: integer
-                  promQueryStep:
-                    default: 3
-                    type: integer
-                  promSSLDisable:
-                    default: true
+                  includePVandPVCFinalizers:
+                    default: false
                     type: boolean
                 type: object
             type: object

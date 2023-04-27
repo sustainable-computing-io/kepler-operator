@@ -83,11 +83,18 @@ type ModelServerExporterSpec struct {
 	// +kubebuilder:default=""
 	ModelPath string `json:"modelPath,omitempty"`
 
-	//+kubebuilder:default=""
+	// +kubebuilder:default=""
 	ModelServerURL string `json:"modelServerURL,omitempty"`
 
-	//+kubebuilder:default=""
+	// +kubebuilder:default=""
 	ModelServerRequiredPath string `json:"modelServerRequiredPath,omitempty"`
+
+	ModelServerTrainer *ModelServerTrainerSpec `json:"model-server-trainer,omitempty"`
+}
+
+type ModelServerFeaturesSpec struct {
+	// +kubebuilder:default=false
+	IncludePVandPVCFinalizers bool `json:"includePVandPVCFinalizers,omitempty"`
 }
 
 type EstimatorSpec struct {
@@ -100,9 +107,9 @@ type EstimatorSpec struct {
 type KeplerSpec struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:modelServerExporterFields"
 	ModelServerExporter *ModelServerExporterSpec `json:"model-server-exporter,omitempty"`
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:modelServerTrainerFields"
-	ModelServerTrainer *ModelServerTrainerSpec `json:"model-server-trainer,omitempty"`
-	Estimator          *EstimatorSpec          `json:"estimator,omitempty"`
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:modelServerFeatureFields"
+	ModelServerFeatures *ModelServerFeaturesSpec `json:"model-server-features,omitempty"`
+	Estimator           *EstimatorSpec           `json:"estimator,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:collectorFields"
 	Collector *CollectorSpec `json:"collector,omitempty"`
 }
