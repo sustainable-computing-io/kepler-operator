@@ -1220,10 +1220,18 @@ func TestEnsureKeplerOperator(t *testing.T) {
 func TestEnsureCleanUpFinalizer(t *testing.T) {
 	// test with cleanup finalizer
 	ctx, keplerReconciler, _, _, _, err := generateDefaultOperatorSettings(true)
+	ctxFalse, keplerReconcilerFalse, _, _, _, errFalse := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
+	if errFalse != nil {
+		t.Fatalf("generate test environment failed: (%v)", errFalse)
+	}
 	err = verifyKeplerReconciler(t, keplerReconciler, ctx)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	err = verifyKeplerReconciler(t, keplerReconcilerFalse, ctxFalse)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -1233,9 +1241,13 @@ func TestEnsureCleanUpFinalizer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to retrieve kepler instance: (%v)", err)
 	}
-	// check finalizers are not empty
+	retrievedKeplerInstanceFalse := &keplersystemv1alpha1.Kepler{}
+	err = keplerReconcilerFalse.Client.Get(ctxFalse, types.NamespacedName{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace}, retrievedKeplerInstanceFalse)
+	if err != nil {
+		t.Fatalf("failed to retrieve kepler instance: (%v)", err)
+	}
 	assert.NotEmpty(t, retrievedKeplerInstance.GetFinalizers())
-	// check CleanUp Finalizer is present
 	assert.Contains(t, retrievedKeplerInstance.GetFinalizers(), keplerFinalizer)
+	assert.Empty(t, retrievedKeplerInstanceFalse.GetFinalizers())
 
 }
