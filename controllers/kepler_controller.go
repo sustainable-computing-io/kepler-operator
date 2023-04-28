@@ -57,29 +57,6 @@ type KeplerReconciler struct {
 	Log    logr.Logger
 }
 
-func (r *KeplerReconciler) removeDeployment(logger logr.Logger, inst *keplerv1alpha1.Kepler, ctx context.Context) error {
-	msDeployment := &appsv1.Deployment{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: ModelServerDeploymentNameSuffix, Namespace: inst.Namespace}, msDeployment)
-	if err != nil {
-		if kerrors.IsNotFound(err) {
-			logger.Info("Deployment has already been deleted")
-			return nil
-		} else {
-			logger.Error(err, "failed to get Deployment")
-			return err
-		}
-	}
-	// Deployment has been retrieved
-	err = r.Client.Delete(ctx, msDeployment)
-	if err != nil {
-		logger.Error(err, "failed to delete Deployment")
-		return err
-	}
-
-	logger.Info("Successfully Removed Deployment")
-	return nil
-}
-
 func (r *KeplerReconciler) removePVC(logger logr.Logger, inst *keplerv1alpha1.Kepler, ctx context.Context) error {
 	msPVCResult := &corev1.PersistentVolumeClaim{}
 	err := r.Client.Get(ctx, types.NamespacedName{Name: ModelServerPersistentVolumeClaimNameSuffix, Namespace: inst.Namespace}, msPVCResult)
@@ -163,11 +140,6 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	//Remove Finalizer if it exists and perform Clean-up
 	if inst.GetDeletionTimestamp() != nil {
 		if ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
-			errorDeployment := r.removeDeployment(logger, inst, ctx)
-			if errorDeployment != nil {
-				return ctrl.Result{}, errorDeployment
-			}
-
 			errorPVC := r.removePVC(logger, inst, ctx)
 			if errorPVC != nil {
 				return ctrl.Result{}, errorPVC
@@ -188,7 +160,7 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	//Apply Finalizer to Kepler Object
 
-	if inst.Spec.ModelServerFeatures != nil && inst.Spec.ModelServerFeatures.IncludePVandPVCFinalizers {
+	if inst.Spec.ModelServerFeatures != nil && inst.Spec.ModelServerFeatures.IncludePVandPVCFinalizer {
 		if !ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
 			ctrlutil.AddFinalizer(inst, keplerFinalizer)
 			updateErr := r.Client.Update(ctx, inst)

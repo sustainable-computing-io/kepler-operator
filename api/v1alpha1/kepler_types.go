@@ -94,7 +94,7 @@ type ModelServerExporterSpec struct {
 
 type ModelServerFeaturesSpec struct {
 	// +kubebuilder:default=false
-	IncludePVandPVCFinalizers bool `json:"includePVandPVCFinalizers,omitempty"`
+	IncludePVandPVCFinalizer bool `json:"includePVandPVCFinalizer,omitempty"`
 }
 
 type EstimatorSpec struct {

@@ -62,7 +62,7 @@ const (
 	ModelServerPVClaimNameSpace            = KeplerOperatorNameSpace
 )
 
-func generateDefaultOperatorSettings() (context.Context, *KeplerReconciler, *keplersystemv1alpha1.Kepler, logr.Logger, client.Client, error) {
+func generateDefaultOperatorSettings(includePVandPVCFinalizer bool) (context.Context, *KeplerReconciler, *keplersystemv1alpha1.Kepler, logr.Logger, client.Client, error) {
 	ctx := context.Background()
 	_ = log.FromContext(ctx)
 	logger := log.Log.WithValues("kepler", types.NamespacedName{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace})
@@ -78,7 +78,7 @@ func generateDefaultOperatorSettings() (context.Context, *KeplerReconciler, *kep
 				CollectorPort: 9103,
 			},
 			ModelServerExporter: &keplersystemv1alpha1.ModelServerExporterSpec{ModelServerTrainer: &keplersystemv1alpha1.ModelServerTrainerSpec{}},
-			ModelServerFeatures: &keplersystemv1alpha1.ModelServerFeaturesSpec{IncludePVandPVCFinalizers: false},
+			ModelServerFeatures: &keplersystemv1alpha1.ModelServerFeaturesSpec{IncludePVandPVCFinalizer: includePVandPVCFinalizer},
 		},
 	}
 
@@ -742,7 +742,7 @@ func testVerifyModelServerReconciler(t *testing.T, ctx context.Context, client c
 }
 
 func TestEnsureDaemon(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -802,7 +802,7 @@ func TestEnsureDaemon(t *testing.T) {
 }
 
 func TestEnsureServiceAccount(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -844,7 +844,7 @@ func TestEnsureServiceAccount(t *testing.T) {
 }
 
 func TestEnsureService(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -877,7 +877,7 @@ func TestEnsureService(t *testing.T) {
 }
 
 func TestConfigMap(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -911,7 +911,7 @@ func TestConfigMap(t *testing.T) {
 }
 
 func TestSCC(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -946,7 +946,7 @@ func TestSCC(t *testing.T) {
 }
 
 func TestBasicMachineConfig(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -999,7 +999,7 @@ func TestBasicMachineConfig(t *testing.T) {
 }
 
 func TestModelServerConfigMap(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -1033,7 +1033,7 @@ func TestModelServerConfigMap(t *testing.T) {
 }
 
 func TestModelServerLocalStorage(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -1076,7 +1076,7 @@ func TestModelServerLocalStorage(t *testing.T) {
 }
 
 func TestModelServerService(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -1110,7 +1110,7 @@ func TestModelServerService(t *testing.T) {
 }
 
 func TestModelServerDeployment(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -1154,7 +1154,7 @@ func TestModelServerDeployment(t *testing.T) {
 // Test CollectorReconciler As a Whole
 
 func TestCollectorReconciler(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -1181,7 +1181,7 @@ func TestCollectorReconciler(t *testing.T) {
 // Test ModelServerReconciler as a whole
 
 func TestModelServerReconciler(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -1202,7 +1202,7 @@ func TestModelServerReconciler(t *testing.T) {
 // Test KeplerOperator as a whole
 
 func TestEnsureKeplerOperator(t *testing.T) {
-	ctx, keplerReconciler, _, _, client, err := generateDefaultOperatorSettings()
+	ctx, keplerReconciler, _, _, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -1218,22 +1218,24 @@ func TestEnsureKeplerOperator(t *testing.T) {
 // Test CleanUp Finalizer works as expected
 // Consider setting up reconcile in a unique function
 func TestEnsureCleanUpFinalizer(t *testing.T) {
-	ctx, keplerReconciler, _, _, _, err := generateDefaultOperatorSettings()
-	//keplerInstance.Finalizers
+	// test with cleanup finalizer
+	ctx, keplerReconciler, _, _, _, err := generateDefaultOperatorSettings(true)
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
-	//keplerInstance.Spec.ModelServerFeatures.IncludePVandPVCFinalizers = true
 	err = verifyKeplerReconciler(t, keplerReconciler, ctx)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
+	// retrieve kepler instance
+	retrievedKeplerInstance := &keplersystemv1alpha1.Kepler{}
+	err = keplerReconciler.Client.Get(ctx, types.NamespacedName{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace}, retrievedKeplerInstance)
+	if err != nil {
+		t.Fatalf("failed to retrieve kepler instance: (%v)", err)
+	}
 	// check finalizers are not empty
-	//assert.NotEmpty(t, keplerInstance.GetFinalizers())
-
+	assert.NotEmpty(t, retrievedKeplerInstance.GetFinalizers())
 	// check CleanUp Finalizer is present
-	//assert.Contains(t, keplerInstance.GetFinalizers(), keplerFinalizer)
-	//Invoke Deletion request
-	//Check desired Resources have been removed
+	assert.Contains(t, retrievedKeplerInstance.GetFinalizers(), keplerFinalizer)
 
 }

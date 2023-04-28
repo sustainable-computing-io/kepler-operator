@@ -99,7 +99,7 @@ spec:
                 type: object
               model-server-features:
                 properties:
-                  includePVandPVCFinalizers:
+                  includePVandPVCFinalizer:
                     default: false
                     type: boolean
                 type: object
