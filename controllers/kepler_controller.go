@@ -436,11 +436,11 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 
 		envFromSource := corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{
-				FieldPath: "spec.nodeName",
+				FieldPath: "status.hostIP",
 			},
 		}
 		r.daemonSet.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
-			{Name: "NODE_NAME", ValueFrom: &envFromSource},
+			{Name: "NODE_IP", ValueFrom: &envFromSource},
 		}
 
 		r.daemonSet.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{
