@@ -8,10 +8,15 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: kepler-operator
   name: kepler
-  # namespace: kepler
 spec:
   # TODO(user): Add fields here
   collector:
-    image: quay.io/sustainable_computing_io/kepler:release-0.4
+    image: quay.io/sustainable_computing_io/kepler:latest
     collectorPort: 9103
+  model-server-exporter:
+    port: 8100
+  model-server-trainer:
+    promQueryInterval: 20
+
+  
     
