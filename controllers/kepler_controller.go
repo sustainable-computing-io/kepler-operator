@@ -57,9 +57,34 @@ type KeplerReconciler struct {
 	Log    logr.Logger
 }
 
+const keplerFinalizer = "kepler.system.sustainable.computing.io/finalizer"
+
+func (r *KeplerReconciler) removeDeployment(logger logr.Logger, inst *keplerv1alpha1.Kepler, ctx context.Context) error {
+	msDeployment := &appsv1.Deployment{}
+	err := r.Client.Get(ctx, types.NamespacedName{Name: "kepler-model-server", Namespace: inst.Namespace}, msDeployment)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			logger.Info("Deployment has already been deleted")
+			return nil
+		} else {
+			logger.Error(err, "failed to get Deployment")
+			return err
+		}
+	}
+	// PVC has been retrieved
+	err = r.Client.Delete(ctx, msDeployment)
+	if err != nil {
+		logger.Error(err, "failed to delete Deployment")
+		return err
+	}
+
+	logger.Info("Successfully Removed Deployment")
+	return nil
+}
+
 func (r *KeplerReconciler) removePVC(logger logr.Logger, inst *keplerv1alpha1.Kepler, ctx context.Context) error {
 	msPVCResult := &corev1.PersistentVolumeClaim{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: ModelServerPersistentVolumeClaimNameSuffix, Namespace: inst.Namespace}, msPVCResult)
+	err := r.Client.Get(ctx, types.NamespacedName{Name: "kepler-model-server-pvc", Namespace: inst.Namespace}, msPVCResult)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			logger.Info("PVC has already been deleted")
@@ -82,7 +107,7 @@ func (r *KeplerReconciler) removePVC(logger logr.Logger, inst *keplerv1alpha1.Ke
 
 func (r *KeplerReconciler) removePV(logger logr.Logger, ctx context.Context) error {
 	msPVResult := &corev1.PersistentVolume{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: ModelServerPersistentVolumeNameSuffix}, msPVResult)
+	err := r.Client.Get(ctx, types.NamespacedName{Name: "kepler-model-server-pv"}, msPVResult)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			//if not found, it is already gone
@@ -136,31 +161,35 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	/*
+		//if inst set to delete, pv must also be removed when it is released
+		if inst.GetDeletionTimestamp() != nil {
+			if ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
+				//errorDeployment := r.removeDeployment(logger, inst, ctx)
+				//if errorDeployment != nil {
+				//	return ctrl.Result{}, errorDeployment
+				//}
 
-	//Remove Finalizer if it exists and perform Clean-up
-	if inst.GetDeletionTimestamp() != nil {
-		if ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
-			errorPVC := r.removePVC(logger, inst, ctx)
-			if errorPVC != nil {
-				return ctrl.Result{}, errorPVC
+				errorPVC := r.removePVC(logger, inst, ctx)
+				if errorPVC != nil {
+					return ctrl.Result{}, errorPVC
+				}
+				errorPV := r.removePV(logger, ctx)
+				if errorPV != nil {
+					return ctrl.Result{}, errorPV
+				}
+				//	Include Additional Finalizers here
+				// Remove PV finalizer
+				ctrlutil.RemoveFinalizer(inst, keplerFinalizer)
+				updateError := r.Client.Update(ctx, inst)
+				if updateError != nil {
+					return ctrl.Result{}, updateError
+				}
 			}
-			errorPV := r.removePV(logger, ctx)
-			if errorPV != nil {
-				return ctrl.Result{}, errorPV
-			}
-			// Remove finalizer
-			ctrlutil.RemoveFinalizer(inst, keplerFinalizer)
-			updateError := r.Client.Update(ctx, inst)
-			if updateError != nil {
-				return ctrl.Result{}, updateError
-			}
+			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, nil
-	}
 
-	//Apply Finalizer to Kepler Object
-
-	if inst.Spec.ModelServerFeatures != nil && inst.Spec.ModelServerFeatures.IncludePVandPVCFinalizer {
+		// Add finalizer for this CR
 		if !ctrlutil.ContainsFinalizer(inst, keplerFinalizer) {
 			ctrlutil.AddFinalizer(inst, keplerFinalizer)
 			updateErr := r.Client.Update(ctx, inst)
@@ -168,21 +197,20 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				return ctrl.Result{}, updateErr
 			}
 		}
-	}
-
+	*/
 	var result ctrl.Result
 	var err error
+
 	if inst.Spec.Collector != nil {
 		result, err = CollectorReconciler(ctx, inst, r, logger)
-	}
-
-	if inst.Spec.ModelServerExporter != nil {
-		result, err = ModelServerReconciler(ctx, inst, r, logger)
-	}
-
-	if inst.Spec.Collector == nil && inst.Spec.Estimator == nil && inst.Spec.ModelServerExporter == nil {
+	} else {
 		return result, nil
 	}
+	// else if inst.Spec.Estimator != nil {
+	// 	// result, err = EstimatorReconciler(ctx, inst, r, logger)
+	// } else if inst.Spec.ModelServerExporter != nil || inst.Spec.ModelServerTrainer != nil {
+	// 	result, err = ModelServerReconciler(ctx, inst, r, logger)
+	// }
 
 	// Set reconcile status condition
 	if err == nil {
@@ -233,37 +261,37 @@ func CollectorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, k
 
 }
 
-type modelServerReconciler struct {
-	KeplerReconciler
-	Ctx      context.Context
-	Instance *keplerv1alpha1.Kepler
-}
+// type modelServerReconciler struct {
+// 	KeplerReconciler
+// 	Ctx      context.Context
+// 	Instance *keplerv1alpha1.Kepler
+// }
 
-func (mser *modelServerReconciler) ensureModelServer(l klog.Logger) (bool, error) {
-	modelServerDeployment := ModelServerDeployment{
-		Context:  mser.Ctx,
-		Instance: mser.Instance,
-		Image:    ModelServerContainerImage,
-		Client:   mser.Client,
-		Scheme:   mser.Scheme,
-	}
-	return modelServerDeployment.Reconcile(l)
-}
+// func (mser *modelServerReconciler) ensureModelServer(l klog.Logger) (bool, error) {
+// 	modelServerDeployment := ModelServerDeployment{
+// 		Context:  mser.Ctx,
+// 		Instance: mser.Instance,
+// 		Image:    ModelServerContainerImage,
+// 		Client:   mser.Client,
+// 		Scheme:   mser.Scheme,
+// 	}
+// 	return modelServerDeployment.Reconcile(l)
+// }
 
-func ModelServerReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, kr *KeplerReconciler, logger klog.Logger) (ctrl.Result, error) {
-	modelServerReconciler := modelServerReconciler{
-		KeplerReconciler: *kr,
-		Ctx:              ctx,
-		Instance:         instance,
-	}
-	log := logger.WithValues("method", "Model Server")
-	_, err := reconcileBatch(
-		log,
-		modelServerReconciler.ensureModelServer,
-	)
-	return ctrl.Result{}, err
+// func ModelServerReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, kr *KeplerReconciler, logger klog.Logger) (ctrl.Result, error) {
+// 	modelServerReconciler := modelServerReconciler{
+// 		KeplerReconciler: *kr,
+// 		Ctx:              ctx,
+// 		Instance:         instance,
+// 	}
+// 	log := logger.WithValues("method", "Model Server")
+// 	_, err := reconcileBatch(
+// 		log,
+// 		modelServerReconciler.ensureModelServer,
+// 	)
+// 	return ctrl.Result{}, err
 
-}
+// }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -400,8 +428,10 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 
 		r.daemonSet.Spec.Template.ObjectMeta.Name = dsName.Name
 		r.daemonSet.Spec.Template.Spec.ServiceAccountName = r.serviceAccount.Name
+
 		image := r.Instance.Spec.Collector.Image
-		logger.V(1).Info("DaemonSet Image", "image", image)
+		logger.V(1).Info("DaemonSet Image ", "image", image)
+
 		r.daemonSet.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name: "kepler-exporter",
 			SecurityContext: &corev1.SecurityContext{
@@ -414,6 +444,7 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 				Name:          "http",
 			}},
 		}}
+
 		httpget := corev1.HTTPGetAction{
 			Path:   "/healthz",
 			Port:   intstr.IntOrString{Type: intstr.Int, IntVal: collectorPort},
@@ -449,7 +480,7 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 			{Name: "kernel-src", MountPath: "/usr/src/kernels"},
 			{Name: "kernel-debug", MountPath: "/sys/kernel/debug"},
 			{Name: "proc", MountPath: "/proc"},
-			{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
+			{Name: "cfm", MountPath: "/etc/config"},
 		}
 
 		r.daemonSet.Spec.Template.Spec.Volumes = []corev1.Volume{

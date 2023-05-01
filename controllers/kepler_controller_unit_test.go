@@ -50,19 +50,9 @@ const (
 	MachineConfigCGroupKernelArgWorkerName = MachineConfigCGroupKernelArgWorkerNameSuffix
 	MachineConfigDevelMasterName           = MachineConfigDevelMasterNameSuffix
 	MachineConfigDevelWorkerName           = MachineConfigDevelWorkerNameSuffix
-	ModelServerDeploymentName              = ModelServerDeploymentNameSuffix
-	ModelServerDeploymentNameSpace         = KeplerOperatorNameSpace
-	ModelServerServiceName                 = ModelServerServiceNameSuffix
-	ModelServerServiceNameSpace            = KeplerOperatorNameSpace
-	ModelServerConfigMapName               = ModelServerConfigMapNameSuffix
-	ModelServerConfigMapNameSpace          = KeplerOperatorNameSpace
-	ModelServerPVName                      = ModelServerPersistentVolumeNameSuffix
-	ModelServerPVNameSpace                 = KeplerOperatorNameSpace
-	ModelServerPVClaimName                 = ModelServerPersistentVolumeClaimNameSuffix
-	ModelServerPVClaimNameSpace            = KeplerOperatorNameSpace
 )
 
-func generateDefaultOperatorSettings(includePVandPVCFinalizer bool) (context.Context, *KeplerReconciler, *keplersystemv1alpha1.Kepler, logr.Logger, client.Client, error) {
+func generateDefaultOperatorSettings() (context.Context, *KeplerReconciler, *keplersystemv1alpha1.Kepler, logr.Logger, client.Client, error) {
 	ctx := context.Background()
 	_ = log.FromContext(ctx)
 	logger := log.Log.WithValues("kepler", types.NamespacedName{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace})
@@ -74,11 +64,9 @@ func generateDefaultOperatorSettings(includePVandPVCFinalizer bool) (context.Con
 		},
 		Spec: keplersystemv1alpha1.KeplerSpec{
 			Collector: &keplersystemv1alpha1.CollectorSpec{
-				Image:         "quay.io/sustainable_computing_io/kepler:latest",
+				Image:         "quay.io/sustainable_computing_io/kepler:release-0.4",
 				CollectorPort: 9103,
 			},
-			ModelServerExporter: &keplersystemv1alpha1.ModelServerExporterSpec{ModelServerTrainer: &keplersystemv1alpha1.ModelServerTrainerSpec{}},
-			ModelServerFeatures: &keplersystemv1alpha1.ModelServerFeaturesSpec{IncludePVandPVCFinalizer: includePVandPVCFinalizer},
 		},
 	}
 
@@ -121,27 +109,6 @@ func CheckSetControllerReference(OwnerName string, OwnerKind string, obj client.
 	return false
 }
 
-func verifyKeplerReconciler(t *testing.T, r *KeplerReconciler, ctx context.Context) error {
-	req := reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      KeplerOperatorName,
-			Namespace: KeplerOperatorNameSpace,
-		},
-	}
-	//should only call reconcile once (Additional reconciliations will be called if requeing is required)
-	res, err := r.Reconcile(ctx, req)
-	//continue reconcoiling until requeue has been terminated accordingly
-	for timeout := time.After(30 * time.Second); res.Requeue; {
-		select {
-		case <-timeout:
-			t.Fatalf("main reconciler never terminates")
-		default:
-		}
-		res, err = r.Reconcile(ctx, req)
-	}
-	return err
-}
-
 func testVerifyMainReconciler(t *testing.T, ctx context.Context, client client.Client) {
 	//Check Kepler Instance has been updated as desired
 	foundKepler := &keplersystemv1alpha1.Kepler{}
@@ -155,7 +122,6 @@ func testVerifyMainReconciler(t *testing.T, ctx context.Context, client client.C
 
 	//Verify Sub-Reconcilers
 	testVerifyCollectorReconciler(t, ctx, client)
-	testVerifyModelServerReconciler(t, ctx, client, foundKepler)
 }
 
 func testVerifyCollectorReconciler(t *testing.T, ctx context.Context, client client.Client) {
@@ -346,10 +312,7 @@ func testVerifyConfigMap(t *testing.T, returnedConfigMap corev1.ConfigMap) {
 	}
 	//check if ConfigMap contains proper datamap
 	assert.NotEmpty(t, returnedConfigMap.Data)
-	assert.Contains(t, returnedConfigMap.Data, "KEPLER_NAMESPACE")
-	assert.Contains(t, returnedConfigMap.Data, "METRIC_PATH")
 	assert.Equal(t, KeplerOperatorNameSpace, returnedConfigMap.Data["KEPLER_NAMESPACE"])
-	assert.Equal(t, "/metrics", returnedConfigMap.Data["METRIC_PATH"])
 }
 
 func testVerifyServiceSpec(t *testing.T, returnedService corev1.Service) {
@@ -429,13 +392,12 @@ func testVerifyDaemonSpec(t *testing.T, returnedServiceAccount corev1.ServiceAcc
 	assert.NotEqual(t, 0, len(returnedDaemonSet.Spec.Template.Spec.Containers))
 
 	for _, container := range returnedDaemonSet.Spec.Template.Spec.Containers {
-		assert.NotEmpty(t, container.Image)
-		assert.NotEmpty(t, container.Name)
 		//check security
 		if container.Name == "kepler-exporter" {
 			assert.True(t, *container.SecurityContext.Privileged)
-			assert.Equal(t, "quay.io/sustainable_computing_io/kepler:latest", container.Image)
 		}
+		assert.NotEmpty(t, container.Image)
+		assert.NotEmpty(t, container.Name)
 
 	}
 
@@ -447,13 +409,12 @@ func testVerifyDaemonSpec(t *testing.T, returnedServiceAccount corev1.ServiceAcc
 	// check if daemonset obeys general rules
 	//TODO: MATCH LABELS IS subset to labels. SAME WITH SELECTOR IN SERVICE
 	// NEED TO MAKE SURE RELATED SERVICE CONNECTS TO EXISTING LABELS IN DAEMONSET PODS TOO
-	//assert.Equal(t, returnedDaemonSet.Spec.Selector.MatchLabels, returnedDaemonSet.Spec.Template.ObjectMeta.Labels)
-	assert.NotEmpty(t, returnedDaemonSet.Spec.Selector.MatchLabels)
-	assert.NotEmpty(t, returnedDaemonSet.Spec.Template.ObjectMeta.Labels)
 	for key, value := range returnedDaemonSet.Spec.Selector.MatchLabels {
 		assert.Contains(t, returnedDaemonSet.Spec.Template.ObjectMeta.Labels, key)
 		assert.Equal(t, value, returnedDaemonSet.Spec.Template.ObjectMeta.Labels[key])
 	}
+
+	assert.Equal(t, returnedDaemonSet.Spec.Selector.MatchLabels, returnedDaemonSet.Spec.Template.ObjectMeta.Labels)
 
 	if returnedDaemonSet.Spec.Template.Spec.RestartPolicy != "" {
 		assert.Equal(t, corev1.RestartPolicyAlways, returnedDaemonSet.Spec.Template.Spec.RestartPolicy)
@@ -537,7 +498,7 @@ func testVerifyDaemonSpec(t *testing.T, returnedServiceAccount corev1.ServiceAcc
 
 	// ensure volumemounts reference existing volumes
 	volumes := returnedDaemonSet.Spec.Template.Spec.Volumes
-	//TODO: note that volumes that are not mounted is not allowed (is this true). Is this worth addressing?
+	//TODO: note that volumes that are not mounted is not allowed. Is this worth addressing?
 	for _, container := range returnedDaemonSet.Spec.Template.Spec.Containers {
 		encountered := false
 		for _, volumeMount := range container.VolumeMounts {
@@ -552,197 +513,39 @@ func testVerifyDaemonSpec(t *testing.T, returnedServiceAccount corev1.ServiceAcc
 
 }
 
-func testVerifyModelServerDeployment(t *testing.T, returnedMSDeployment appsv1.Deployment) {
-	// check SetControllerReference has been set (all objects require owners) properly
-	result := CheckSetControllerReference(KeplerOperatorName, "Kepler", &returnedMSDeployment)
-	if !result {
-		t.Fatalf("failed to set controller reference: model server deployment")
+func TestEnsureKeplerOperator(t *testing.T) {
+	ctx, keplerReconciler, _, _, client, err := generateDefaultOperatorSettings()
+	if err != nil {
+		t.Fatalf("generate test environment failed: (%v)", err)
 	}
-	// check if CreateOrUpdate Object has properly set up required fields, nested fields, and variable fields
-	assert.NotEmpty(t, returnedMSDeployment.Spec)
-	assert.NotEmpty(t, returnedMSDeployment.Spec.Template)
-	assert.NotEmpty(t, returnedMSDeployment.Spec.Template.Spec)
-	assert.NotEmpty(t, returnedMSDeployment.ObjectMeta)
-	assert.NotEmpty(t, returnedMSDeployment.Spec.Template.ObjectMeta)
-
-	assert.NotEqual(t, 0, len(returnedMSDeployment.Spec.Template.Spec.Containers))
-
-	for _, container := range returnedMSDeployment.Spec.Template.Spec.Containers {
-		assert.NotEmpty(t, container.Image)
-		assert.NotEmpty(t, container.Name)
-		//check security
-		if container.Name == "model-server-api" {
-			assert.Equal(t, ModelServerContainerImage, container.Image)
-			assert.Equal(t, container.Command, []string{"python3.8", "model_server.py"})
-		} else if container.Name == "online-trainer" {
-			assert.Equal(t, ModelServerContainerImage, container.Image)
-			assert.Equal(t, container.Command, []string{"python3.8", "online_trainer.py"})
+	r := keplerReconciler
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      KeplerOperatorName,
+			Namespace: KeplerOperatorNameSpace,
+		},
+	}
+	//should only call reconcile once (Additional reconciliations will be called if requeing is required)
+	res, err := r.Reconcile(ctx, req)
+	//continue reconcoiling until requeue has been terminated accordingly
+	for timeout := time.After(30 * time.Second); res.Requeue; {
+		select {
+		case <-timeout:
+			t.Fatalf("main reconciler never terminates")
+		default:
 		}
-
+		res, err = r.Reconcile(ctx, req)
 	}
-
-	assert.Equal(t, ModelServerDeploymentName, returnedMSDeployment.ObjectMeta.Name)
-	assert.Equal(t, ModelServerDeploymentNameSpace, returnedMSDeployment.ObjectMeta.Namespace)
-
-	// ensure matchlabels and labels match
-	assert.NotEmpty(t, returnedMSDeployment.Spec.Selector.MatchLabels)
-	assert.NotEmpty(t, returnedMSDeployment.Spec.Template.ObjectMeta.Labels)
-	for key, value := range returnedMSDeployment.Spec.Selector.MatchLabels {
-		assert.Contains(t, returnedMSDeployment.Spec.Template.ObjectMeta.Labels, key)
-		assert.Equal(t, value, returnedMSDeployment.Spec.Template.ObjectMeta.Labels[key])
+	//once reconciling has terminated accordingly, perform expected tests
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
 	}
-
-	// ensure volumemounts reference existing connected volumes
-	volumes := returnedMSDeployment.Spec.Template.Spec.Volumes
-	for _, container := range returnedMSDeployment.Spec.Template.Spec.Containers {
-		encountered := false
-		for _, volumeMount := range container.VolumeMounts {
-			for _, volume := range volumes {
-				if volumeMount.Name == volume.Name {
-					encountered = true
-				}
-			}
-		}
-		assert.True(t, encountered)
-	}
-
-}
-
-func testVerifyModelServerService(t *testing.T, returnedMSService corev1.Service) {
-	// check SetControllerReference has been set (all objects require owners) properly
-	result := CheckSetControllerReference(KeplerOperatorName, "Kepler", &returnedMSService)
-	if !result {
-		t.Fatalf("failed to set controller reference: model server service")
-	}
-	//check if CreateOrUpdate Object has properly set up required fields, nested fields, and variable fields for SA
-	assert.NotEmpty(t, returnedMSService.ObjectMeta)
-	assert.Equal(t, ModelServerServiceName, returnedMSService.ObjectMeta.Name)
-	assert.Equal(t, ModelServerServiceNameSpace, returnedMSService.ObjectMeta.Namespace)
-	assert.NotEmpty(t, returnedMSService.Spec)
-	assert.NotEmpty(t, returnedMSService.Spec.Ports)
-	assert.NotEmpty(t, returnedMSService.Spec.Selector)
-	assert.Equal(t, "None", returnedMSService.Spec.ClusterIP)
-
-}
-
-func testVerifyModelServerPersistentVolume(t *testing.T, returnedMSPV corev1.PersistentVolume) {
-	assert.NotEmpty(t, returnedMSPV.ObjectMeta)
-	assert.NotEmpty(t, returnedMSPV.Spec)
-}
-
-func testVerifyModelServerPersistentVolumeClaim(t *testing.T, returnedMSPVC corev1.PersistentVolumeClaim) {
-	assert.NotEmpty(t, returnedMSPVC.ObjectMeta)
-	assert.NotEmpty(t, returnedMSPVC.Spec)
-}
-
-func testVerifyModelServerConfigMap(t *testing.T, returnedMSConfigMap corev1.ConfigMap, keplerInstance *keplersystemv1alpha1.Kepler) {
-	// check SetControllerReference has been set (all objects require owners) properly
-	result := CheckSetControllerReference(KeplerOperatorName, "Kepler", &returnedMSConfigMap)
-	if !result {
-		t.Fatalf("failed to set controller reference: model server config map")
-	}
-	//check if ConfigMap contains proper datamap
-	assert.NotEmpty(t, returnedMSConfigMap.Data)
-	assert.Contains(t, returnedMSConfigMap.Data, "MNT_PATH")
-	assert.Equal(t, "/mnt", returnedMSConfigMap.Data["MNT_PATH"])
-	if keplerInstance.Spec.ModelServerExporter != nil {
-		assert.Contains(t, returnedMSConfigMap.Data, "MODEL_SERVER_ENABLE")
-		assert.Equal(t, "true", returnedMSConfigMap.Data["MODEL_SERVER_ENABLE"])
-		assert.Contains(t, returnedMSConfigMap.Data, "PROM_SERVER")
-		assert.NotEmpty(t, returnedMSConfigMap.Data["PROM_SERVER"])
-		assert.Contains(t, returnedMSConfigMap.Data, "MODEL_PATH")
-		assert.NotEmpty(t, returnedMSConfigMap.Data["MODEL_PATH"])
-		assert.Contains(t, returnedMSConfigMap.Data, "MODEL_SERVER_PORT")
-		assert.NotEmpty(t, returnedMSConfigMap.Data["MODEL_SERVER_PORT"])
-		assert.Contains(t, returnedMSConfigMap.Data, "MODEL_SERVER_URL")
-		assert.NotEmpty(t, returnedMSConfigMap.Data["MODEL_SERVER_URL"])
-		assert.Contains(t, returnedMSConfigMap.Data, "MODEL_SERVER_REQ_PATH")
-		assert.NotEmpty(t, returnedMSConfigMap.Data["MODEL_SERVER_REQ_PATH"])
-	}
-
-	if keplerInstance.Spec.ModelServerExporter.ModelServerTrainer != nil {
-		assert.Contains(t, returnedMSConfigMap.Data, "PROM_QUERY_INTERVAL")
-		assert.NotEmpty(t, returnedMSConfigMap.Data["PROM_QUERY_INTERVAL"])
-		assert.Contains(t, returnedMSConfigMap.Data, "PROM_QUERY_STEP")
-		assert.NotEmpty(t, returnedMSConfigMap.Data["PROM_QUERY_STEP"])
-		assert.Contains(t, returnedMSConfigMap.Data, "PROM_SSL_DISABLE")
-		assert.NotEmpty(t, returnedMSConfigMap.Data["PROM_SSL_DISABLE"])
-		assert.Contains(t, returnedMSConfigMap.Data, "PROM_HEADERS")
-		assert.Contains(t, returnedMSConfigMap.Data, "INITIAL_MODELS_LOC")
-		assert.NotEmpty(t, returnedMSConfigMap.Data["INITIAL_MODELS_LOC"])
-
-	}
-
-}
-
-func testVerifyModelServerReconciler(t *testing.T, ctx context.Context, client client.Client, keplerInstance *keplersystemv1alpha1.Kepler) {
-
-	foundModelServerDeployment := &appsv1.Deployment{}
-	modelServerDeploymentError := client.Get(ctx, types.NamespacedName{Name: ModelServerDeploymentName, Namespace: ModelServerDeploymentNameSpace}, foundModelServerDeployment)
-	if modelServerDeploymentError != nil {
-		t.Fatalf("model server deployment was not stored: (%v)", modelServerDeploymentError)
-	}
-	foundModelServerService := &corev1.Service{}
-	modelServerServiceError := client.Get(ctx, types.NamespacedName{Name: ModelServerServiceName, Namespace: ModelServerServiceNameSpace}, foundModelServerService)
-	if modelServerServiceError != nil {
-		t.Fatalf("model server service was not stored: (%v)", modelServerServiceError)
-	}
-	foundModelServerConfigMap := &corev1.ConfigMap{}
-	modelServerConfigMapError := client.Get(ctx, types.NamespacedName{Name: ModelServerConfigMapName, Namespace: ModelServerConfigMapNameSpace}, foundModelServerConfigMap)
-	if modelServerConfigMapError != nil {
-		t.Fatalf("model server configmap was not stored: (%v)", modelServerConfigMapError)
-	}
-	foundModelServerPV := &corev1.PersistentVolume{}
-	modelServerPVError := client.Get(ctx, types.NamespacedName{Name: ModelServerPVName, Namespace: ModelServerPVNameSpace}, foundModelServerPV)
-	if modelServerPVError != nil {
-		t.Fatalf("model server pv was not stored: (%v)", modelServerPVError)
-	}
-	foundModelServerPVC := &corev1.PersistentVolumeClaim{}
-	modelServerPVCError := client.Get(ctx, types.NamespacedName{Name: ModelServerPVClaimName, Namespace: ModelServerPVClaimNameSpace}, foundModelServerPVC)
-	if modelServerPVCError != nil {
-		t.Fatalf("model server pvc was not stored: (%v)", modelServerPVCError)
-	}
-
-	// test individual model server kubernetes objects
-	testVerifyModelServerConfigMap(t, *foundModelServerConfigMap, keplerInstance)
-	testVerifyModelServerDeployment(t, *foundModelServerDeployment)
-	testVerifyModelServerPersistentVolume(t, *foundModelServerPV)
-	testVerifyModelServerPersistentVolumeClaim(t, *foundModelServerPVC)
-	testVerifyModelServerService(t, *foundModelServerService)
-
-	// verify volume claim's volume name and volume
-	assert.Equal(t, foundModelServerPV.Name, foundModelServerPVC.Spec.VolumeName)
-	// verify service label and deployment label
-	for key, value := range foundModelServerService.Spec.Selector {
-		assert.Contains(t, foundModelServerDeployment.Spec.Template.ObjectMeta.Labels, key)
-		assert.Equal(t, value, foundModelServerDeployment.Spec.Template.ObjectMeta.Labels[key])
-	}
-
-	// verify deployment contains service and configmap mounts
-	//Verify ConfigMap exists in Daemonset Volumes
-	encounteredConfigMapVolume := false
-	encounteredPVCVolume := false
-	for _, volume := range foundModelServerDeployment.Spec.Template.Spec.Volumes {
-		if volume.VolumeSource.ConfigMap != nil {
-			//found configmap
-			if foundModelServerConfigMap.ObjectMeta.Name == volume.VolumeSource.ConfigMap.Name {
-				encounteredConfigMapVolume = true
-			}
-		}
-		if volume.VolumeSource.PersistentVolumeClaim != nil {
-			//found persistentvolumeclaim
-			if foundModelServerPVC.Name == volume.VolumeSource.PersistentVolumeClaim.ClaimName {
-				encounteredPVCVolume = true
-			}
-		}
-	}
-	assert.True(t, encounteredConfigMapVolume)
-	assert.True(t, encounteredPVCVolume)
+	testVerifyMainReconciler(t, ctx, client)
 
 }
 
 func TestEnsureDaemon(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -802,7 +605,7 @@ func TestEnsureDaemon(t *testing.T) {
 }
 
 func TestEnsureServiceAccount(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -844,7 +647,7 @@ func TestEnsureServiceAccount(t *testing.T) {
 }
 
 func TestEnsureService(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -876,8 +679,35 @@ func TestEnsureService(t *testing.T) {
 	}
 }
 
+// Test CollectorReconciler As a Whole
+
+func TestCollectorReconciler(t *testing.T) {
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
+	if err != nil {
+		t.Fatalf("generate test environment failed: (%v)", err)
+	}
+	numOfReconciliations := 3
+	for i := 0; i < numOfReconciliations; i++ {
+		_, err := CollectorReconciler(ctx, keplerInstance, keplerReconciler, logger)
+		if err != nil {
+			// This will never occur because such errors are handled already
+			/*if strings.Contains(err.Error(), "no matches for kind") {
+				if strings.Contains(err.Error(), "SecurityContextConstraints") || strings.Contains(err.Error(), "MachineConfig") {
+					logger.V(1).Info("Not OpenShift skip SecurityContextConstraints and MachineConfig")
+					continue
+				}
+			} else {*/
+			t.Fatalf("collector reconciler has failed: (%v)", err)
+
+		}
+		//Run testVerifyCollectorReconciler
+		testVerifyCollectorReconciler(t, ctx, client)
+
+	}
+}
+
 func TestConfigMap(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -911,7 +741,7 @@ func TestConfigMap(t *testing.T) {
 }
 
 func TestSCC(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -946,7 +776,7 @@ func TestSCC(t *testing.T) {
 }
 
 func TestBasicMachineConfig(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
+	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings()
 	if err != nil {
 		t.Fatalf("generate test environment failed: (%v)", err)
 	}
@@ -995,259 +825,5 @@ func TestBasicMachineConfig(t *testing.T) {
 			testVerifyBasicMachineConfig(t, *foundMasterCgroupKernelArgs, *foundWorkerCgroupKernelArgs, *foundMasterDevel, *foundWorkerDevel)
 		}
 	}
-
-}
-
-func TestModelServerConfigMap(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
-	if err != nil {
-		t.Fatalf("generate test environment failed: (%v)", err)
-	}
-
-	numOfReconciliations := 3
-
-	m := ModelServerDeployment{
-		Context:  ctx,
-		Instance: keplerInstance,
-		Image:    ModelServerContainerImage,
-		Client:   client,
-		Scheme:   keplerReconciler.Scheme,
-	}
-
-	for i := 0; i < numOfReconciliations; i++ {
-		res, err := m.ensureModelServerConfigMap(logger)
-		//basic check
-		assert.True(t, res)
-		if err != nil {
-			t.Fatalf("model server configmap has failed which should not happen: (%v)", err)
-		}
-		foundMSConfigMap := &corev1.ConfigMap{}
-		msConfigMapError := client.Get(ctx, types.NamespacedName{Name: ModelServerConfigMapName, Namespace: ModelServerConfigMapNameSpace}, foundMSConfigMap)
-
-		if msConfigMapError != nil {
-			t.Fatalf("model server configmap has not been stored: (%v)", msConfigMapError)
-		}
-
-		testVerifyModelServerConfigMap(t, *foundMSConfigMap, keplerInstance)
-	}
-}
-
-func TestModelServerLocalStorage(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
-	if err != nil {
-		t.Fatalf("generate test environment failed: (%v)", err)
-	}
-
-	numOfReconciliations := 3
-
-	m := ModelServerDeployment{
-		Context:  ctx,
-		Instance: keplerInstance,
-		Image:    ModelServerContainerImage,
-		Client:   client,
-		Scheme:   keplerReconciler.Scheme,
-	}
-
-	for i := 0; i < numOfReconciliations; i++ {
-		resPV, errPV := m.ensureModelServerPersistentVolume(logger)
-		resPVC, errPVC := m.ensureModelServerPersistentVolumeClaim(logger)
-		//basic check
-		assert.True(t, resPV)
-		if errPV != nil {
-			t.Fatalf("model server pv has failed which should not happen: (%v)", errPV)
-		}
-		assert.True(t, resPVC)
-		if errPVC != nil {
-			t.Fatalf("model server pvc has failed which should not happen: (%v)", errPVC)
-		}
-		foundMSPV := &corev1.PersistentVolume{}
-		msPVError := client.Get(ctx, types.NamespacedName{Name: ModelServerPVName, Namespace: ModelServerPVNameSpace}, foundMSPV)
-		if msPVError != nil {
-			t.Fatalf("model server pv has not been stored: (%v)", msPVError)
-		}
-		foundMSPVC := &corev1.PersistentVolumeClaim{}
-		msPVCError := client.Get(ctx, types.NamespacedName{Name: ModelServerPVClaimName, Namespace: ModelServerPVClaimNameSpace}, foundMSPVC)
-		if msPVCError != nil {
-			t.Fatalf("model server pvc has not been stored: (%v)", msPVCError)
-		}
-		testVerifyModelServerPersistentVolume(t, *foundMSPV)
-		testVerifyModelServerPersistentVolumeClaim(t, *foundMSPVC)
-	}
-}
-
-func TestModelServerService(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
-	if err != nil {
-		t.Fatalf("generate test environment failed: (%v)", err)
-	}
-
-	numOfReconciliations := 3
-
-	m := ModelServerDeployment{
-		Context:  ctx,
-		Instance: keplerInstance,
-		Image:    ModelServerContainerImage,
-		Client:   client,
-		Scheme:   keplerReconciler.Scheme,
-	}
-
-	for i := 0; i < numOfReconciliations; i++ {
-		res, err := m.ensureModelServerService(logger)
-		//basic check
-		assert.True(t, res)
-		if err != nil {
-			t.Fatalf("model server service has failed which should not happen: (%v)", err)
-		}
-		foundMSService := &corev1.Service{}
-		msServiceError := client.Get(ctx, types.NamespacedName{Name: ModelServerServiceName, Namespace: ModelServerServiceNameSpace}, foundMSService)
-
-		if msServiceError != nil {
-			t.Fatalf("model server service has not been stored: (%v)", msServiceError)
-		}
-
-		testVerifyModelServerService(t, *foundMSService)
-	}
-}
-
-func TestModelServerDeployment(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
-	if err != nil {
-		t.Fatalf("generate test environment failed: (%v)", err)
-	}
-	m := ModelServerDeployment{
-		Context:  ctx,
-		Instance: keplerInstance,
-		Image:    ModelServerContainerImage,
-		Client:   client,
-		Scheme:   keplerReconciler.Scheme,
-		PersistentVolumeClaim: &corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      ModelServerPVClaimName,
-				Namespace: ModelServerPVClaimNameSpace,
-			},
-		},
-		ConfigMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      ModelServerConfigMapName,
-				Namespace: ModelServerConfigMapNameSpace,
-			},
-		},
-	}
-
-	res, err := m.ensureModelServerDeployment(logger)
-	//basic check
-	assert.True(t, res)
-	if err != nil {
-		t.Fatalf("model server deployment has failed which should not happen: (%v)", err)
-	}
-	foundMSDeployment := &appsv1.Deployment{}
-	msDeploymentError := client.Get(ctx, types.NamespacedName{Name: ModelServerDeploymentName, Namespace: ModelServerDeploymentNameSpace}, foundMSDeployment)
-
-	if msDeploymentError != nil {
-		t.Fatalf("model server deployment has not been stored: (%v)", msDeploymentError)
-	}
-
-	testVerifyModelServerDeployment(t, *foundMSDeployment)
-
-}
-
-// Test CollectorReconciler As a Whole
-
-func TestCollectorReconciler(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
-	if err != nil {
-		t.Fatalf("generate test environment failed: (%v)", err)
-	}
-	numOfReconciliations := 3
-	for i := 0; i < numOfReconciliations; i++ {
-		_, err := CollectorReconciler(ctx, keplerInstance, keplerReconciler, logger)
-		if err != nil {
-			// This will never occur because such errors are handled already
-			/*if strings.Contains(err.Error(), "no matches for kind") {
-				if strings.Contains(err.Error(), "SecurityContextConstraints") || strings.Contains(err.Error(), "MachineConfig") {
-					logger.V(1).Info("Not OpenShift skip SecurityContextConstraints and MachineConfig")
-					continue
-				}
-			} else {*/
-			t.Fatalf("collector reconciler has failed: (%v)", err)
-
-		}
-		//Run testVerifyCollectorReconciler
-		testVerifyCollectorReconciler(t, ctx, client)
-
-	}
-}
-
-// Test ModelServerReconciler as a whole
-
-func TestModelServerReconciler(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
-	if err != nil {
-		t.Fatalf("generate test environment failed: (%v)", err)
-	}
-	numOfReconciliations := 3
-	for i := 0; i < numOfReconciliations; i++ {
-		_, err = ModelServerReconciler(ctx, keplerInstance, keplerReconciler, logger)
-		if err != nil {
-			t.Fatalf("model server reconciler has failed: (%v)", err)
-
-		}
-		//Run testVerifyModelServerReconciler
-		testVerifyModelServerReconciler(t, ctx, client, keplerInstance)
-
-	}
-
-}
-
-// Test KeplerOperator as a whole
-
-func TestEnsureKeplerOperator(t *testing.T) {
-	ctx, keplerReconciler, _, _, client, err := generateDefaultOperatorSettings(false)
-	if err != nil {
-		t.Fatalf("generate test environment failed: (%v)", err)
-	}
-	err = verifyKeplerReconciler(t, keplerReconciler, ctx)
-	if err != nil {
-		t.Fatalf("reconcile: (%v)", err)
-	}
-	//once reconciling has terminated accordingly, perform expected tests
-	testVerifyMainReconciler(t, ctx, client)
-
-}
-
-// Test CleanUp Finalizer works as expected
-// Consider setting up reconcile in a unique function
-func TestEnsureCleanUpFinalizer(t *testing.T) {
-	// test with cleanup finalizer
-	ctx, keplerReconciler, _, _, _, err := generateDefaultOperatorSettings(true)
-	ctxFalse, keplerReconcilerFalse, _, _, _, errFalse := generateDefaultOperatorSettings(false)
-	if err != nil {
-		t.Fatalf("generate test environment failed: (%v)", err)
-	}
-	if errFalse != nil {
-		t.Fatalf("generate test environment failed: (%v)", errFalse)
-	}
-	err = verifyKeplerReconciler(t, keplerReconciler, ctx)
-	if err != nil {
-		t.Fatalf("reconcile: (%v)", err)
-	}
-	err = verifyKeplerReconciler(t, keplerReconcilerFalse, ctxFalse)
-	if err != nil {
-		t.Fatalf("reconcile: (%v)", err)
-	}
-	// retrieve kepler instance
-	retrievedKeplerInstance := &keplersystemv1alpha1.Kepler{}
-	err = keplerReconciler.Client.Get(ctx, types.NamespacedName{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace}, retrievedKeplerInstance)
-	if err != nil {
-		t.Fatalf("failed to retrieve kepler instance: (%v)", err)
-	}
-	retrievedKeplerInstanceFalse := &keplersystemv1alpha1.Kepler{}
-	err = keplerReconcilerFalse.Client.Get(ctxFalse, types.NamespacedName{Name: KeplerOperatorName, Namespace: KeplerOperatorNameSpace}, retrievedKeplerInstanceFalse)
-	if err != nil {
-		t.Fatalf("failed to retrieve kepler instance: (%v)", err)
-	}
-	assert.NotEmpty(t, retrievedKeplerInstance.GetFinalizers())
-	assert.Contains(t, retrievedKeplerInstance.GetFinalizers(), keplerFinalizer)
-	assert.Empty(t, retrievedKeplerInstanceFalse.GetFinalizers())
 
 }
