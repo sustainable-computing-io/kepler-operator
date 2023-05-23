@@ -56,7 +56,6 @@ const (
 	ModelServerServiceNameSpace            = KeplerOperatorNameSpace
 	ModelServerConfigMapName               = ModelServerConfigMapNameSuffix
 	ModelServerConfigMapNameSpace          = KeplerOperatorNameSpace
-	ModelServerPVName                      = ModelServerPersistentVolumeNameSuffix
 	ModelServerPVNameSpace                 = KeplerOperatorNameSpace
 	ModelServerPVClaimName                 = ModelServerPersistentVolumeClaimNameSuffix
 	ModelServerPVClaimNameSpace            = KeplerOperatorNameSpace
@@ -692,11 +691,6 @@ func testVerifyModelServerReconciler(t *testing.T, ctx context.Context, client c
 	if modelServerConfigMapError != nil {
 		t.Fatalf("model server configmap was not stored: (%v)", modelServerConfigMapError)
 	}
-	foundModelServerPV := &corev1.PersistentVolume{}
-	modelServerPVError := client.Get(ctx, types.NamespacedName{Name: ModelServerPVName, Namespace: ModelServerPVNameSpace}, foundModelServerPV)
-	if modelServerPVError != nil {
-		t.Fatalf("model server pv was not stored: (%v)", modelServerPVError)
-	}
 	foundModelServerPVC := &corev1.PersistentVolumeClaim{}
 	modelServerPVCError := client.Get(ctx, types.NamespacedName{Name: ModelServerPVClaimName, Namespace: ModelServerPVClaimNameSpace}, foundModelServerPVC)
 	if modelServerPVCError != nil {
@@ -706,12 +700,9 @@ func testVerifyModelServerReconciler(t *testing.T, ctx context.Context, client c
 	// test individual model server kubernetes objects
 	testVerifyModelServerConfigMap(t, *foundModelServerConfigMap, keplerInstance)
 	testVerifyModelServerDeployment(t, *foundModelServerDeployment)
-	testVerifyModelServerPersistentVolume(t, *foundModelServerPV)
 	testVerifyModelServerPersistentVolumeClaim(t, *foundModelServerPVC)
 	testVerifyModelServerService(t, *foundModelServerService)
 
-	// verify volume claim's volume name and volume
-	assert.Equal(t, foundModelServerPV.Name, foundModelServerPVC.Spec.VolumeName)
 	// verify service label and deployment label
 	for key, value := range foundModelServerService.Spec.Selector {
 		assert.Contains(t, foundModelServerDeployment.Spec.Template.ObjectMeta.Labels, key)
@@ -1049,28 +1040,17 @@ func TestModelServerLocalStorage(t *testing.T) {
 	}
 
 	for i := 0; i < numOfReconciliations; i++ {
-		resPV, errPV := m.ensureModelServerPersistentVolume(logger)
 		resPVC, errPVC := m.ensureModelServerPersistentVolumeClaim(logger)
 		//basic check
-		assert.True(t, resPV)
-		if errPV != nil {
-			t.Fatalf("model server pv has failed which should not happen: (%v)", errPV)
-		}
 		assert.True(t, resPVC)
 		if errPVC != nil {
 			t.Fatalf("model server pvc has failed which should not happen: (%v)", errPVC)
-		}
-		foundMSPV := &corev1.PersistentVolume{}
-		msPVError := client.Get(ctx, types.NamespacedName{Name: ModelServerPVName, Namespace: ModelServerPVNameSpace}, foundMSPV)
-		if msPVError != nil {
-			t.Fatalf("model server pv has not been stored: (%v)", msPVError)
 		}
 		foundMSPVC := &corev1.PersistentVolumeClaim{}
 		msPVCError := client.Get(ctx, types.NamespacedName{Name: ModelServerPVClaimName, Namespace: ModelServerPVClaimNameSpace}, foundMSPVC)
 		if msPVCError != nil {
 			t.Fatalf("model server pvc has not been stored: (%v)", msPVCError)
 		}
-		testVerifyModelServerPersistentVolume(t, *foundMSPV)
 		testVerifyModelServerPersistentVolumeClaim(t, *foundMSPVC)
 	}
 }

@@ -35,7 +35,6 @@ type ModelServerDeployment struct {
 
 func (msd *ModelServerDeployment) Reconcile(l klog.Logger) (bool, error) {
 	return reconcileBatch(l,
-		msd.ensureModelServerPersistentVolume,
 		msd.ensureModelServerPersistentVolumeClaim,
 		msd.ensureModelServerConfigMap,
 		msd.ensureModelServerService,
@@ -104,17 +103,14 @@ func (msd *ModelServerDeployment) buildModelServerConfigMap() corev1.ConfigMap {
 }
 
 func (msd *ModelServerDeployment) buildModelServerPVC() corev1.PersistentVolumeClaim {
-	storageClassName := "default"
 	modelServerPVC := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ModelServerPersistentVolumeClaimNameSuffix,
 			Namespace: msd.Instance.Namespace,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			VolumeName:       ModelServerPersistentVolumeNameSuffix,
-			StorageClassName: &storageClassName,
 			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteMany,
+				corev1.ReadWriteOnce,
 			},
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
@@ -124,35 +120,6 @@ func (msd *ModelServerDeployment) buildModelServerPVC() corev1.PersistentVolumeC
 		},
 	}
 	return modelServerPVC
-}
-
-func (msd *ModelServerDeployment) buildModelServerPV() corev1.PersistentVolume {
-	labels := map[string]string{
-		"type":                        "local",
-		"app.kubernetes.io/component": ModelServerPersistentVolumeNameSuffix,
-		"app.kubernetes.io/name":      ModelServerPersistentVolumeNameSuffix,
-	}
-	modelServerPV := corev1.PersistentVolume{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   ModelServerPersistentVolumeNameSuffix,
-			Labels: labels,
-		},
-		Spec: corev1.PersistentVolumeSpec{
-			StorageClassName: "default",
-			Capacity: corev1.ResourceList{
-				corev1.ResourceName(corev1.ResourceStorage): resource.MustParse("5Gi"),
-			},
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteMany,
-			},
-			PersistentVolumeSource: corev1.PersistentVolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/mnt/data",
-				},
-			},
-		},
-	}
-	return modelServerPV
 }
 
 func (msd *ModelServerDeployment) buildModelServerService() corev1.Service {
@@ -308,34 +275,6 @@ func (msd *ModelServerDeployment) ensureModelServerPersistentVolumeClaim(l klog.
 	}
 
 	logger.Info("PVC reconciled")
-	return true, nil
-}
-
-func (msd *ModelServerDeployment) ensureModelServerPersistentVolume(l klog.Logger) (bool, error) { //(ReconciliationResult, error) {
-	newMSPV := msd.buildModelServerPV()
-	msd.PersistentVolume = &corev1.PersistentVolume{
-		ObjectMeta: newMSPV.ObjectMeta,
-		Spec:       newMSPV.Spec,
-	}
-	msPVResult := &corev1.PersistentVolume{}
-	logger := l.WithValues("PV", nameFor(msd.PersistentVolume))
-	err := msd.Client.Get(msd.Context, types.NamespacedName{Name: ModelServerPersistentVolumeNameSuffix}, msPVResult)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("PV does not exist. Creating...")
-			err = msd.Client.Create(msd.Context, msd.PersistentVolume)
-			if err != nil {
-				logger.Error(err, "failed to create PV")
-				return false, err
-			}
-		} else {
-			logger.Error(err, "error not related to missing PV")
-			return false, err
-		}
-	} else {
-		logger.Info("PV already exists")
-	}
-	logger.Info("PV reconciled")
 	return true, nil
 }
 

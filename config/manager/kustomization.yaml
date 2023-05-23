@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: quay.io/sustainable_computing_io/kepler-operator
-  newTag: 0.4.1
+  newTag: pv-less

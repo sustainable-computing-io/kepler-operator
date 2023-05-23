@@ -26,7 +26,6 @@ const (
 	MachineConfigCGroupKernelArgWorkerNameSpaceSuffix = ""
 	MachineConfigDevelMasterNameSpaceSuffix           = ""
 	MachineConfigDevelWorkerNameSpaceSuffix           = ""
-	ModelServerPersistentVolumeNameSuffix             = "kepler-model-server-pv"
 	ModelServerPersistentVolumeClaimNameSuffix        = "kepler-model-server-pvc"
 	ModelServerConfigMapNameSuffix                    = "kepler-model-server-cfm"
 	ModelServerServiceNameSuffix                      = "kepler-model-server"
