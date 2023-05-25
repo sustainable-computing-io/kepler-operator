@@ -80,30 +80,6 @@ func (r *KeplerReconciler) removePVC(logger logr.Logger, inst *keplerv1alpha1.Ke
 	return nil
 }
 
-func (r *KeplerReconciler) removePV(logger logr.Logger, ctx context.Context) error {
-	msPVResult := &corev1.PersistentVolume{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: ModelServerPersistentVolumeNameSuffix}, msPVResult)
-	if err != nil {
-		if kerrors.IsNotFound(err) {
-			//if not found, it is already gone
-			logger.Info("PV has already been deleted")
-			return nil
-		} else {
-			logger.Error(err, "failed to get PV")
-			return err
-		}
-	}
-	// PV has been retrieved
-	err = r.Client.Delete(ctx, msPVResult)
-	if err != nil {
-		logger.Error(err, "failed to delete PV")
-		return err
-	}
-
-	logger.Info("Successfully Removed PV")
-	return nil
-}
-
 //+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=keplers,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=keplers/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=keplers/finalizers,verbs=update
@@ -143,10 +119,6 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			errorPVC := r.removePVC(logger, inst, ctx)
 			if errorPVC != nil {
 				return ctrl.Result{}, errorPVC
-			}
-			errorPV := r.removePV(logger, ctx)
-			if errorPV != nil {
-				return ctrl.Result{}, errorPV
 			}
 			// Remove finalizer
 			ctrlutil.RemoveFinalizer(inst, keplerFinalizer)
