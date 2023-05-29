@@ -25,7 +25,7 @@ You can use the image from [quay.io](https://quay.io/repository/sustainable_comp
 
 ```sh
 make deploy IMG=quay.io/sustainable_computing_io/kepler-operator:latest
-kubectl apply -f config/samples/
+kubectl apply -k config/samples/
 ```
 
 Alternatively, if you like to build and use your own image,
@@ -34,7 +34,7 @@ Alternatively, if you like to build and use your own image,
 ```sh
 make docker-build docker-push IMG=<some-registry>/kepler-operator:tag
 make deploy IMG=<some-registry>/kepler-operator:tag
-kubectl apply -f config/samples/
+kubectl apply -k config/samples/
 ```
 
 ### Uninstall the operator
