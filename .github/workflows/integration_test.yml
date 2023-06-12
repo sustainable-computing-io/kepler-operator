@@ -72,7 +72,7 @@ jobs:
           docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
 
       - name: use kepler action for kind cluster build
-        uses: sustainable-computing-io/kepler-action@main
+        uses: sustainable-computing-io/kepler-action@v0.0.0
         with:
           runningBranch: kind
       # to do clean up cluster-up and hack folders and move local env set up doc to https://github.com/sustainable-computing-io/kepler-action
