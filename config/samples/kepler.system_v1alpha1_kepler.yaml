@@ -13,8 +13,6 @@ spec:
   collector:
     image: quay.io/sustainable_computing_io/kepler:latest
     collectorPort: 9103
-  model-server-exporter:
-    port: 8100
 
   
 

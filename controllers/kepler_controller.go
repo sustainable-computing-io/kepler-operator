@@ -318,6 +318,8 @@ func (r *collectorReconciler) ensureConfigMap(l klog.Logger) (bool, error) {
 		data_map["CGROUP_METRICS"] = "*"
 		data_map["MODEL_CONFIG"] = "| CONTAINER_COMPONENTS_ESTIMATOR=false CONTAINER_COMPONENTS_INIT_URL=https://raw.githubusercontent.com/sustainable-computing-io/kepler-model-server/main/tests/test_models/DynComponentModelWeight/CgroupOnly/ScikitMixed/ScikitMixed.json"
 
+		data_map["EXPOSE_HW_COUNTER_METRICS"] = "true"
+		data_map["EXPOSE_CGROUP_METRICS"] = "true"
 		r.configMap.Data = data_map
 
 		return nil
@@ -380,7 +382,7 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 				Privileged: &scc_value,
 			},
 			Image:   image,
-			Command: []string{"/usr/bin/kepler", "-address", bindAddress, "-enable-gpu=true", "enable-cgroup-id=true", "v=5"},
+			Command: []string{"/usr/bin/kepler", "-address", bindAddress, "-enable-gpu=true", "enable-cgroup-id=true", "v=5", "-kernel-source-dir=/usr/share/kepler/kernel_sources"},
 			Ports: []corev1.ContainerPort{{
 				ContainerPort: collectorPort,
 				Name:          "http",
@@ -411,8 +413,14 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 				FieldPath: "status.hostIP",
 			},
 		}
+		envFromSourceNode := corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "spec.nodeName",
+			},
+		}
 		r.daemonSet.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
 			{Name: "NODE_IP", ValueFrom: &envFromSource},
+			{Name: "NODE_NAME", ValueFrom: &envFromSourceNode},
 		}
 
 		r.daemonSet.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{

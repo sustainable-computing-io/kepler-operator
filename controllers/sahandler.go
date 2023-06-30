@@ -130,7 +130,7 @@ func (d *keplerSADescription) createOrUpdateClusterRole(l klog.Logger) (*rbacv1.
 		Rules: []rbacv1.PolicyRule{
 			{
 				APIGroups: []string{""},
-				Resources: []string{"nodes/metrics", "nodes/proxy", "nodes/stats"},
+				Resources: []string{"nodes/metrics", "nodes/proxy", "nodes/stats", "pods"},
 				Verbs:     []string{"get", "watch", "list"},
 			},
 		},
