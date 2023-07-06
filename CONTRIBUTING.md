@@ -12,7 +12,7 @@ There are multiple ways to contribute, including new feature requests and implem
 
 If you are good with our [License](./LICENSE) and [DCO](./DCO), follow these steps to start with your 1st code contribution:
 1. Fork & clone Kepler Operator
-2. We use  as a test framework. Please add units tests that cover your code changes.
+2. We use as a test framework. Please add units tests that cover your code changes.
 3. For any new feature design, or feature level changes, please create an issue 1st, then submit a PR.
 
 
@@ -46,7 +46,7 @@ make test
 ```
 
 ### Integration Tests
-Integration tests should be based on the miminal scope of a unit test needed to succeeded.
+Integration tests should be based on the mininal scope of a unit test needed to succeed.
 
 The GitHub Actions workflow for integration tests and in-depth steps can be found [here](./.github/workflows/integration_test.yml).
 
