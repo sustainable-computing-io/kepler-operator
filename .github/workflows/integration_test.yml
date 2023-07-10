@@ -10,7 +10,7 @@ env:
   KIND_VERSION: "0.15.0"
   GO111MODULE: "on"
   OPERATOR_IMAGE: "quay.io/sustainable_computing_io/kepler-operator"
-  KUBECONFIG: /tmp/kubeconfig 
+  KUBECONFIG: /tmp/.kube/config
  
 
 jobs:
@@ -44,12 +44,16 @@ jobs:
         with:
           name: kepler-operator
           path: /tmp/image.tar
+          retention-days: 1
 
     
   e2e:
     name: End-to-End Testing
     needs: [build-operator]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cluster_provider: [kind, microshift]
     steps:
       
       - name: Checkout source
@@ -72,15 +76,16 @@ jobs:
           docker tag ${OPERATOR_IMAGE} ${OPERATOR_IMAGE}:ci-build
 
       - name: use kepler action for kind cluster build
-        uses: sustainable-computing-io/kepler-action@v0.0.0
+        uses: sustainable-computing-io/kepler-action@v0.0.1
         with:
-          runningBranch: kind
+          runningBranch: ${{matrix.cluster_provider}}
+          cluster_provider: ${{matrix.cluster_provider}}
       # to do clean up cluster-up and hack folders and move local env set up doc to https://github.com/sustainable-computing-io/kepler-action
 
       - name: Start operator
         run: |
-          kind load docker-image "${OPERATOR_IMAGE}:ci-build"
-          make deploy IMG=${OPERATOR_IMAGE}:ci-build
+          export CLUSTER_PROVIDER=${{matrix.cluster_provider}} && make prepareKubeConfig
+          make deploy
 
       - name: Run e2e tests
         run: |
@@ -88,6 +93,7 @@ jobs:
           PODNAME=$(kubectl get pods -n kepler-operator-system | grep kepler-operator-controller-manager | awk '{print $1}')
           echo $PODNAME
           sleep 10
+          kubectl describe pod $PODNAME -n kepler-operator-system
           kubectl logs  $PODNAME -c manager -n kepler-operator-system
           kubectl wait --for=condition=Ready pod --all -n kepler-operator-system --timeout 1m
           echo "Operator ready ..."

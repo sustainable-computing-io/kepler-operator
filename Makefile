@@ -159,7 +159,6 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 .PHONY: undeploy
@@ -279,10 +278,13 @@ cluster-sync:
 	./hack/cluster-sync.sh
 .PHONY: cluster-sync
 
+prepareKubeConfig:
+	./hack/prepareKubeConfig.sh
+.PHONY: prepareKubeConfig
 
 cluster-up:
 	rm -rf local-dev-cluster
-	git clone https://github.com/sustainable-computing-io/local-dev-cluster.git --depth=1
+	git clone -b v0.0.1 https://github.com/sustainable-computing-io/local-dev-cluster.git --depth=1
 	cd local-dev-cluster && ./main.sh
 .PHONY: cluster-up
 
