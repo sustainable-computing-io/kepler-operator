@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-logr/logr"
 	securityv1 "github.com/openshift/api/security/v1"
-	mcfgv1 "github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1"
 	monitoring "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
@@ -30,35 +29,32 @@ import (
 )
 
 const (
-	DaemonSetName                          = KeplerOperatorName + DaemonSetNameSuffix
-	ServiceName                            = KeplerOperatorName + ServiceNameSuffix
-	KeplerOperatorName                     = "kepler" //Sample name
-	KeplerOperatorNameSpace                = ""       // Set to default
-	ServiceAccountName                     = KeplerOperatorName + ServiceAccountNameSuffix
-	ServiceAccountNameSpace                = KeplerOperatorNameSpace + ServiceAccountNameSpaceSuffix
-	ClusterRoleName                        = ClusterRoleNameSuffix
-	ClusterRoleNameSpace                   = ClusterRoleNameSpaceSuffix
-	ClusterRoleBindingName                 = ClusterRoleBindingNameSuffix
-	ClusterRoleBindingNameSpace            = ClusterRoleBindingNameSpaceSuffix
-	DaemonSetNameSpace                     = KeplerOperatorNameSpace + DaemonSetNameSpaceSuffix
-	ServiceNameSpace                       = KeplerOperatorNameSpace + ServiceNameSpaceSuffix
-	CollectorConfigMapName                 = KeplerOperatorName + CollectorConfigMapNameSuffix
-	CollectorConfigMapNameSpace            = KeplerOperatorNameSpace + CollectorConfigMapNameSpaceSuffix
-	SCCObjectName                          = SCCObjectNameSuffix
-	SCCObjectNameSpace                     = SCCObjectNameSpaceSuffix
-	MachineConfigCGroupKernelArgMasterName = MachineConfigCGroupKernelArgMasterNameSuffix
-	MachineConfigCGroupKernelArgWorkerName = MachineConfigCGroupKernelArgWorkerNameSuffix
-	MachineConfigDevelMasterName           = MachineConfigDevelMasterNameSuffix
-	MachineConfigDevelWorkerName           = MachineConfigDevelWorkerNameSuffix
-	ModelServerDeploymentName              = ModelServerDeploymentNameSuffix
-	ModelServerDeploymentNameSpace         = KeplerOperatorNameSpace
-	ModelServerServiceName                 = ModelServerServiceNameSuffix
-	ModelServerServiceNameSpace            = KeplerOperatorNameSpace
-	ModelServerConfigMapName               = ModelServerConfigMapNameSuffix
-	ModelServerConfigMapNameSpace          = KeplerOperatorNameSpace
-	ModelServerPVNameSpace                 = KeplerOperatorNameSpace
-	ModelServerPVClaimName                 = ModelServerPersistentVolumeClaimNameSuffix
-	ModelServerPVClaimNameSpace            = KeplerOperatorNameSpace
+	DaemonSetName               = KeplerOperatorName + DaemonSetNameSuffix
+	ServiceName                 = KeplerOperatorName + ServiceNameSuffix
+	KeplerOperatorName          = "kepler" //Sample name
+	KeplerOperatorNameSpace     = ""       // Set to default
+	ServiceAccountName          = KeplerOperatorName + ServiceAccountNameSuffix
+	ServiceAccountNameSpace     = KeplerOperatorNameSpace + ServiceAccountNameSpaceSuffix
+	ClusterRoleName             = ClusterRoleNameSuffix
+	ClusterRoleNameSpace        = ClusterRoleNameSpaceSuffix
+	ClusterRoleBindingName      = ClusterRoleBindingNameSuffix
+	ClusterRoleBindingNameSpace = ClusterRoleBindingNameSpaceSuffix
+	DaemonSetNameSpace          = KeplerOperatorNameSpace + DaemonSetNameSpaceSuffix
+	ServiceNameSpace            = KeplerOperatorNameSpace + ServiceNameSpaceSuffix
+	CollectorConfigMapName      = KeplerOperatorName + CollectorConfigMapNameSuffix
+	CollectorConfigMapNameSpace = KeplerOperatorNameSpace + CollectorConfigMapNameSpaceSuffix
+	SCCObjectName               = SCCObjectNameSuffix
+	SCCObjectNameSpace          = SCCObjectNameSpaceSuffix
+
+	ModelServerDeploymentName      = ModelServerDeploymentNameSuffix
+	ModelServerDeploymentNameSpace = KeplerOperatorNameSpace
+	ModelServerServiceName         = ModelServerServiceNameSuffix
+	ModelServerServiceNameSpace    = KeplerOperatorNameSpace
+	ModelServerConfigMapName       = ModelServerConfigMapNameSuffix
+	ModelServerConfigMapNameSpace  = KeplerOperatorNameSpace
+	ModelServerPVNameSpace         = KeplerOperatorNameSpace
+	ModelServerPVClaimName         = ModelServerPersistentVolumeClaimNameSuffix
+	ModelServerPVClaimNameSpace    = KeplerOperatorNameSpace
 )
 
 func generateDefaultOperatorSettings(includePVandPVCFinalizer bool) (context.Context, *KeplerReconciler, *keplersystemv1alpha1.Kepler, logr.Logger, client.Client, error) {
@@ -95,11 +91,7 @@ func generateDefaultOperatorSettings(includePVandPVCFinalizer bool) (context.Con
 		logger.V(1).Error(err, "failed to add prometheus operator to scheme")
 		return ctx, nil, keplerInstance, logger, cl, err
 	}
-	err = mcfgv1.AddToScheme(s)
-	if err != nil {
-		logger.V(1).Error(err, "failed to add machineconfig operator to scheme")
-		return ctx, nil, keplerInstance, logger, cl, err
-	}
+
 	err = securityv1.AddToScheme(s)
 	if err != nil {
 		logger.V(1).Error(err, "failed to add openshift security to scheme")
@@ -204,36 +196,6 @@ func testVerifyCollectorReconciler(t *testing.T, ctx context.Context, client cli
 		testVerifySCC(t, *foundSCC)
 	}
 
-	foundMasterCgroupKernelArgs := &mcfgv1.MachineConfig{}
-	foundWorkerCgroupKernelArgs := &mcfgv1.MachineConfig{}
-	foundMasterDevel := &mcfgv1.MachineConfig{}
-	foundWorkerDevel := &mcfgv1.MachineConfig{}
-	masterCgroupKernelArgsError := client.Get(ctx, types.NamespacedName{Name: MachineConfigCGroupKernelArgMasterName, Namespace: ""}, foundMasterCgroupKernelArgs)
-	workerCgroupKernelArgsError := client.Get(ctx, types.NamespacedName{Name: MachineConfigCGroupKernelArgWorkerName, Namespace: ""}, foundWorkerCgroupKernelArgs)
-	masterDevelError := client.Get(ctx, types.NamespacedName{Name: MachineConfigDevelMasterName, Namespace: ""}, foundMasterDevel)
-	workerDevelError := client.Get(ctx, types.NamespacedName{Name: MachineConfigDevelWorkerName, Namespace: ""}, foundWorkerDevel)
-
-	if masterCgroupKernelArgsError != nil && strings.Contains(masterCgroupKernelArgsError.Error(), "no matches for kind") {
-		fmt.Printf("resulting error not a timeout: %s", masterCgroupKernelArgsError)
-	} else {
-		if masterCgroupKernelArgsError != nil {
-			t.Fatalf("cgroup kernel arguments master machine config has not been stored: (%v)", masterCgroupKernelArgsError)
-		}
-		if workerCgroupKernelArgsError != nil {
-			t.Fatalf("cgroup kernel arguments worker machine config has not been stored: (%v)", workerCgroupKernelArgsError)
-		}
-
-		if masterDevelError != nil {
-			t.Fatalf("devel master machine config has not been stored: (%v)", masterDevelError)
-		}
-
-		if workerDevelError != nil {
-			t.Fatalf("devel worker machine config has not been stored: (%v)", workerDevelError)
-		}
-
-		testVerifyBasicMachineConfig(t, *foundMasterCgroupKernelArgs, *foundWorkerCgroupKernelArgs, *foundMasterDevel, *foundWorkerDevel)
-	}
-
 	testVerifyServiceAccountSpec(t, *foundServiceAccount, *foundClusterRole, *foundClusterRoleBinding)
 	testVerifyServiceSpec(t, *foundService)
 	//Note testVerifyDaemonSpec already ensures SA is assigned to Daemonset
@@ -295,46 +257,6 @@ func testVerifySCC(t *testing.T, returnedSCC securityv1.SecurityContextConstrain
 	},
 		returnedSCC.RunAsUser)
 
-}
-
-func testVerifyBasicMachineConfig(t *testing.T, cgroupMasterMC mcfgv1.MachineConfig, cgroupWorkerMC mcfgv1.MachineConfig, develMasterMC mcfgv1.MachineConfig, develWorkerMC mcfgv1.MachineConfig) {
-	// check if all relevant Machine Config Features have been deployed correctly
-
-	assert.NotEmpty(t, cgroupMasterMC.Labels)
-	assert.Contains(t, cgroupMasterMC.Labels, "machineconfiguration.openshift.io/role")
-	assert.Equal(t, "master", cgroupMasterMC.Labels["machineconfiguration.openshift.io/role"])
-
-	assert.NotEmpty(t, cgroupWorkerMC.Labels)
-	assert.Contains(t, cgroupWorkerMC.Labels, "machineconfiguration.openshift.io/role")
-	assert.Equal(t, "worker", cgroupWorkerMC.Labels["machineconfiguration.openshift.io/role"])
-
-	assert.NotEmpty(t, develMasterMC.Labels)
-	assert.Contains(t, develMasterMC.Labels, "machineconfiguration.openshift.io/role")
-	assert.Equal(t, "master", develMasterMC.Labels["machineconfiguration.openshift.io/role"])
-
-	assert.NotEmpty(t, develWorkerMC.Labels)
-	assert.Contains(t, develWorkerMC.Labels, "machineconfiguration.openshift.io/role")
-	assert.Equal(t, "worker", develWorkerMC.Labels["machineconfiguration.openshift.io/role"])
-
-	// check if all relevant Machine Config Objects have correct spec
-	assert.NotEmpty(t, develMasterMC.Spec)
-	assert.NotEmpty(t, develWorkerMC.Spec)
-	assert.NotEmpty(t, cgroupMasterMC.Spec)
-	assert.NotEmpty(t, cgroupWorkerMC.Spec)
-
-	assert.NotEmpty(t, develMasterMC.Spec.Extensions)
-	assert.Contains(t, develMasterMC.Spec.Extensions, "kernel-devel")
-
-	assert.NotEmpty(t, develWorkerMC.Spec.Extensions)
-	assert.Contains(t, develWorkerMC.Spec.Extensions, "kernel-devel")
-
-	assert.NotEmpty(t, cgroupMasterMC.Spec.KernelArguments)
-	assert.Contains(t, cgroupMasterMC.Spec.KernelArguments, "systemd.unified_cgroup_hierarchy=1")
-	assert.Contains(t, cgroupMasterMC.Spec.KernelArguments, "cgroup_no_v1='all'")
-
-	assert.NotEmpty(t, cgroupWorkerMC.Spec.KernelArguments)
-	assert.Contains(t, cgroupWorkerMC.Spec.KernelArguments, "systemd.unified_cgroup_hierarchy=1")
-	assert.Contains(t, cgroupWorkerMC.Spec.KernelArguments, "cgroup_no_v1='all'")
 }
 
 func testVerifyConfigMap(t *testing.T, returnedConfigMap corev1.ConfigMap) {
@@ -936,59 +858,6 @@ func TestSCC(t *testing.T) {
 	}
 }
 
-func TestBasicMachineConfig(t *testing.T) {
-	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
-	if err != nil {
-		t.Fatalf("generate test environment failed: (%v)", err)
-	}
-
-	numOfReconciliations := 3
-
-	r := collectorReconciler{
-		KeplerReconciler: *keplerReconciler,
-		Instance:         keplerInstance,
-		Ctx:              ctx,
-	}
-
-	for i := 0; i < numOfReconciliations; i++ {
-		res, err := r.ensureMachineConfig(logger)
-		assert.True(t, res)
-		if err != nil {
-			t.Fatalf("machineconfig has failed which should not happen: (%v)", err)
-		}
-		foundMasterCgroupKernelArgs := &mcfgv1.MachineConfig{}
-		foundWorkerCgroupKernelArgs := &mcfgv1.MachineConfig{}
-		foundMasterDevel := &mcfgv1.MachineConfig{}
-		foundWorkerDevel := &mcfgv1.MachineConfig{}
-		masterCgroupKernelArgsError := client.Get(ctx, types.NamespacedName{Name: MachineConfigCGroupKernelArgMasterName, Namespace: ""}, foundMasterCgroupKernelArgs)
-		workerCgroupKernelArgsError := client.Get(ctx, types.NamespacedName{Name: MachineConfigCGroupKernelArgWorkerName, Namespace: ""}, foundWorkerCgroupKernelArgs)
-		masterDevelError := client.Get(ctx, types.NamespacedName{Name: MachineConfigDevelMasterName, Namespace: ""}, foundMasterDevel)
-		workerDevelError := client.Get(ctx, types.NamespacedName{Name: MachineConfigDevelWorkerName, Namespace: ""}, foundWorkerDevel)
-
-		if masterCgroupKernelArgsError != nil && strings.Contains(masterCgroupKernelArgsError.Error(), "no matches for kind") {
-			fmt.Printf("resulting error not a timeout: %s", masterCgroupKernelArgsError)
-		} else {
-			if masterCgroupKernelArgsError != nil {
-				t.Fatalf("cgroup kernel arguments master machine config has not been stored: (%v)", masterCgroupKernelArgsError)
-			}
-			if workerCgroupKernelArgsError != nil {
-				t.Fatalf("cgroup kernel arguments worker machine config has not been stored: (%v)", workerCgroupKernelArgsError)
-			}
-
-			if masterDevelError != nil {
-				t.Fatalf("devel master machine config has not been stored: (%v)", masterDevelError)
-			}
-
-			if workerDevelError != nil {
-				t.Fatalf("devel worker machine config has not been stored: (%v)", workerDevelError)
-			}
-
-			testVerifyBasicMachineConfig(t, *foundMasterCgroupKernelArgs, *foundWorkerCgroupKernelArgs, *foundMasterDevel, *foundWorkerDevel)
-		}
-	}
-
-}
-
 func TestModelServerConfigMap(t *testing.T) {
 	ctx, keplerReconciler, keplerInstance, logger, client, err := generateDefaultOperatorSettings(false)
 	if err != nil {
@@ -1143,12 +1012,6 @@ func TestCollectorReconciler(t *testing.T) {
 		_, err := CollectorReconciler(ctx, keplerInstance, keplerReconciler, logger)
 		if err != nil {
 			// This will never occur because such errors are handled already
-			/*if strings.Contains(err.Error(), "no matches for kind") {
-				if strings.Contains(err.Error(), "SecurityContextConstraints") || strings.Contains(err.Error(), "MachineConfig") {
-					logger.V(1).Info("Not OpenShift skip SecurityContextConstraints and MachineConfig")
-					continue
-				}
-			} else {*/
 			t.Fatalf("collector reconciler has failed: (%v)", err)
 
 		}
