@@ -16,10 +16,20 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 ### To run a kind cluster locally 
 
 ```sh
-make cluster-up CLUSTER_PROVIDER='kind' CI_DEPLOY=true
+make cluster-up
+kind get kubeconfig > tmp/kubeconfig
+export KUBECONFIG="$PWD/tmp/kubeconfig"
 ```
 
-### To run kepler-operator locally on the cluster
+### Run kepler-operator locally out of cluster
+
+```sh
+kubectl apply -k config/crd
+go run . --zap-devel --zap-log-level=100 2>&1 | tee tmp/operator.log
+kubectl apply -k config/samples/
+```
+
+### Run using pre-published image
 
 You can use the image from [quay.io](https://quay.io/repository/sustainable_computing_io/kepler-operator?tab=tags) to deploy kepler-operator. 
 
@@ -28,8 +38,8 @@ make deploy IMG=quay.io/sustainable_computing_io/kepler-operator:latest
 kubectl apply -k config/samples/
 ```
 
-Alternatively, if you like to build and use your own image,
 
+Alternatively, if you like to build and use your own image,
 	
 ```sh
 make docker-build docker-push IMG=<some-registry>/kepler-operator:tag
