@@ -32,3 +32,5 @@ local-dev-cluster/*
 # Operating system metadata files
 .DS_Store
 Thumbs.db
+
+/tmp
