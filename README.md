@@ -10,7 +10,7 @@ These data and stats from cgroup and sysfs can then be fed into ML models to est
 Check out the project on GitHub ➡️ [Kepler](https://github.com/sustainable-computing-io/kepler).
 
 ## Getting Started
-You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
+You’ll need a Kubernetes/OpenShift cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) or microshift to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
 ### To run a kind cluster locally 
@@ -19,6 +19,12 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 make cluster-up
 kind get kubeconfig > tmp/kubeconfig
 export KUBECONFIG="$PWD/tmp/kubeconfig"
+```
+
+### To run a microshift cluster locally
+
+```sh
+make cluster-up CLUSTER_PROVIDER=microshift
 ```
 
 ### Run kepler-operator locally out of cluster
