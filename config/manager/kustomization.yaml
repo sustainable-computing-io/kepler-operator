@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: quay.io/sustainable_computing_io/kepler-operator
-  newTag: "0.5"
+  newTag: "0.5.0"
