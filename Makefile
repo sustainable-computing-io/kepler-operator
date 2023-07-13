@@ -284,15 +284,7 @@ prepareKubeConfig:
 
 .PHONY: cluster-up
 cluster-up:
-	@{ \
-		set -e ;\
-		mkdir -p tmp ;\
-		cd tmp/ ;\
-		rm -rf local-dev-cluster ;\
-		git clone -b v0.0.1 https://github.com/sustainable-computing-io/local-dev-cluster.git --depth=1 ;\
-		cd local-dev-cluster ;\
-		./main.sh up ;\
-	}
+	./hack/cluster-up.sh
 
 .PHONY: create-bundle
 create-bundle:
