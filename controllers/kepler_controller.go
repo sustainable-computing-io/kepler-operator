@@ -88,7 +88,6 @@ func (r *KeplerReconciler) removePVC(logger logr.Logger, inst *keplerv1alpha1.Ke
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=*,verbs=*
 //+kubebuilder:rbac:groups=core,resources=nodes/metrics;nodes/proxy;nodes/stats,verbs=get;list;watch
 //+kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=get;list;watch;create;update;patch;delete;use
-//+kubebuilder:rbac:groups=machineconfiguration.openshift.io,resources=machineconfigs;machineconfigpools,verbs=get;list;watch;create;update;patch;delete;use
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -193,7 +192,6 @@ func CollectorReconciler(ctx context.Context, instance *keplerv1alpha1.Kepler, k
 	l := logger.WithValues("method", "Collector")
 	_, err := reconcileBatch(l,
 
-		r.ensureMachineConfig,
 		r.ensureConfigMap,
 		r.ensureService,
 		r.ensureServiceAccount,
@@ -382,7 +380,7 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 				Privileged: &scc_value,
 			},
 			Image:   image,
-			Command: []string{"/usr/bin/kepler", "-address", bindAddress, "-enable-gpu=true", "enable-cgroup-id=true", "v=5", "-kernel-source-dir=/usr/share/kepler/kernel_sources"},
+			Command: []string{"/usr/bin/kepler", "-address", bindAddress, "-enable-gpu=true", "-enable-cgroup-id=true", "-v=5", "-kernel-source-dir=/usr/share/kepler/kernel_sources"},
 			Ports: []corev1.ContainerPort{{
 				ContainerPort: collectorPort,
 				Name:          "http",

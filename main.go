@@ -32,7 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	securityv1 "github.com/openshift/api/security/v1"
-	mcfgv1 "github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1"
 
 	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/controllers"
@@ -48,7 +47,6 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(keplersystemv1alpha1.AddToScheme(scheme))
-	utilruntime.Must(mcfgv1.AddToScheme(scheme))
 	utilruntime.Must(securityv1.AddToScheme(scheme))
 
 	//+kubebuilder:scaffold:scheme
