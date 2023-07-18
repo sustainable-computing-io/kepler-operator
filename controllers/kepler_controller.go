@@ -380,7 +380,7 @@ func (r *collectorReconciler) ensureDaemonSet(l klog.Logger) (bool, error) {
 				Privileged: &scc_value,
 			},
 			Image:   image,
-			Command: []string{"/usr/bin/kepler", "-address", bindAddress, "-enable-gpu=true", "-enable-cgroup-id=true", "-v=5", "-kernel-source-dir=/usr/share/kepler/kernel_sources"},
+			Command: []string{"/usr/bin/kepler", "-address", bindAddress, "-enable-gpu=true", "-enable-cgroup-id=true", "-v=1", "-kernel-source-dir=/usr/share/kepler/kernel_sources"},
 			Ports: []corev1.ContainerPort{{
 				ContainerPort: collectorPort,
 				Name:          "http",
