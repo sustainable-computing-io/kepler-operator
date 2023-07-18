@@ -48,7 +48,7 @@ kubectl apply -k config/samples/
 Alternatively, if you like to build and use your own image,
 	
 ```sh
-make docker-build docker-push IMG=<some-registry>/kepler-operator:tag
+make operator-build operator-push OPERATOR_IMG=<some-registry>/kepler-operator:tag
 make deploy IMG=<some-registry>/kepler-operator:tag
 kubectl apply -k config/samples/
 ```

@@ -79,7 +79,7 @@ jobs:
         username: ${{ secrets.BOT_NAME }}
         password: ${{ secrets.BOT_TOKEN }}
     - name: make container
-      run: make docker-build IMG=${OPERATOR_IMAGE}:latest
+      run: make operator-build OPERATOR_IMG=${OPERATOR_IMAGE}:latest
     - name: push to quay
       run: |
         docker tag ${OPERATOR_IMAGE}:latest ${OPERATOR_IMAGE}:${{ github.event.inputs.tag }}

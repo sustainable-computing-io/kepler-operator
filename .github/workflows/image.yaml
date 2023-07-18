@@ -29,10 +29,10 @@ jobs:
             password: ${{ secrets.BOT_TOKEN }}
 
         - name: make container
-          run: make docker-build IMG=${OPERATOR_IMAGE}:latest
+          run: make operator-build OPERATOR_IMG=${OPERATOR_IMAGE}:latest
 
         
         - name: Push to quay
-          run: docker push ${OPERATOR_IMAGE}:latest
+          run: make operator-push OPERATOR_IMG=${OPERATOR_IMAGE}:latest
             
     
