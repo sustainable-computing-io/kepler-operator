@@ -33,8 +33,8 @@ import (
 
 	securityv1 "github.com/openshift/api/security/v1"
 
-	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
-	"github.com/sustainable.computing.io/kepler-operator/controllers"
+	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/controllers"
 	//+kubebuilder:scaffold:imports
 )
 
