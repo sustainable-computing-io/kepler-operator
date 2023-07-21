@@ -42,22 +42,16 @@ spec:
       kind: Kepler
       name: keplers.kepler.system.sustainable.computing.io
       specDescriptors:
-      - displayName: Collector
-        path: collector
+      - displayName: Exporter
+        path: exporter
         x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:collectorFields
-      - displayName: Model Server Exporter
-        path: model-server-exporter
+        - urn:alm:descriptor:com.tectonic.ui:exporterFields
+      - displayName: Model Server
+        path: modelServer
         x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:modelServerExporterFields
-      - displayName: Model Server Trainer
-        path: model-server-trainer
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:modelServerTrainerFields
+        - urn:alm:descriptor:com.tectonic.ui:modelServerFields
       statusDescriptors:
-      - description: conditions represent the latest available observations of the
-          kepler-system
-        displayName: Conditions
+      - displayName: Conditions
         path: conditions
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:conditions
@@ -350,5 +344,5 @@ spec:
   provider:
     name: Kepler Operator Contributors
     url: https://sustainable-computing.io/
-  version: 0.4.1
   replaces: kepler-operator.v0.4.0
+  version: 0.4.1

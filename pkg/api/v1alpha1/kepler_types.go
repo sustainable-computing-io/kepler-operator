@@ -20,8 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// NOTE: json tags are required. Any new fields you add must have json tags for
+// the fields to be serialized.
 
 type Cgroupv2 string
 
@@ -39,20 +39,13 @@ type Sources struct {
 	Kubelet  string   `json:"kubelet,omitempty"`
 }
 
-type CollectorSpec struct {
-	Image string `json:"image,omitempty"`
-	// +kubebuilder:default=9103
-	CollectorPort int `json:"collectorPort,omitempty"`
-	// Sources      Sources      `json:"sources,omitempty"`
-	// RatioMetrics RatioMetrics `json:"ratioMetrics,omitempty"`
-}
-
-type CustomHeader struct {
-	HeaderKey   string `json:"headerKey,omitempty"`
-	HeaderValue string `json:"headerValue,omitempty"`
+type HTTPHeader struct {
+	Key   string `json:"headerKey,omitempty"`
+	Value string `json:"headerValue,omitempty"`
 }
 
 type ModelServerTrainerSpec struct {
+	// TODO: consider namespacing all Prometheus related fields
 
 	// +kubebuilder:default=20
 	PromQueryInterval int `json:"promQueryInterval,omitempty"`
@@ -60,7 +53,7 @@ type ModelServerTrainerSpec struct {
 	// +kubebuilder:default=3
 	PromQueryStep int `json:"promQueryStep,omitempty"`
 
-	PromHeaders []CustomHeader `json:"promHeaders,omitempty"`
+	PromHeaders []HTTPHeader `json:"promHeaders,omitempty"`
 
 	// +kubebuilder:default=true
 	PromSSLDisable bool `json:"promSSLDisable,omitempty"`
@@ -72,29 +65,24 @@ type ModelServerTrainerSpec struct {
 	InitialModelNames string `json:"initialModelNames,omitempty"`
 }
 
-type ModelServerExporterSpec struct {
+type ModelServerSpec struct {
+
+	// +kubebuilder:default=""
+	URL string `json:"url,omitempty"`
 
 	// +kubebuilder:default=8100
 	Port int `json:"port,omitempty"`
 
 	// +kubebuilder:default=""
+	Path string `json:"path,omitempty"`
+
+	// +kubebuilder:default=""
+	RequiredPath string `json:"requiredPath,omitempty"`
+
+	// +kubebuilder:default=""
 	PromServer string `json:"promServer,omitempty"`
 
-	// +kubebuilder:default=""
-	ModelPath string `json:"modelPath,omitempty"`
-
-	// +kubebuilder:default=""
-	ModelServerURL string `json:"modelServerURL,omitempty"`
-
-	// +kubebuilder:default=""
-	ModelServerRequiredPath string `json:"modelServerRequiredPath,omitempty"`
-
-	ModelServerTrainer *ModelServerTrainerSpec `json:"model-server-trainer,omitempty"`
-}
-
-type ModelServerFeaturesSpec struct {
-	// +kubebuilder:default=false
-	IncludePVandPVCFinalizer bool `json:"includePVandPVCFinalizer,omitempty"`
+	Trainer *ModelServerTrainerSpec `json:"trainer,omitempty"`
 }
 
 type EstimatorSpec struct {
@@ -103,26 +91,32 @@ type EstimatorSpec struct {
 	InitUrl          string `json:"initUrl,omitempty"`
 }
 
+type ExporterSpec struct {
+	Image string `json:"image,omitempty"`
+	// +kubebuilder:default=9103
+	Port int `json:"port,omitempty"`
+}
+
 // KeplerSpec defines the desired state of Kepler
 type KeplerSpec struct {
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:modelServerExporterFields"
-	ModelServerExporter *ModelServerExporterSpec `json:"model-server-exporter,omitempty"`
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:modelServerFeatureFields"
-	ModelServerFeatures *ModelServerFeaturesSpec `json:"model-server-features,omitempty"`
-	Estimator           *EstimatorSpec           `json:"estimator,omitempty"`
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:collectorFields"
-	Collector *CollectorSpec `json:"collector,omitempty"`
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:exporterFields"
+	Exporter ExporterSpec `json:"exporter,omitempty"`
+
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:modelServerFields"
+	ModelServer *ModelServerSpec `json:"modelServer,omitempty"`
 }
 
 // KeplerStatus defines the observed state of Kepler
 type KeplerStatus struct {
-
 	// conditions represent the latest available observations of the kepler-system
+
 	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
-	Conditions metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	// +listType=atomic
+	Conditions []metav1.Condition `json:"conditions"`
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:scope="Cluster"
 //+kubebuilder:subresource:status
 
 // Kepler is the Schema for the keplers API

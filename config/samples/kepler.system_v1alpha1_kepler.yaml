@@ -10,10 +10,6 @@ metadata:
   name: kepler
 spec:
   # TODO(user): Add fields here
-  collector:
+  exporter:
     image: quay.io/sustainable_computing_io/kepler:latest
-    collectorPort: 9103
-
-  
-
-
+    port: 9103
