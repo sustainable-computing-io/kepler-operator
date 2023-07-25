@@ -31,8 +31,17 @@ func NewKeplerNamespace() *corev1.Namespace {
 			Kind:       "Namespace",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   Namespace,
-			Labels: CommonLabels,
+			Name: Namespace,
+			Labels: CommonLabels.Merge(k8s.StringMap{
+				// NOTE: Fixes the following error On Openshift 4.14
+				//   Warning  FailedCreate  daemonset-controller
+				//   Error creating: pods "kepler-exporter-ds-d6f28" is forbidden:
+				//   violates PodSecurity "restricted:latest":
+				//   privileged (container "kepler-exporter" must not set securityContext.privileged=true),
+				//   allowPrivilegeEscalation != false (container "kepler-exporter" must set
+				//   securityContext.allowPrivilegeEscalation=false),
+				"pod-security.kubernetes.io/enforce": "privileged",
+			}),
 			//TODO: ensure in-cluster monitoring ignores this ns
 		},
 	}
