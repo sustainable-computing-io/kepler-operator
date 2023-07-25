@@ -20,16 +20,16 @@
 set -e
 
 echo "Checking go format"
-sources="api/ controllers/"
+sources="./cmd/ ./pkg/"
 unformatted=$(gofmt -e -d -s -l $sources)
 if [ ! -z "$unformatted" ]; then
-    # Some files are not gofmt.
-    echo >&2 "The following Go files must be formatted with gofmt:"
-    for fn in $unformatted; do
-        echo >&2 "  $fn"
-    done
-    echo >&2 "Please run 'make format'."
-    exit 1
+	# Some files are not gofmt.
+	echo >&2 "The following Go files must be formatted with gofmt:"
+	for fn in $unformatted; do
+		echo >&2 "  $fn"
+	done
+	echo >&2 "Please run 'make format'."
+	exit 1
 fi
 
 exit 0
