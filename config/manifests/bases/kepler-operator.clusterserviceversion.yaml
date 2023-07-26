@@ -340,6 +340,8 @@ spec:
     name: Parul Singh
   - email: hchen@redhat.com
     name: Huamin Chen
+  - email: sthaha@redhat.com
+    name: Sunil Thaha
   maturity: alpha
   provider:
     name: Kepler Operator Contributors
