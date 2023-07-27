@@ -6,7 +6,6 @@ on:
     - v1alpha1
 
 env:
-  GO_VERSION: "1.20"
   KIND_VERSION: "0.15.0"
   GO111MODULE: "on"
   OPERATOR_IMAGE: "quay.io/sustainable_computing_io/kepler-operator"
@@ -25,7 +24,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@main
         with: 
-          go-version: ${{ env.GO_VERSION }}
+          go-version-file: go.mod
 
       - name: Build operator container
         run: make docker-build IMG=${OPERATOR_IMAGE}:latest
