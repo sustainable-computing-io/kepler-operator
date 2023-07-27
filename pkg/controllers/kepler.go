@@ -12,7 +12,6 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/components/modelserver"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/reconciler"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -202,7 +201,9 @@ func (r KeplerReconciler) reconcilersForKepler(k *v1alpha1.Kepler) []reconciler.
 	}
 
 	rs = append(rs, exporterReconcilers(k)...)
-	rs = append(rs, modelServerReconcilers(k)...)
+
+	// TODO: add this when modelServer is supported by Kepler Spec
+	// rs = append(rs, modelServerReconcilers(k)...)
 
 	// Add/Remove finalizer at the end
 	rs = append(rs, reconciler.Finalizer{Resource: k, Finalizer: KeplerFinalizer, Logger: r.logger})
@@ -255,19 +256,6 @@ func exporterReconcilers(k *v1alpha1.Kepler) []reconciler.Reconciler {
 		exporter.NewConfigMap(components.Full, k),
 		exporter.NewDaemonSet(k),
 		exporter.NewService(k),
-	)
-}
-
-func modelServerReconcilers(k *v1alpha1.Kepler) []reconciler.Reconciler {
-	if k.Spec.ModelServer == nil {
-		return nil
-	}
-
-	return updatersForResources(k,
-		modelserver.NewServiceAccount(),
-		modelserver.NewConfigMap(components.Full, k),
-		modelserver.NewDeployment(k),
-		modelserver.NewService(k),
 	)
 }
 

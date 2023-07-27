@@ -92,7 +92,10 @@ type EstimatorSpec struct {
 }
 
 type ExporterSpec struct {
-	Image string `json:"image,omitempty"`
+	// TODO: fix the default version before dev-preview
+
+	// +kubebuilder:default="latest"
+	Version string `json:"version,omitempty"`
 	// +kubebuilder:default=9103
 	Port int `json:"port,omitempty"`
 }
@@ -101,9 +104,6 @@ type ExporterSpec struct {
 type KeplerSpec struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:exporterFields"
 	Exporter ExporterSpec `json:"exporter,omitempty"`
-
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:modelServerFields"
-	ModelServer *ModelServerSpec `json:"modelServer,omitempty"`
 }
 
 // KeplerStatus defines the observed state of Kepler
