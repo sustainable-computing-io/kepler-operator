@@ -47,6 +47,9 @@ const (
 	ConfigmapName = prefix + "cm"
 	DaemonSetName = prefix + "ds"
 	ServiceName   = prefix + "svc"
+
+	// TODO: make this config to the operator
+	imageRepo = "quay.io/sustainable_computing_io/kepler:"
 )
 
 var (
@@ -92,7 +95,7 @@ func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
 					Containers: []corev1.Container{{
 						Name:            "kepler-exporter",
 						SecurityContext: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
-						Image:           exporter.Image,
+						Image:           imageForVersion(exporter.Version),
 						Command: []string{
 							"/usr/bin/kepler",
 							"-address", bindAddress,
@@ -354,4 +357,11 @@ func NewService(k *v1alpha1.Kepler) *corev1.Service {
 			},
 		},
 	}
+}
+
+func imageForVersion(v string) string {
+	if v == "latest" {
+		return imageRepo + v
+	}
+	return imageRepo + "release-" + v
 }

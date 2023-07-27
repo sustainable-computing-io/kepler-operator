@@ -99,9 +99,11 @@ main() {
 
 	export CLUSTER_PROVIDER
 	export GRAFANA_ENABLE
+	cd "$DEV_CLUSTER_DIR"
 	"$DEV_CLUSTER_DIR/main.sh" "$op"
 
 	# NOTE: take additional actions after local-dev-cluster performs the "$OP"
+	cd "$PROJECT_ROOT"
 	on_cluster_"$op"
 }
 

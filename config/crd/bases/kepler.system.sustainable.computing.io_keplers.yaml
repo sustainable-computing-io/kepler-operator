@@ -3,8 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: keplers.kepler.system.sustainable.computing.io
 spec:
   group: kepler.system.sustainable.computing.io
@@ -37,55 +36,11 @@ spec:
             properties:
               exporter:
                 properties:
-                  image:
-                    type: string
                   port:
                     default: 9103
                     type: integer
-                type: object
-              modelServer:
-                properties:
-                  path:
-                    default: ""
-                    type: string
-                  port:
-                    default: 8100
-                    type: integer
-                  promServer:
-                    default: ""
-                    type: string
-                  requiredPath:
-                    default: ""
-                    type: string
-                  trainer:
-                    properties:
-                      initialModelNames:
-                        default: ""
-                        type: string
-                      initialModelsEndpoint:
-                        default: ""
-                        type: string
-                      promHeaders:
-                        items:
-                          properties:
-                            headerKey:
-                              type: string
-                            headerValue:
-                              type: string
-                          type: object
-                        type: array
-                      promQueryInterval:
-                        default: 20
-                        type: integer
-                      promQueryStep:
-                        default: 3
-                        type: integer
-                      promSSLDisable:
-                        default: true
-                        type: boolean
-                    type: object
-                  url:
-                    default: ""
+                  version:
+                    default: latest
                     type: string
                 type: object
             type: object

@@ -1,3 +1,8 @@
+//go:build ignore
+// +build ignore
+
+// TODO: remove the tag above when model-server is added to Kepler Spec
+
 /*
 Copyright 2023.
 
