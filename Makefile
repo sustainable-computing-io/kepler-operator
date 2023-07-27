@@ -26,8 +26,8 @@ VERSION ?= $(shell cat VERSION)
 # This variable is used to construct full image tags for bundle and catalog images.
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
-# sustainable.computing.io/kepler-operator-bundle:v$VERSION and sustainable.computing.io/kepler-operator-catalog:$VERSION
-IMG_BASE ?= quay.io/sustainable.computing.io
+# sustainable_computing_io/kepler-operator-bundle:v$VERSION and sustainable_computing_io/kepler-operator-catalog:$VERSION
+IMG_BASE ?= quay.io/sustainable_computing_io
 
 
 # OPERATOR_IMG define the image:tag used for the operator
