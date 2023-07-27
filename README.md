@@ -17,8 +17,6 @@ You’ll need a Kubernetes/OpenShift cluster to run against. You can use [KIND](
 
 ```sh
 make cluster-up
-kind get kubeconfig > tmp/kubeconfig
-export KUBECONFIG="$PWD/tmp/kubeconfig"
 ```
 
 ### To run a microshift cluster locally
@@ -30,8 +28,8 @@ make cluster-up CLUSTER_PROVIDER=microshift
 ### Run kepler-operator locally out of cluster
 
 ```sh
-kubectl apply -k config/crd
-go run . --zap-devel --zap-log-level=100 2>&1 | tee tmp/operator.log
+make tools
+make run
 kubectl apply -k config/samples/
 ```
 
@@ -40,15 +38,14 @@ kubectl apply -k config/samples/
 You can use the image from [quay.io](https://quay.io/repository/sustainable_computing_io/kepler-operator?tab=tags) to deploy kepler-operator. 
 
 ```sh
-make deploy IMG=quay.io/sustainable_computing_io/kepler-operator:latest
+make deploy OPERATOR_IMG=quay.io/sustainable_computing_io/kepler-operator:latest
 kubectl apply -k config/samples/
 ```
-
 
 Alternatively, if you like to build and use your own image,
 	
 ```sh
-make docker-build docker-push IMG=<some-registry>/kepler-operator:tag
+make operator-build operator-push IMG_BASE=<some-registry>
 make deploy IMG=<some-registry>/kepler-operator:tag
 kubectl apply -k config/samples/
 ```

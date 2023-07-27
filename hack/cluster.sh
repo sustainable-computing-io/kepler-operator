@@ -20,8 +20,9 @@
 set -eu -o pipefail
 
 # config
-declare -r VERSION=${VERSION:-v0.0.1}
+declare -r VERSION=${VERSION:-v0.0.2}
 declare -r CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-kind}
+declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-true}
 
 # constants
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
@@ -69,17 +70,39 @@ git_checkout() {
 	fi
 }
 
+on_cluster_up() {
+	info "setting up SCC crd"
+	kubectl apply --force -f "$PROJECT_ROOT/hack/crds"
+
+	info "setup OLM"
+	operator-sdk olm install --verbose
+
+	info 'Next: "make run" to run operator locally'
+}
+
+on_cluster_restart() {
+	on_cluster_up
+}
+
+on_cluster_down() {
+	info "all done"
+}
+
 main() {
 	local op="$1"
 	shift
+	cd "$PROJECT_ROOT"
 
 	# NOTE: all operations are relative to tmp
 	mkdir -p "${TMP_DIR}"
 	git_checkout
 
-	cd "$DEV_CLUSTER_DIR"
 	export CLUSTER_PROVIDER
-	./main.sh "$op"
+	export GRAFANA_ENABLE
+	"$DEV_CLUSTER_DIR/main.sh" "$op"
+
+	# NOTE: take additional actions after local-dev-cluster performs the "$OP"
+	on_cluster_"$op"
 }
 
 main "$1"

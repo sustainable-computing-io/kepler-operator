@@ -27,7 +27,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Build operator container
-        run: make docker-build IMG=${OPERATOR_IMAGE}:latest
+        run: make operator-build OPERATOR_IMG=${OPERATOR_IMAGE}:latest
 
       - name: Load operator image into cluster
         run: |
@@ -84,7 +84,6 @@ jobs:
       - name: Start operator
         run: |
           export CLUSTER_PROVIDER=${{matrix.cluster_provider}} && make prepareKubeConfig
-          make deploy
 
       - name: Run e2e tests
         run: |
