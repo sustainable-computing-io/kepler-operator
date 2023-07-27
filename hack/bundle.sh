@@ -17,15 +17,11 @@
 # Copyright 2022 The Kepler Contributors
 #
 
-
 # To-do: write a git action to create bundle on every pull request merge and make a commit to new branch
 
 # Add below to bundle/metadata/annotations.yaml
 ##Annotattions for OpenShift version
 #   com.redhat.openshift.versions: "v4.9-v4.12"
-
-
-
 
 ## Uncomment below line if running this script as hack/bundle.sh
 # export VERSION=$1
@@ -38,7 +34,6 @@ make manifests
 
 tree config/manifests
 
-
 kustomize build config/manifests | operator-sdk generate bundle --version $VERSION
 
 tree bundle/
@@ -50,7 +45,7 @@ mv $(pwd)/bundle.Dockerfile bundle/
 FILE=bundle/ci.yaml
 
 if [ -f "$FILE" ]; then
-    rm -rf $FILE
+	rm -rf $FILE
 fi
 
 cat <<EOF >>$FILE
@@ -59,8 +54,6 @@ reviewers:
     - sustainable-computing-io
     - husky-parul
     - KaiyiLiu1234
+    - sthaha
 updateGraph: replaces-mode
 EOF
-
-
-
