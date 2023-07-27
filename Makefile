@@ -272,44 +272,5 @@ govulncheck: set_govulncheck tidy-vendor
 	@govulncheck -v ./... || true
 
 
-### setup local development env
-CLUSTER_PROVIDER ?= kind
-LOCAL_DEV_CLUSTER_VERSION ?= v0.0.1
-.PHONY: cluster-up
+	docker push $(CATALOG_IMG)
 
-cluster-up:
-	CLUSTER_PROVIDER=$(CLUSTER_PROVIDER) \
-	VERSION=$(LOCAL_DEV_CLUSTER_VERSION) \
-	./hack/cluster.sh up
-
-cluster-down:
-	CLUSTER_PROVIDER=$(CLUSTER_PROVIDER) \
-	VERSION=$(LOCAL_DEV_CLUSTER_VERSION) \
-	./hack/cluster.sh down
-
-cluster-restart:
-	CLUSTER_PROVIDER=$(CLUSTER_PROVIDER) \
-	VERSION=$(LOCAL_DEV_CLUSTER_VERSION) \
-	./hack/cluster.sh restart
-
-.PHONY: cluster-clean
-cluster-clean:
-	./hack/cluster-clean.sh
-
-	
-.PHONY: cluster-deploy
-cluster-deploy: cluster-clean
-	BARE_METAL_NODE_ONLY=false ./hack/cluster-deploy.sh
-
-.PHONY: cluster-sync
-cluster-sync:
-	./hack/cluster-sync.sh
-
-.PHONY: prepareKubeConfig
-prepareKubeConfig:
-	./hack/prepareKubeConfig.sh
-
-
-.PHONY: create-bundle
-create-bundle:
-	./hack/bundle.sh
