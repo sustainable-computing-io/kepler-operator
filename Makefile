@@ -271,7 +271,14 @@ bundle: manifests kustomize operator-sdk ## Generate bundle manifests and metada
 	$(OPERATOR_SDK) generate kustomize manifests --apis-dir=./pkg/api --verbose
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(OPERATOR_IMG)
 	$(KUSTOMIZE) build config/manifests | tee tmp/pre-bundle.yaml  |  \
-		$(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
+		$(OPERATOR_SDK) generate bundle --version $(VERSION) $(BUNDLE_GEN_FLAGS)
+	sed < bundle/manifests/kepler-operator.clusterserviceversion.yaml "s|containerImage.*|containerImage: $(OPERATOR_IMG)|g" \
+		> bundle/manifests/kepler-operator.clusterserviceversion.yaml.tmp && \
+		mv bundle/manifests/kepler-operator.clusterserviceversion.yaml.tmp bundle/manifests/kepler-operator.clusterserviceversion.yaml
+	REPLACES=$(shell yq -r .spec.version bundle/manifests/kepler-operator.clusterserviceversion.yaml); \
+	sed < bundle/manifests/kepler-operator.clusterserviceversion.yaml "s|replaces.*|replaces: kepler-operator.v$$REPLACES|g" \
+ 		> bundle/manifests/kepler-operator.clusterserviceversion.yaml.tmp && \
+		mv bundle/manifests/kepler-operator.clusterserviceversion.yaml.tmp bundle/manifests/kepler-operator.clusterserviceversion.yaml
 	$(OPERATOR_SDK) bundle validate ./bundle
 
 .PHONY: bundle-build
