@@ -21,26 +21,25 @@ set -e
 set -o pipefail
 set -x
 
-function prepareKubeConfig() {
-    mkdir -p /tmp/.kube
-    docker ps -a
-    if [ "$CLUSTER_PROVIDER" == "microshift" ]
-    then
-        docker tag quay.io/sustainable_computing_io/kepler-operator:ci-build localhost:5001/kepler-operator:ci-build
-        docker push localhost:5001/kepler-operator:ci-build
-        docker exec -i microshift cat /var/lib/microshift/resources/kubeadmin/kubeconfig > /tmp/.kube/config
-        IMG=registry:5000/kepler-operator:ci-build
-    else
-        docker tag quay.io/sustainable_computing_io/kepler-operator:ci-build localhost:5001/kepler-operator:ci-build
-        docker push localhost:5001/kepler-operator:ci-build
-        kind get kubeconfig --name=kind > /tmp/.kube/config
-        IMG=localhost:5001/kepler-operator:ci-build
-    fi
-	cd config/manager && kustomize edit set image controller=${IMG}
+prepareKubeConfig() {
+	mkdir -p /tmp/.kube
+	docker ps -a
+
+	docker tag quay.io/sustainable_computing_io/kepler-operator:ci-build localhost:5001/kepler-operator:ci-build
+	docker push localhost:5001/kepler-operator:ci-build
+
+	if [ "$CLUSTER_PROVIDER" == "microshift" ]; then
+		docker exec -i microshift cat /var/lib/microshift/resources/kubeadmin/kubeconfig >/tmp/.kube/config
+		IMG=registry:5000/kepler-operator:ci-build
+	else
+		kind get kubeconfig --name=kind >/tmp/.kube/config
+		IMG=localhost:5001/kepler-operator:ci-build
+	fi
+	make deploy OPERATOR_IMG=${IMG}
 }
 
-function main() {
-    prepareKubeConfig
+main() {
+	prepareKubeConfig
 }
 
 main
