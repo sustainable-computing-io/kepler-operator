@@ -23,7 +23,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 
-	securityv1 "github.com/openshift/api/security/v1"
+	secv1 "github.com/openshift/api/security/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -262,11 +262,11 @@ func NewClusterRoleBinding(c components.Detail) *rbacv1.ClusterRoleBinding {
 	}
 }
 
-func NewSCC(d components.Detail, k *v1alpha1.Kepler) *securityv1.SecurityContextConstraints {
+func NewSCC(d components.Detail, k *v1alpha1.Kepler) *secv1.SecurityContextConstraints {
 	if d == components.Metadata {
-		return &securityv1.SecurityContextConstraints{
+		return &secv1.SecurityContextConstraints{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: securityv1.SchemeGroupVersion.String(),
+				APIVersion: secv1.SchemeGroupVersion.String(),
 				Kind:       "SecurityContextConstraints",
 			},
 
@@ -277,9 +277,9 @@ func NewSCC(d components.Detail, k *v1alpha1.Kepler) *securityv1.SecurityContext
 		}
 	}
 
-	return &securityv1.SecurityContextConstraints{
+	return &secv1.SecurityContextConstraints{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: securityv1.SchemeGroupVersion.String(),
+			APIVersion: secv1.SchemeGroupVersion.String(),
 			Kind:       "SecurityContextConstraints",
 		},
 
@@ -296,23 +296,23 @@ func NewSCC(d components.Detail, k *v1alpha1.Kepler) *securityv1.SecurityContext
 		AllowHostPorts:           true,
 		DefaultAddCapabilities:   []corev1.Capability{corev1.Capability("SYS_ADMIN")},
 
-		FSGroup: securityv1.FSGroupStrategyOptions{
-			Type: securityv1.FSGroupStrategyRunAsAny,
+		FSGroup: secv1.FSGroupStrategyOptions{
+			Type: secv1.FSGroupStrategyRunAsAny,
 		},
 		ReadOnlyRootFilesystem: true,
-		RunAsUser: securityv1.RunAsUserStrategyOptions{
-			Type: securityv1.RunAsUserStrategyRunAsAny,
+		RunAsUser: secv1.RunAsUserStrategyOptions{
+			Type: secv1.RunAsUserStrategyRunAsAny,
 		},
-		SELinuxContext: securityv1.SELinuxContextStrategyOptions{
-			Type: securityv1.SELinuxStrategyRunAsAny,
+		SELinuxContext: secv1.SELinuxContextStrategyOptions{
+			Type: secv1.SELinuxStrategyRunAsAny,
 		},
 		//TODO: decide if "kepler" is really needed?
 		Users: []string{"kepler", FQServiceAccountName},
-		Volumes: []securityv1.FSType{
-			securityv1.FSType("configMap"),
-			securityv1.FSType("projected"),
-			securityv1.FSType("emptyDir"),
-			securityv1.FSType("hostPath")},
+		Volumes: []secv1.FSType{
+			secv1.FSType("configMap"),
+			secv1.FSType("projected"),
+			secv1.FSType("emptyDir"),
+			secv1.FSType("hostPath")},
 	}
 }
 
