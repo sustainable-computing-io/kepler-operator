@@ -8,11 +8,9 @@ rules:
   - apps
   resources:
   - daemonsets
-  - deployments
   verbs:
   - create
   - delete
-  - get
   - list
   - patch
   - update
@@ -21,14 +19,11 @@ rules:
   - ""
   resources:
   - configmaps
-  - persistentvolumeclaims
-  - persistentvolumes
   - serviceaccounts
   - services
   verbs:
   - create
   - delete
-  - get
   - list
   - patch
   - update
@@ -40,7 +35,6 @@ rules:
   verbs:
   - create
   - delete
-  - get
   - list
   - patch
   - update
@@ -58,29 +52,9 @@ rules:
 - apiGroups:
   - kepler.system.sustainable.computing.io
   resources:
-  - keplers
+  - '*'
   verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - kepler.system.sustainable.computing.io
-  resources:
-  - keplers/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - kepler.system.sustainable.computing.io
-  resources:
-  - keplers/status
-  verbs:
-  - get
-  - patch
-  - update
+  - '*'
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:
@@ -94,7 +68,6 @@ rules:
   verbs:
   - create
   - delete
-  - get
   - list
   - patch
   - update

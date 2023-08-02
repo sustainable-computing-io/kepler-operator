@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/retry"
 
+	secv1 "github.com/openshift/api/security/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -38,6 +39,21 @@ type KeplerReconciler struct {
 	logger logr.Logger
 }
 
+// Owned resource
+//+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=*,verbs=*
+
+// common to all components deployed by operator
+//+kubebuilder:rbac:groups=core,resources=namespaces,verbs=list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=services;configmaps;serviceaccounts,verbs=list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=*,verbs=*
+
+// RBAC for running Kepler exporter
+//+kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=list;watch;create;update;patch;delete;use
+
+// RBAC required by Kepler exporter
+//+kubebuilder:rbac:groups=core,resources=nodes/metrics;nodes/proxy;nodes/stats,verbs=get;list;watch
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
@@ -52,29 +68,15 @@ func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Kepler{}).
-		Owns(&corev1.PersistentVolume{}, genChanged).
-		Owns(&corev1.PersistentVolumeClaim{}, genChanged).
 		Owns(&corev1.ConfigMap{}, genChanged).
-		Owns(&corev1.Service{}, genChanged).
-		Owns(&appsv1.Deployment{}, genChanged).
-		Owns(&appsv1.DaemonSet{}, genChanged).
 		Owns(&corev1.ServiceAccount{}, genChanged).
-		Owns(&rbacv1.Role{}, genChanged).
-		Owns(&rbacv1.ClusterRole{}, genChanged).
+		Owns(&corev1.Service{}, genChanged).
+		Owns(&appsv1.DaemonSet{}, genChanged).
 		Owns(&rbacv1.ClusterRoleBinding{}, genChanged).
-		Owns(&rbacv1.RoleBinding{}, genChanged).
+		Owns(&rbacv1.ClusterRole{}, genChanged).
+		Owns(&secv1.SecurityContextConstraints{}, genChanged).
 		Complete(r)
 }
-
-//+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=keplers,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=keplers/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=keplers/finalizers,verbs=update
-//+kubebuilder:rbac:groups=core,resources=services;configmaps;serviceaccounts;persistentvolumes;persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=apps,resources=deployments;daemonsets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=*,verbs=*
-//+kubebuilder:rbac:groups=core,resources=nodes/metrics;nodes/proxy;nodes/stats,verbs=get;list;watch
-//+kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=get;list;watch;create;update;patch;delete;use
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

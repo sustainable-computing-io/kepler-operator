@@ -46,10 +46,6 @@ spec:
         path: exporter
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:exporterFields
-      - displayName: Model Server
-        path: modelServer
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:modelServerFields
       statusDescriptors:
       - displayName: Conditions
         path: conditions
