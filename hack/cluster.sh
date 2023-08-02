@@ -32,18 +32,7 @@ declare -r DEV_CLUSTER_DIR="$TMP_DIR/local-dev-cluster"
 declare -r BIN_DIR="$TMP_DIR/bin"
 declare -r OPERATOR_SDK_VERSION=${OPERATOR_SDK_VERSION:-v1.27.0}
 
-info() {
-	echo -e " 🔔 $*" >&2
-}
-
-err() {
-	echo -e " 😱 $*" >&2
-}
-
-run() {
-	echo -e " ❯ $*\n" >&2
-	"$@"
-}
+source "$PROJECT_ROOT/hack/utils.bash"
 
 git_checkout() {
 
