@@ -18,8 +18,8 @@ declare SHOW_USAGE=false
 declare LOGS_DIR="tmp/e2e"
 declare OPERATORS_NS="operators"
 declare TEST_TIMEOUT="15m"
-declare BUNDLE_IMG="quay.io/husky_parul/kepler-operator-bundle"
-declare OPERATOR_IMG="quay.io/husky_parul/kepler-operator"
+declare BUNDLE_IMG="quay.io/sustainable_computing_io/kepler-operator-bundle"
+declare OPERATOR_IMG="quay.io/sustainable_computing_io/kepler-operator"
 
 print_usage() {
 	local scr
@@ -52,16 +52,40 @@ print_usage() {
 
 tools_install(){
 
-	ARCH=${{ runner.arch }}
-    OS=${{ runner.os }}
-    OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download/v1.31.0
+	# if [ $# != 3 ]; then
+    # 	echo "Usage: tests/run-e2e.sh tools_install $(uname -m) $(uname)"
+	# 	return 0
+	# fi
+	
+
+	# echo $("$1" | awk '{print tolower($0)}')
+	# echo $("$2" | awk '{print tolower($0)}')
+
+	OS=$(uname | awk '{print tolower($0)}')
+
+	case $(uname -m) in 
+	 	x86_64) 
+			ARCH="amd64"
+			;;
+		aarch64) 
+			ARCH="arm64"
+			;;
+		*) 
+			echo -n $(uname -m) 
+			;;
+	esac
+
+	OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}
     curl -LO ${OPERATOR_SDK_DL_URL}/operator-sdk_${OS}_${ARCH}
     chmod +x operator-sdk_${OS}_${ARCH} && sudo mv operator-sdk_${OS}_${ARCH} /usr/local/bin/operator-sdk
 
 	operator-sdk version
 	operator-sdk olm install --verbose
 	kubectl apply -f ${SCC_CRD_YAML}
+
 }
+  
+
 
 
 

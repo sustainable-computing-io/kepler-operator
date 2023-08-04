@@ -12,6 +12,7 @@ env:
   OPERATOR_IMG: "quay.io/sustainable_computing_io/kepler-operator"
   KUBECONFIG: /tmp/.kube/config
   BUNDLE_IMG: "quay.io/sustainable_computing_io/kepler-operator-bundle"
+  OPERATOR_SDK_VERSION: "v1.27.0"
  
 
 jobs:
@@ -41,7 +42,7 @@ jobs:
       - name: Install tools
         run: |
           chmod +x tests/run-e2e.sh
-          ./test/run-e2e.sh tools_install
+          ./test/run-e2e.sh tools_install 
           
       - name: Build operator images
         shell: bash
