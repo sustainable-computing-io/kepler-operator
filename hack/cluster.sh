@@ -29,6 +29,7 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 declare -r PROJECT_ROOT
 declare -r TMP_DIR="$PROJECT_ROOT/tmp"
 declare -r DEV_CLUSTER_DIR="$TMP_DIR/local-dev-cluster"
+declare -r BIN_DIR="$TMP_DIR/bin"
 
 info() {
 	echo -e " 🔔 $*" >&2
@@ -75,7 +76,12 @@ on_cluster_up() {
 	kubectl apply --force -f "$PROJECT_ROOT/hack/crds"
 
 	info "setup OLM"
-	operator-sdk olm install --verbose
+	[[ -f "$BIN_DIR/operator-sdk" ]] || {
+		err "operator-sdk not available"
+		info "run make tools"
+		return 1
+	}
+	"$BIN_DIR/operator-sdk" olm install --verbose
 
 	info 'Next: "make run" to run operator locally'
 }
