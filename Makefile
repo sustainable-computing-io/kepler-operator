@@ -80,7 +80,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 ##@ Development env
 CLUSTER_PROVIDER ?= kind
-LOCAL_DEV_CLUSTER_VERSION ?= v0.0.2
+LOCAL_DEV_CLUSTER_VERSION ?= v0.0.3
 GRAFANA_ENABLE ?= true
 
 .PHONY: cluster-up

@@ -20,7 +20,7 @@
 set -eu -o pipefail
 
 # config
-declare -r VERSION=${VERSION:-v0.0.2}
+declare -r VERSION=${VERSION:-v0.0.3}
 declare -r CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-kind}
 declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-true}
 
