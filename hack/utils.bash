@@ -15,7 +15,7 @@
 #
 
 header() {
-	local title="🔆🔆🔆  $*  🔆🔆🔆 "
+	local title=" 🔆🔆🔆  $*  🔆🔆🔆 "
 
 	local len=40
 	if [[ ${#title} -gt $len ]]; then
@@ -38,15 +38,19 @@ err() {
 }
 
 warn() {
-	echo " ⚠️  $*" >&2
+	echo -e " ⚠️  $*" >&2
 }
 
 ok() {
-	echo " ✅ $*" >&2
+	echo -e " ✅ $*" >&2
 }
 
 skip() {
-	echo " 🙈 SKIP: $*" >&2
+	echo -e " 🙈 SKIP: $*" >&2
+}
+
+fail() {
+	echo -e " ❌ FAIL: $*" >&2
 }
 
 run() {
@@ -62,9 +66,39 @@ die() {
 
 line() {
 	local len="$1"
+	local style="${2:-thin}"
 	shift
 
-	echo -n "────" >&2
-	printf '─%.0s' $(seq "$len") >&2
-	echo "────────" >&2
+	local ch='─'
+	[[ "$style" == 'heavy' ]] && ch="━"
+
+	printf "$ch%.0s" $(seq "$len") >&2
+	echo
+}
+
+# wait_until <max_tries> <delay> <msg> <condition>
+# waits for condition to be true for a max of <max_tries> x <delay> seconds
+wait_until() {
+	local max_tries="$1"
+	local delay="$2"
+	local msg="$3"
+	local condition="$4"
+	shift 4
+
+	info "Waiting [$max_tries x ${delay}s] for $msg"
+	local tries=0
+	local -i ret=1
+	echo " ❯ $condition $*" 2>&1
+	while [[ $tries -lt $max_tries ]]; do
+		$condition "$@" && {
+			ret=0
+			break
+		}
+
+		tries=$((tries + 1))
+		echo "   ... [$tries / $max_tries] waiting ($delay secs) - $msg" >&2
+		sleep "$delay"
+	done
+
+	return $ret
 }
