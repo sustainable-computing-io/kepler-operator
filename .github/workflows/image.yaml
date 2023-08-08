@@ -5,12 +5,13 @@ on:
     branches: [ v1alpha1 ]
 
 env:  
-  OPERATOR_IMAGE: "quay.io/sustainable_computing_io/kepler-operator"
+  OPERATOR_IMG: "quay.io/sustainable_computing_io/kepler-operator"
+  BUNDLE_IMG: "quay.io/sustainable_computing_io/kepler-operator-bundle"
 
 
 jobs:
   push-image:
-      name: Push operator container image to quay.io/sustainable_computing_io/kepler-operator
+      name: Push operator container images to quay.io/sustainable_computing_io/
       runs-on: ubuntu-latest
       steps: 
 
@@ -29,10 +30,13 @@ jobs:
             password: ${{ secrets.BOT_TOKEN }}
 
         - name: Build Operator Image
-          run: make operator-build OPERATOR_IMG=${OPERATOR_IMAGE}:latest
+          run: |
+            chmod +x ./test/run-e2e.sh
+            ./test/run-e2e.sh build
 
         
         - name: Push to quay
-          run: make operator-push OPERATOR_IMG=${OPERATOR_IMAGE}:latest
-            
+          run: |
+            ./test/run-e2e.sh push
+          
     
