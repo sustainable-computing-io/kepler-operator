@@ -151,9 +151,9 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 
 .PHONY: deploy
 deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && \
-		$(KUSTOMIZE) edit set image controller=$(OPERATOR_IMG)
-	$(KUSTOMIZE) build config/default | kubectl apply --server-side --force-conflicts -f -
+	$(KUSTOMIZE) build config/default | \
+		sed  -e "s|<OPERATOR_IMG>|$(OPERATOR_IMG)|g" | tee tmp/deploy.yaml | \
+		kubectl apply --server-side --force-conflicts -f -
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
@@ -287,18 +287,10 @@ endif
 
 .PHONY: bundle
 bundle: manifests kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
-	$(OPERATOR_SDK) generate kustomize manifests --apis-dir=./pkg/api --verbose
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(OPERATOR_IMG)
-	$(KUSTOMIZE) build config/manifests | tee tmp/pre-bundle.yaml  |  \
-		$(OPERATOR_SDK) generate bundle --version $(VERSION) $(BUNDLE_GEN_FLAGS)
-	sed < bundle/manifests/kepler-operator.clusterserviceversion.yaml "s|containerImage.*|containerImage: $(OPERATOR_IMG)|g" \
-		> bundle/manifests/kepler-operator.clusterserviceversion.yaml.tmp && \
-		mv bundle/manifests/kepler-operator.clusterserviceversion.yaml.tmp bundle/manifests/kepler-operator.clusterserviceversion.yaml
-	REPLACES=$(shell yq -r .spec.version bundle/manifests/kepler-operator.clusterserviceversion.yaml); \
-	sed < bundle/manifests/kepler-operator.clusterserviceversion.yaml "s|replaces.*|replaces: kepler-operator.v$$REPLACES|g" \
- 		> bundle/manifests/kepler-operator.clusterserviceversion.yaml.tmp && \
-		mv bundle/manifests/kepler-operator.clusterserviceversion.yaml.tmp bundle/manifests/kepler-operator.clusterserviceversion.yaml
-	$(OPERATOR_SDK) bundle validate ./bundle
+	OPERATOR_IMG=$(OPERATOR_IMG) \
+	VERSION=$(VERSION) \
+	BUNDLE_GEN_FLAGS='$(BUNDLE_GEN_FLAGS)' \
+		hack/bundle.sh
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.

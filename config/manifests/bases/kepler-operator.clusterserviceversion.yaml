@@ -25,10 +25,10 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    containerImage: quay.io/sustainable_computing_io/kepler-operator:0.4.1
+    containerImage: <OPERATOR_IMG>
     createdAt: "2023-01-31 16:20:00"
     description: 'Deploys and Manages Kepler on Kubernetes '
-    operators.operatorframework.io/builder: operator-sdk-v1.23.0
+    operators.operatorframework.io/builder: operator-sdk-v1.27.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/sustainable-computing-io/kepler-operator
   name: kepler-operator.v0.4.1
@@ -339,8 +339,9 @@ spec:
   - email: sthaha@redhat.com
     name: Sunil Thaha
   maturity: alpha
+  minKubeVersion: 1.25.0
   provider:
     name: Kepler Operator Contributors
     url: https://sustainable-computing.io/
-  replaces: kepler-operator.v0.4.0
-  version: 0.4.1
+  replaces: <OLD_BUNDLE_VERSION>
+  version: 0.0.0

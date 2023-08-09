@@ -17,43 +17,79 @@
 # Copyright 2022 The Kepler Contributors
 #
 
-# To-do: write a git action to create bundle on every pull request merge and make a commit to new branch
+set -eu -o pipefail
 
-# Add below to bundle/metadata/annotations.yaml
-##Annotattions for OpenShift version
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+declare -r PROJECT_ROOT
+declare -r LOCAL_BIN="$PROJECT_ROOT/tmp/bin"
+declare -r CSV_FILE=bundle/manifests/kepler-operator.clusterserviceversion.yaml
+
+source "$PROJECT_ROOT/hack/utils.bash"
+
+# TODO: write a git action to create bundle on every pull request merge and make a commit to new branch
+# TODO: Add below to bundle/metadata/annotations.yaml
+#Annotattions for OpenShift version
 #   com.redhat.openshift.versions: "v4.9-v4.12"
 
-## Uncomment below line if running this script as hack/bundle.sh
-# export VERSION=$1
-OPERATOR_IMAGE=quay.io/sustainable_computing_io/kepler-operator
+OPERATOR_IMG=${OPERATOR_IMG:-quay.io/sustainable_computing_io/kepler-operator}
+VERSION=${VERSION:-"$(cat "$PROJECT_ROOT/VERSION")"}
+BUNDLE_GEN_FLAGS=${BUNDLE_GEN_FLAGS:-}
 
-make
-make docker-build IMG=$OPERATOR_IMAGE:$VERSION
-make generate
-make manifests
+declare -r OPERATOR_IMG VERSION BUNDLE_GEN_FLAGS
 
-tree config/manifests
+main() {
+	cd "$PROJECT_ROOT"
+	export PATH="$LOCAL_BIN:$PATH"
 
-kustomize build config/manifests | operator-sdk generate bundle --version $VERSION
+	# NOTE: get the current version in the bundle csv, which is the version that
+	# this generation replaces in normal case
 
-tree bundle/
+	local old_version=""
+	old_version="$(yq -r .spec.version "$CSV_FILE")"
+	local old_bundle_version="kepler-operator.v$old_version"
 
-operator-sdk bundle validate ./bundle --select-optional name=operatorhub --optional-values=k8s-version=1.25 --select-optional suite=operatorframework
+	# NOTE: if this is just a regeneration, then use the old replaces itself
+	[[ "$old_version" == "$VERSION" ]] &&
+		old_bundle_version=$(yq .spec.replaces "$CSV_FILE")
 
-mv $(pwd)/bundle.Dockerfile bundle/
+	info "Found old version: $old_bundle_version"
 
-FILE=bundle/ci.yaml
+	info "Building bundle version $VERSION"
+	run operator-sdk generate kustomize manifests --apis-dir=./pkg/api --verbose
 
-if [ -f "$FILE" ]; then
-	rm -rf $FILE
-fi
+	local gen_opts=()
+	read -r -a gen_opts <<<"$BUNDLE_GEN_FLAGS"
+	kustomize build config/manifests |
+		sed \
+			-e "s|<OPERATOR_IMG>|$OPERATOR_IMG|g" \
+			-e "s|<OLD_BUNDLE_VERSION>|$old_bundle_version|g" |
+		tee tmp/pre-bundle.yaml |
+		operator-sdk generate bundle "${gen_opts[@]}"
 
-cat <<EOF >>$FILE
----
-reviewers:
-    - sustainable-computing-io
-    - husky-parul
-    - KaiyiLiu1234
-    - sthaha
-updateGraph: replaces-mode
-EOF
+	info "Replacing old version $old_version ->  $VERSION"
+	sed \
+		-e "s|replaces: .*|replaces: $old_bundle_version|g" \
+		"$CSV_FILE" >"$CSV_FILE.tmp"
+	mv "$CSV_FILE.tmp" "$CSV_FILE"
+
+	mv bundle.Dockerfile bundle/
+	run tree bundle/
+
+	cat <<-EOF >bundle/ci.yaml
+		---
+		reviewers:
+		    - sustainable-computing-io
+		    - husky-parul
+		    - KaiyiLiu1234
+		    - sthaha
+		updateGraph: replaces-mode
+	EOF
+
+	info "Validating the bundle"
+	run operator-sdk bundle validate ./bundle \
+		--select-optional name=operatorhub \
+		--optional-values=k8s-version=1.25 \
+		--select-optional suite=operatorframework
+}
+
+main "$@"
