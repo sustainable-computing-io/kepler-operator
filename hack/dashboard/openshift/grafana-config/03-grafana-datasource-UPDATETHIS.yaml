@@ -6,7 +6,6 @@ apiVersion: integreatly.org/v1alpha1
 kind: GrafanaDataSource
 metadata:
   name: prometheus-grafanadatasource
-  namespace: kepler-operator-system
 spec:
   datasources:
     - access: proxy

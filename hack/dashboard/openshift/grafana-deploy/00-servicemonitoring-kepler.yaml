@@ -22,8 +22,7 @@ metadata:
     app.kubernetes.io/component: exporter
     app.kubernetes.io/name: kepler-exporter
     sustainable-computing.io/app: kepler
-  name: monitor-kepler-exporter
-  namespace: openshift-operators
+  name: kepler-exporter
 spec:
   endpoints:
   - interval: 3s
@@ -37,10 +36,6 @@ spec:
       targetLabel: instance
     scheme: http
   jobLabel: app.kubernetes.io/name
-  namespaceSelector:
-    matchNames:
-    - openshift-operators
   selector:
     matchLabels:
       app.kubernetes.io/component: exporter
-      app.kubernetes.io/name: kepler-exporter
