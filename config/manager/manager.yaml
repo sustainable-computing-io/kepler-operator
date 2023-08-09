@@ -70,7 +70,7 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: controller:latest
+        image: '<OPERATOR_IMG>'
         imagePullPolicy: IfNotPresent
         name: manager
         securityContext:

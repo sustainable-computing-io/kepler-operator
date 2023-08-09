@@ -151,9 +151,9 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 
 .PHONY: deploy
 deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && \
-		$(KUSTOMIZE) edit set image controller=$(OPERATOR_IMG)
-	$(KUSTOMIZE) build config/default | kubectl apply --server-side --force-conflicts -f -
+	$(KUSTOMIZE) build config/default | \
+		sed  -e "s|<OPERATOR_IMG>|$(OPERATOR_IMG)|g" | tee tmp/deploy.yaml | \
+		kubectl apply --server-side --force-conflicts -f -
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
@@ -172,24 +172,28 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 OPERATOR_SDK ?=$(LOCALBIN)/operator-sdk
+YQ ?=$(LOCALBIN)/yq
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
 CONTROLLER_TOOLS_VERSION ?= v0.12.1
 OPERATOR_SDK_VERSION ?= v1.27.0
+YQ_VERSION ?= v4.34.2
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 
 .PHONY: tools
-tools: kustomize controller-gen envtest operator-sdk setup-govulncheck
+tools: kustomize controller-gen envtest operator-sdk setup-govulncheck yq
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
-	test -s $(LOCALBIN)/kustomize || { \
-		cd "$(LOCALBIN)" && \
-		curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | \
-		bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) . ;\
+	@{ \
+		test -s $(LOCALBIN)/kustomize || { \
+			cd "$(LOCALBIN)" && \
+			curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | \
+			bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) . ;\
+		} \
 	}
 
 .PHONY: controller-gen
@@ -215,6 +219,21 @@ $(OPERATOR_SDK): $(LOCALBIN)
 		echo "Installing operator-sdk $(OPERATOR_SDK_VERSION)" ;\
 		curl -sSLo $(OPERATOR_SDK) https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_$(GOOS)_$(GOARCH) ;\
 		chmod +x $(OPERATOR_SDK) ;\
+	}
+
+.PHONY: yq
+yq: $(YQ) ## Download yq locally if necessary
+$(YQ): $(LOCALBIN)
+	@{ \
+		set -e ;\
+		[[ -f '$(YQ)' ]] && \
+		[[ "$$($(YQ) --version)" =~ 'version $(YQ_VERSION)' ]] && { \
+			echo "yq $(YQ_VERSION) is already installed" ;\
+			exit 0 ;\
+		} ;\
+		echo "Installing yq with version: $(YQ_VERSION)" ;\
+		curl -sSLo $(YQ) https://github.com/mikefarah/yq/releases/download/$(YQ_VERSION)/yq_$(GOOS)_$(GOARCH) ;\
+		chmod +x $(YQ) ;\
 	}
 
 mod-tidy:
@@ -268,18 +287,10 @@ endif
 
 .PHONY: bundle
 bundle: manifests kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
-	$(OPERATOR_SDK) generate kustomize manifests --apis-dir=./pkg/api --verbose
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(OPERATOR_IMG)
-	$(KUSTOMIZE) build config/manifests | tee tmp/pre-bundle.yaml  |  \
-		$(OPERATOR_SDK) generate bundle --version $(VERSION) $(BUNDLE_GEN_FLAGS)
-	sed < bundle/manifests/kepler-operator.clusterserviceversion.yaml "s|containerImage.*|containerImage: $(OPERATOR_IMG)|g" \
-		> bundle/manifests/kepler-operator.clusterserviceversion.yaml.tmp && \
-		mv bundle/manifests/kepler-operator.clusterserviceversion.yaml.tmp bundle/manifests/kepler-operator.clusterserviceversion.yaml
-	REPLACES=$(shell yq -r .spec.version bundle/manifests/kepler-operator.clusterserviceversion.yaml); \
-	sed < bundle/manifests/kepler-operator.clusterserviceversion.yaml "s|replaces.*|replaces: kepler-operator.v$$REPLACES|g" \
- 		> bundle/manifests/kepler-operator.clusterserviceversion.yaml.tmp && \
-		mv bundle/manifests/kepler-operator.clusterserviceversion.yaml.tmp bundle/manifests/kepler-operator.clusterserviceversion.yaml
-	$(OPERATOR_SDK) bundle validate ./bundle
+	OPERATOR_IMG=$(OPERATOR_IMG) \
+	VERSION=$(VERSION) \
+	BUNDLE_GEN_FLAGS='$(BUNDLE_GEN_FLAGS)' \
+		hack/bundle.sh
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
