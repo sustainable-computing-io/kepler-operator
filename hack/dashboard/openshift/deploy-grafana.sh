@@ -28,6 +28,24 @@ validate_cluster() {
 	header "Validating cluster"
 
 	local -i ret=0
+
+	local oc_version=""
+	oc_version=$(oc version --client -oyaml | grep releaseClientVersion | cut -f2 -d:)
+
+	local -i oc_major_version oc_minor_version
+	oc_major_version=$(echo "$oc_version" | cut -f1 -d.)
+	oc_minor_version=$(echo "$oc_version" | cut -f2 -d.)
+
+	[[ $oc_major_version -lt 4 ]] || [[ $oc_minor_version -lt 12 ]] && {
+		fail "oc version $oc_version used should be at least 4.12.0"
+		info "install a newer version of oc"
+		cat <<-EOF
+			curl -sNL https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.13.0/openshift-client-linux.tar.gz |
+			  tar -xzf - -C <install/path>
+		EOF
+		ret=1
+	}
+
 	oc get ns $MON_NS -o name || {
 		fail "$MON_NS namespace missing. Is this an OpenShift cluster?"
 		info "cluster:  $(oc whoami --show-server)"
@@ -223,8 +241,9 @@ main() {
 	mkdir -p "$BACKUP_DIR"
 
 	validate_cluster || {
+		line 60 heavy
 		fail "Cluster validation failed!"
-		info "Fix issues reported above and rerun the script"
+		info "Fix issues reported above and rerun the script\n\n"
 		return 1
 	}
 	ok "cluster validated"
