@@ -31,12 +31,10 @@ jobs:
 
         - name: Build Operator Image
           run: |
-            chmod +x ./test/run-e2e.sh
-            ./test/run-e2e.sh build
+            ./tests/run-e2e.sh build
 
-        
         - name: Push to quay
           run: |
-            ./test/run-e2e.sh push
+            ./tests/run-e2e.sh push
           
     
