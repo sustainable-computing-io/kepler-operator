@@ -14,6 +14,11 @@
 # limitations under the License.
 #
 
+is_fn() {
+	[[ $(type -t "$1") == "function" ]]
+	return $?
+}
+
 header() {
 	local title=" 🔆🔆🔆  $*  🔆🔆🔆 "
 
@@ -42,7 +47,7 @@ warn() {
 }
 
 ok() {
-	echo -e " ✅ $*" >&2
+	echo -e "   ✅ $*" >&2
 }
 
 skip() {
