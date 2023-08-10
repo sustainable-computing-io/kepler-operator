@@ -162,88 +162,48 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 
 ##@ Build Dependencies
 
-## Location to install dependencies to
+## Location where binaries are installed
 LOCALBIN ?= $(shell pwd)/tmp/bin
-$(LOCALBIN):
-	@mkdir -p $(LOCALBIN)
 
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
-OPERATOR_SDK ?=$(LOCALBIN)/operator-sdk
-YQ ?=$(LOCALBIN)/yq
-
-## Tool Versions
-KUSTOMIZE_VERSION ?= v3.8.7
-CONTROLLER_TOOLS_VERSION ?= v0.12.1
-OPERATOR_SDK_VERSION ?= v1.27.0
-YQ_VERSION ?= v4.34.2
-
-KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 
 .PHONY: tools
-tools: kustomize controller-gen envtest operator-sdk setup-govulncheck yq
+tools:
+	@./hack/tools.sh
 
 .PHONY: kustomize
-kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
-$(KUSTOMIZE): $(LOCALBIN)
-	@{ \
-		test -s $(LOCALBIN)/kustomize || { \
-			cd "$(LOCALBIN)" && \
-			curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | \
-			bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) . ;\
-		} \
-	}
+kustomize: ## Download kustomize locally if necessary.
+	@./hack/tools.sh kustomize
 
 .PHONY: controller-gen
-controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
-$(CONTROLLER_GEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+controller-gen:  ## Download controller-gen locally if necessary.
+	@./hack/tools.sh controller-gen
 
 .PHONY: envtest
-envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
-$(ENVTEST): $(LOCALBIN)
-	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+envtest: ## Download envtest-setup locally if necessary.
+	@./hack/tools.sh envtest
 
 .PHONY: operator-sdk
-operator-sdk: $(OPERATOR_SDK) ## Download operator-sdk locally if necessary.
-$(OPERATOR_SDK): $(LOCALBIN)
-	@{ \
-		set -e ;\
-		[[ -f $(OPERATOR_SDK) ]] &&  \
-		[[ "$$($(OPERATOR_SDK) version)" =~ 'operator-sdk version: "$(OPERATOR_SDK_VERSION)"' ]]&& { \
-			echo "operator-sdk $(OPERATOR_SDK_VERSION) is already installed" ;\
-			exit 0 ;\
-		} ;\
-		echo "Installing operator-sdk $(OPERATOR_SDK_VERSION)" ;\
-		curl -sSLo $(OPERATOR_SDK) https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_$(GOOS)_$(GOARCH) ;\
-		chmod +x $(OPERATOR_SDK) ;\
-	}
+operator-sdk: ## Download operator-sdk locally if necessary.
+	@./hack/tools.sh operator-sdk
 
 .PHONY: yq
-yq: $(YQ) ## Download yq locally if necessary
-$(YQ): $(LOCALBIN)
-	@{ \
-		set -e ;\
-		[[ -f '$(YQ)' ]] && \
-		[[ "$$($(YQ) --version)" =~ 'version $(YQ_VERSION)' ]] && { \
-			echo "yq $(YQ_VERSION) is already installed" ;\
-			exit 0 ;\
-		} ;\
-		echo "Installing yq with version: $(YQ_VERSION)" ;\
-		curl -sSLo $(YQ) https://github.com/mikefarah/yq/releases/download/$(YQ_VERSION)/yq_$(GOOS)_$(GOARCH) ;\
-		chmod +x $(YQ) ;\
-	}
+yq: ## Download yq locally if necessary
+	@./hack/tools.sh yq
+
+.PHONY: install-govulncheck
+install-govulncheck: ## Download govulncheck locally if necessary
+	@./hack/tools.sh govulncheck
 
 mod-tidy:
 	@go mod tidy
 
-setup-govulncheck:
-	@go install golang.org/x/vuln/cmd/govulncheck@latest
 
-govulncheck: setup-govulncheck mod-tidy
-	@govulncheck -v ./... || true
+govulncheck: install-govulncheck mod-tidy
+	@govulncheck ./... || true
 
 escapes_detect: mod-tidy
 	@go build -tags $(GO_BUILD_TAGS) -gcflags="-m -l" ./... 2>&1 | grep "escapes to heap" || true
