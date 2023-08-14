@@ -90,6 +90,10 @@ cluster-up: ## setup a cluster for local development
 	GRAFANA_ENABLE=$(GRAFANA_ENABLE) \
 	./hack/cluster.sh up
 
+.PHONY: cluster-prereqs
+cluster-prereqs: ## setup a cluster prerequisites for local operator development
+	./hack/cluster.sh prereqs
+
 .PHONY: cluster-restart
 cluster-restart: ## restart the local development cluster
 	CLUSTER_PROVIDER=$(CLUSTER_PROVIDER) \
