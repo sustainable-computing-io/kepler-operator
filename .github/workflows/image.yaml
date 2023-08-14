@@ -8,7 +8,6 @@ env:
   OPERATOR_IMG: "quay.io/sustainable_computing_io/kepler-operator"
   BUNDLE_IMG: "quay.io/sustainable_computing_io/kepler-operator-bundle"
 
-
 jobs:
   push-image:
       name: Push operator container images to quay.io/sustainable_computing_io/
@@ -29,12 +28,14 @@ jobs:
             username: ${{ secrets.BOT_NAME }}
             password: ${{ secrets.BOT_TOKEN }}
 
-        - name: Build Operator Image
+        - name: Build Operator & Bundle Image
           run: |
-            ./tests/run-e2e.sh build
+            make operator-build OPERATOR_IMG=${OPERATOR_IMG}:latest
+            make bundle bundle-build OPERATOR_IMG=${OPERATOR_IMG}:latest BUNDLE_IMG=${BUNDLE_IMG}:latest
 
-        - name: Push to quay
+        - name: Push Operator & Bundle Image to Quay
           run: |
-            ./tests/run-e2e.sh push
+            make operator-push OPERATOR_IMG=${OPERATOR_IMG}:latest
+            make bundle-push BUNDLE_IMG=${BUNDLE_IMG}:latest
           
     
