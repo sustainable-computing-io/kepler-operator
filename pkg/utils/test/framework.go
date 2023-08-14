@@ -29,15 +29,15 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
-type framework struct {
+type Framework struct {
 	T *testing.T
 }
 
-func NewFramework(t *testing.T) *framework {
-	return &framework{T: t}
+func NewFramework(t *testing.T) *Framework {
+	return &Framework{T: t}
 }
 
-func (f framework) Scheme() *runtime.Scheme {
+func (f Framework) Scheme() *runtime.Scheme {
 	f.T.Helper()
 	scheme := runtime.NewScheme()
 	assert.NoError(f.T, corev1.AddToScheme(scheme))
