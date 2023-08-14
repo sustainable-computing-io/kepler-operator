@@ -138,7 +138,7 @@ install_yq() {
 install_all() {
 	info "installing all tools ..."
 	local ret=0
-	for tool in $(declare -f | grep install_ | cut -f1 -d' ' | grep -v 'install_all'); do
+	for tool in $(declare -F | cut -f3 -d ' ' | grep install_ | grep -v 'install_all'); do
 		"$tool" || ret=1
 	done
 	return $ret
