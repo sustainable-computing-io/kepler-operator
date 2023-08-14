@@ -61,20 +61,26 @@ git_checkout() {
 	fi
 }
 
-on_cluster_up() {
+cluster_prereqs() {
 	info "setting up SCC crd"
 	kubectl apply --force -f "$PROJECT_ROOT/hack/crds"
 
+	kubectl get catalogsource && {
+		info "OLM is already installed"
+		return 0
+	}
 	info "setup OLM"
-	if [[ $(command -v operator-sdk) ]] && [[ $(operator-sdk version) =~ "operator-sdk version: \"$OPERATOR_SDK_VERSION\"" ]]; then
-		info "operator-sdk is already installed"
-	else
-		err "operator-sdk is not available with version $OPERATOR_SDK_VERSION"
-		info "installing operator-sdk with version: $OPERATOR_SDK_VERSION"
-		run make operator-sdk
-	fi
 	operator-sdk olm install --verbose
 
+}
+
+ensure_all_tools() {
+	header "Ensuring all tools are installed"
+	"$PROJECT_ROOT/hack/tools.sh" all
+}
+
+on_cluster_up() {
+	cluster_prereqs
 	info 'Next: "make run" to run operator locally'
 }
 
@@ -90,14 +96,24 @@ main() {
 	local op="$1"
 	shift
 	cd "$PROJECT_ROOT"
-
-	# NOTE: all operations are relative to tmp
+	export PATH="$BIN_DIR:$PATH"
 	mkdir -p "${TMP_DIR}"
-	git_checkout
+	ensure_all_tools
 
+	#NOTE: allow cluster_<OP> to executed without going through the entire
+	# setup again. This is useful (especially) in CI which uses the kepler-action
+	# to setup a cluster which does not have all the prerequisites for running
+	# Operator as OLM Bundle
+	declare -F | cut -f3 -d ' ' | grep -qE "^cluster_$op\$" && {
+		header "Running cluster_$op"
+		"cluster_$op" "$@"
+		return $?
+	}
+
+	header "Running Cluster Setup Script for $op"
+	git_checkout
 	export CLUSTER_PROVIDER
 	export GRAFANA_ENABLE
-	export PATH="$BIN_DIR:$PATH"
 	cd "$DEV_CLUSTER_DIR"
 	"$DEV_CLUSTER_DIR/main.sh" "$op"
 
