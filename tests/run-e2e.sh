@@ -189,11 +189,11 @@ print_usage() {
 		Options:
 		  -h|--help        show this help
 		  --ci             run in CI mode
-		  --no-deploy      do not build and deploy 0b0, useful for rerunning tests
-		  --no-builds      skip building operator images, useful when operator image is already
+		  --no-deploy      do not build and deploy Operator; useful for rerunning tests
+		  --no-builds      skip building operator images; useful when operator image is already
 		                   built and pushed
 		  --ns NAMESPACE   namespace to deploy operators (default: $OPERATORS_NS)
-		                   For running against openshift use --ns openshift-operators
+		                   E.g. running against openshift use --ns openshift-operators
 
 
 	EOF_HELP
@@ -311,7 +311,7 @@ wait_for_operator() {
 print_config() {
 	header "Test Configuration"
 	cat <<-EOF
-		  image base:       $IMG_BASE
+		  image base:      $IMG_BASE
 		  operator image:  $OPERATOR_IMG
 		  bundle:          $BUNDLE_IMG
 		  CI Mode:         $CI_MODE
@@ -333,8 +333,8 @@ main() {
 
 	cd "$PROJECT_ROOT"
 
-	# delete the e2e-tests but contine deploying obo
-	reset_env & # note must wait before runnng tests
+	# delete the e2e-tests but continue deploying the operator
+	reset_env & # note must wait before running tests
 	init_logs_dir
 	print_config
 
