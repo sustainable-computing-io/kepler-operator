@@ -1,41 +1,52 @@
-name: image
+name: images
 
 on:
   push:
     branches: [ v1alpha1 ]
 
-env:  
-  OPERATOR_IMG: "quay.io/sustainable_computing_io/kepler-operator"
-  BUNDLE_IMG: "quay.io/sustainable_computing_io/kepler-operator-bundle"
-
 jobs:
   push-image:
-      name: Push operator container images to quay.io/sustainable_computing_io/
+      name: Push operator container images
       runs-on: ubuntu-latest
-      steps: 
-
+      steps:
         - name: Checkout source
           uses: actions/checkout@v3
-        
+
         - uses: actions/setup-go@main
           with:
             go-version-file: go.mod
 
         - name: Login to Quay
-          uses: docker/login-action@v1
+          uses: docker/login-action@v2
           with:
             registry: quay.io/sustainable_computing_io
             username: ${{ secrets.BOT_NAME }}
             password: ${{ secrets.BOT_TOKEN }}
 
-        - name: Build Operator & Bundle Image
+        - name: Generate Version
+          id: version
           run: |
-            make operator-build OPERATOR_IMG=${OPERATOR_IMG}:latest
-            make bundle bundle-build OPERATOR_IMG=${OPERATOR_IMG}:latest BUNDLE_IMG=${BUNDLE_IMG}:latest
+            version="$(cat VERSION)-$(date +%y%m%d%H%M%S)"
+            echo VERSION=$version
+            echo "version=$version" >> $GITHUB_OUTPUT
 
-        - name: Push Operator & Bundle Image to Quay
+        - name: Build Operator
           run: |
-            make operator-push OPERATOR_IMG=${OPERATOR_IMG}:latest
-            make bundle-push BUNDLE_IMG=${BUNDLE_IMG}:latest
-          
-    
+            make operator-build
+          env:
+            VERSION: ${{ steps.version.outputs.version }}
+            IMG_BASE: ${{ vars.IMG_BASE }}
+
+        - name: Build Bundle
+          run: |
+            make bundle bundle-build
+          env:
+            VERSION: ${{ steps.version.outputs.version }}
+            IMG_BASE: ${{ vars.IMG_BASE }}
+
+        - name: Push Images
+          run: |
+            make operator-push  bundle-push
+          env:
+            VERSION: ${{ steps.version.outputs.version }}
+            IMG_BASE: ${{ vars.IMG_BASE }}
