@@ -33,8 +33,6 @@ IMG_BASE ?= quay.io/sustainable_computing_io
 # OPERATOR_IMG define the image:tag used for the operator
 # You can use it as an arg. (E.g make operator-build OPERATOR_IMG=<some-registry>:<version>)
 OPERATOR_IMG ?= $(IMG_BASE)/kepler-operator:$(VERSION)
-# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.25.0
 
 .PHONY: all
 all: build
@@ -75,8 +73,8 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
+test: manifests generate fmt vet  ## Run tests.
+		go test ./pkg/... -coverprofile cover.out
 
 ##@ Development env
 CLUSTER_PROVIDER ?= kind
@@ -172,7 +170,6 @@ LOCALBIN ?= $(shell pwd)/tmp/bin
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
-ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 .PHONY: tools
 tools:
@@ -186,9 +183,6 @@ kustomize: ## Download kustomize locally if necessary.
 controller-gen:  ## Download controller-gen locally if necessary.
 	@./hack/tools.sh controller-gen
 
-.PHONY: envtest
-envtest: ## Download envtest-setup locally if necessary.
-	@./hack/tools.sh envtest
 
 .PHONY: operator-sdk
 operator-sdk: ## Download operator-sdk locally if necessary.

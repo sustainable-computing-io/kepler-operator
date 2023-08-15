@@ -107,7 +107,8 @@ main() {
 	run kubectl get kepler -A
 	run kubectl get -n "$OPERATORS_NS" olm -l "$label"
 	run kubectl get operator,crd,clusterrole,clusterrolebinding -l "$label" -A
-	run kubectl get leases 0d9cbc82.sustainable.computing.io -n "$OPERATORS_NS"
+	run kubectl get leases 0d9cbc82.sustainable.computing.io -n "$OPERATORS_NS" || true
+	run kubectl get catalogsource kepler-operator-catalog -n "$OPERATORS_NS" || true
 	line 50 heavy
 
 	! $DELETE_RESOURCES && {
@@ -121,7 +122,8 @@ main() {
 	run kubectl delete ns kepler || true
 	run kubectl delete -n "$OPERATORS_NS" olm -l "$label"
 	run kubectl delete operator,crd,clusterrole,clusterrolebinding -l "$label" -A
-	run kubectl delete leases 0d9cbc82.sustainable.computing.io -n "$OPERATORS_NS"
+	run kubectl delete leases 0d9cbc82.sustainable.computing.io -n "$OPERATORS_NS" || true
+	run kubectl delete catalogsource kepler-operator-catalog -n "$OPERATORS_NS" || true
 
 	ok "$operator version has been successfully uninstalled.\n"
 }

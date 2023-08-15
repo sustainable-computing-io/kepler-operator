@@ -76,20 +76,6 @@ install_controller-gen() {
 	ok "controller-gen was installed successfully"
 }
 
-install_envtest() {
-	[[ $(command -v setup-envtest) ]] && {
-		ok "setup-envtest is already installed"
-		return 0
-	}
-
-	info "installing setup-envtest"
-	GOBIN=$LOCAL_BIN go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest || {
-		fail "failed to install setup-envtest"
-		return 1
-	}
-	ok "setup-envtest was installed successfully"
-}
-
 install_operator-sdk() {
 	local version_regex="operator-sdk version: \"$OPERATOR_SDK_VERSION\""
 
