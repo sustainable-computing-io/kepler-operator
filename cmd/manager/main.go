@@ -35,6 +35,7 @@ import (
 
 	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/controllers"
 	//+kubebuilder:scaffold:imports
 )
@@ -53,15 +54,29 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
+func env(name, defaultValue string) string {
+	value := os.Getenv(name)
+	if len(value) == 0 {
+		return defaultValue
+	}
+	return value
+}
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+
+	// NOTE: KEPLER_IMAGE can be set as env or flag, flag takes precedence over env
+	keplerImage := env("KEPLER_IMAGE", exporter.StableImage)
+	flag.StringVar(&exporter.Config.Image, "kepler.image", keplerImage, "kepler image")
+
 	opts := zap.Options{
 		Development: true,
 	}

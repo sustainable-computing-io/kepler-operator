@@ -7,7 +7,5 @@ metadata:
     app.kubernetes.io/part-of: kepler-operator
   name: kepler
 spec:
-  # TODO(user): Add fields here
   exporter:
     port: 9103
-    # version: 0.5.1 # latest default

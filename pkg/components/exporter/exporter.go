@@ -48,8 +48,16 @@ const (
 	DaemonSetName = prefix + "ds"
 	ServiceName   = prefix + "svc"
 
-	// TODO: make this config to the operator
-	imageRepo = "quay.io/sustainable_computing_io/kepler:"
+	StableImage = "quay.io/sustainable_computing_io/kepler:release-0.5.4"
+)
+
+// Config that will be set from outside
+var (
+	Config = struct {
+		Image string
+	}{
+		Image: StableImage,
+	}
 )
 
 var (
@@ -95,7 +103,7 @@ func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
 					Containers: []corev1.Container{{
 						Name:            "kepler-exporter",
 						SecurityContext: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
-						Image:           imageForVersion(exporter.Version),
+						Image:           Config.Image,
 						Command: []string{
 							"/usr/bin/kepler",
 							"-address", bindAddress,
@@ -357,11 +365,4 @@ func NewService(k *v1alpha1.Kepler) *corev1.Service {
 			},
 		},
 	}
-}
-
-func imageForVersion(v string) string {
-	if v == "latest" {
-		return imageRepo + v
-	}
-	return imageRepo + "release-" + v
 }
