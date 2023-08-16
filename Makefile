@@ -105,10 +105,6 @@ cluster-down: ## delete the local development cluster
 	VERSION=$(LOCAL_DEV_CLUSTER_VERSION) \
 	./hack/cluster.sh down
 
-.PHONY: prepareKubeConfig
-prepareKubeConfig:
-	./hack/prepareKubeConfig.sh
-
 ##@ Build
 
 .PHONY: build
