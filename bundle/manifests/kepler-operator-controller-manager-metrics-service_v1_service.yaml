@@ -14,7 +14,7 @@ metadata:
 spec:
   ports:
   - name: https
-    port: 8443
+    port: 8080
     protocol: TCP
     targetPort: https
   selector:
