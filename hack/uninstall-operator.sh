@@ -43,6 +43,7 @@ parse_args() {
 		--version | -v)
 			shift
 			OPERATOR_VERSION=$1
+			[[ "${1:0:1}" != "v" ]] && OPERATOR_VERSION="v$1"
 			shift
 			;;
 		*) return 1 ;; # show usage on everything else
@@ -65,10 +66,10 @@ print_usage() {
 		 ─────────────────────────────────────────────────────────────────
 
 		Options:
-			--delete              deletes the resources listed
+		  --delete              deletes the resources listed
 		  --version | -v        version of the operator to delete
-			                      default: $OPERATOR_VERSION
-			--ns | -n NAMESPACE   namespace where the operator is deployed
+		                        default: $OPERATOR_VERSION
+		  --ns | -n NAMESPACE   namespace where the operator is deployed
 			                      default: $OPERATORS_NS
 
 
