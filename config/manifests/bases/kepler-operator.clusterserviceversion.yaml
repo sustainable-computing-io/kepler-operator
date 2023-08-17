@@ -339,7 +339,7 @@ spec:
   - email: sthaha@redhat.com
     name: Sunil Thaha
   maturity: alpha
-  minKubeVersion: 1.25.0
+  minKubeVersion: 1.24.0
   provider:
     name: Kepler Operator Contributors
     url: https://sustainable-computing.io/
