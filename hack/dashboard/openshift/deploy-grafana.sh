@@ -193,7 +193,7 @@ setup_grafana_dashboard() {
 	info "Creating datasource"
 	local sa_token=""
 	# sa_token="$(oc -n "$KEPLER_DEPLOYMENT_NS" create token "$GRAFANA_SA")"
-	oc -n "$KEPLER_DEPLOYMENT_NS" create token "$GRAFANA_SA" >tmp/grafana-token
+	oc -n "$KEPLER_DEPLOYMENT_NS" create token --duration=8760h "$GRAFANA_SA" >tmp/grafana-token
 	sa_token=$(cat tmp/grafana-token)
 
 	# Deploy from updated manifest
