@@ -94,8 +94,6 @@ type EstimatorSpec struct {
 type ExporterSpec struct {
 	// TODO: fix the default version before dev-preview
 
-	// +kubebuilder:default="latest"
-	Version string `json:"version,omitempty"`
 	// +kubebuilder:default=9103
 	Port int `json:"port,omitempty"`
 }
