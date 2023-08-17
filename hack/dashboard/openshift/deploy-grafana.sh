@@ -27,17 +27,31 @@ oc_get_kepler_ns() {
 validate_cluster() {
 	header "Validating cluster"
 
-	local -i ret=0
+	command -v oc >/dev/null 2>&1 || {
+		fail "No oc command found in PATH"
+		info "Please install oc"
+		cat <<-EOF
+			curl -sNL https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.13.0/openshift-client-linux.tar.gz |
+			  tar -xzf - -C <install/path>
+		EOF
+		# NOTE: do not proceed without oc installed
+		return 1
+	}
 
+	local -i ret=0
 	local oc_version=""
-	oc_version=$(oc version --client -oyaml | grep releaseClientVersion | cut -f2 -d:)
+	oc_version=$(oc version --client -oyaml | grep releaseClientVersion: | cut -f2 -d:)
+	[[ -z "$oc_version" ]] && {
+		oc_version=$(oc version --client -oyaml | grep gitVersion | cut -f2 -d:)
+	}
 
 	local -i oc_major_version oc_minor_version
 	oc_major_version=$(echo "$oc_version" | cut -f1 -d.)
 	oc_minor_version=$(echo "$oc_version" | cut -f2 -d.)
+	info "Found oc version: $oc_version -> ($oc_major_version.$oc_minor_version.z)"
 
 	[[ $oc_major_version -lt 4 ]] || [[ $oc_minor_version -lt 12 ]] && {
-		fail "oc version $oc_version used should be at least 4.12.0"
+		fail "oc version '$oc_version' should be at least 4.12.0"
 		info "install a newer version of oc"
 		cat <<-EOF
 			curl -sNL https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.13.0/openshift-client-linux.tar.gz |
