@@ -5,4 +5,4 @@ metadata:
   labels:
     app: grafana
 spec:
-  url: https://raw.githubusercontent.com/sustainable-computing-io/kepler/main/grafana-dashboards/Kepler-Exporter.json
+  url: https://raw.githubusercontent.com/sustainable-computing-io/kepler-operator/v1alpha1/hack/dashboard/assets/dashboard.json
