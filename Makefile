@@ -248,7 +248,9 @@ bundle: manifests kustomize operator-sdk ## Generate bundle manifests and metada
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
-	docker build -f bundle/bundle.Dockerfile -t $(BUNDLE_IMG) --platform=linux/$(GOARCH) .
+	docker build -f bundle.Dockerfile \
+		-t $(BUNDLE_IMG) \
+		--platform=linux/$(GOARCH) .
 
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.
