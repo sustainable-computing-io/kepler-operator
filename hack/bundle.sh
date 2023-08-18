@@ -66,15 +66,16 @@ main() {
 		tee tmp/pre-bundle.yaml |
 		operator-sdk generate bundle "${gen_opts[@]}"
 
-	info "Replacing old version $old_version ->  $VERSION"
-	sed \
-		-e "s|replaces: .*|replaces: $old_bundle_version|g" \
-		"$CSV_FILE" >"$CSV_FILE.tmp"
-	mv "$CSV_FILE.tmp" "$CSV_FILE"
-
-	mv bundle.Dockerfile bundle/
+	[[ "$old_version" != "$VERSION" ]] && {
+		info "Replacing old version $old_version ->  $VERSION"
+		sed \
+			-e "s|replaces: .*|replaces: $old_bundle_version|g" \
+			"$CSV_FILE" >"$CSV_FILE.tmp"
+		mv "$CSV_FILE.tmp" "$CSV_FILE"
+	}
 	run tree bundle/
 
+	info "updating ci/reviewers"
 	cat <<-EOF >bundle/ci.yaml
 		---
 		reviewers:
@@ -85,7 +86,12 @@ main() {
 		updateGraph: replaces-mode
 	EOF
 
-	info "Validating the bundle"
+	info "Adding additional metadata annotations"
+	cat <<-EOF >>bundle/metadata/annotations.yaml
+		# Annotations for OpenShift version
+		  com.redhat.openshift.versions: "v4.11-v4.14"
+	EOF
+
 	run operator-sdk bundle validate ./bundle \
 		--select-optional name=operatorhub \
 		--optional-values=k8s-version=1.25 \
