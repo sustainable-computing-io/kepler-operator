@@ -51,15 +51,11 @@ kubectl apply -k config/samples/
 ```
 
 ### Uninstall the operator
-To delete the CRDs from the cluster:
 
 ```sh
-make uninstall
-```
-To undeploy the controller to the cluster:
+# NOTE: default version is 0.5.0
+./hack/uninstall-operator.sh [version]
 
-```sh
-make undeploy
 ```
 
 ### Automated development environment
