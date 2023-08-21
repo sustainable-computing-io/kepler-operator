@@ -38,6 +38,7 @@ spec:
                 properties:
                   port:
                     default: 9103
+                    format: int32
                     type: integer
                 type: object
             type: object
