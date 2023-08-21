@@ -69,6 +69,10 @@ var (
 	podSelector = labels.Merge(k8s.StringMap{
 		"app.kubernetes.io/name": "kepler-exporter",
 	})
+
+	LinuxNodeSelector = k8s.StringMap{
+		"kubernetes.io/os": "linux",
+	}
 )
 
 func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
@@ -95,6 +99,7 @@ func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
 					Labels:    podSelector,
 				},
 				Spec: corev1.PodSpec{
+					NodeSelector:       LinuxNodeSelector,
 					ServiceAccountName: ServiceAccountName,
 					DNSPolicy:          corev1.DNSPolicy(corev1.DNSClusterFirstWithHostNet),
 					Tolerations: []corev1.Toleration{{
