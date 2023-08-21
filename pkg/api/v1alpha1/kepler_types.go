@@ -95,7 +95,7 @@ type ExporterSpec struct {
 	// TODO: fix the default version before dev-preview
 
 	// +kubebuilder:default=9103
-	Port int `json:"port,omitempty"`
+	Port int32 `json:"port,omitempty"`
 }
 
 // KeplerSpec defines the desired state of Kepler

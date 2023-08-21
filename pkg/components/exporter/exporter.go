@@ -74,7 +74,7 @@ var (
 func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
 	exporter := k.Spec.Exporter
 
-	bindAddress := "0.0.0.0:" + strconv.Itoa(exporter.Port)
+	bindAddress := "0.0.0.0:" + strconv.Itoa(int(exporter.Port))
 
 	return &appsv1.DaemonSet{
 		TypeMeta: metav1.TypeMeta{
@@ -120,7 +120,7 @@ func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
 							ProbeHandler: corev1.ProbeHandler{
 								HTTPGet: &corev1.HTTPGetAction{
 									Path:   "/healthz",
-									Port:   intstr.IntOrString{Type: intstr.Int, IntVal: int32(exporter.Port)},
+									Port:   intstr.IntOrString{Type: intstr.Int, IntVal: exporter.Port},
 									Scheme: "HTTP",
 								},
 							},
@@ -172,7 +172,7 @@ func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
 	}
 
 	exporter := k.Spec.Exporter
-	bindAddress := "0.0.0.0:" + strconv.Itoa(exporter.Port)
+	bindAddress := "0.0.0.0:" + strconv.Itoa(int(exporter.Port))
 
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
