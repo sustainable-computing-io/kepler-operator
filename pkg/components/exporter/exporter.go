@@ -102,9 +102,14 @@ func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
 					NodeSelector:       linuxNodeSelector,
 					ServiceAccountName: ServiceAccountName,
 					DNSPolicy:          corev1.DNSPolicy(corev1.DNSClusterFirstWithHostNet),
-					Tolerations: []corev1.Toleration{{
-						Effect: corev1.TaintEffectNoSchedule, Key: "node-role.kubernetes.io/master",
-					}},
+					Tolerations: []corev1.Toleration{
+						{
+							Effect: corev1.TaintEffectNoSchedule, Key: "node-role.kubernetes.io/master",
+						},
+						{
+							Effect: corev1.TaintEffectNoSchedule, Key: "node-role.kubernetes.io/infra",
+						},
+					},
 					Containers: []corev1.Container{{
 						Name:            "kepler-exporter",
 						SecurityContext: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
