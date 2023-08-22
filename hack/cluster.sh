@@ -23,6 +23,7 @@ set -eu -o pipefail
 declare -r VERSION=${VERSION:-v0.0.3}
 declare -r CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-kind}
 declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-true}
+declare -r KIND_WORKER_NODES=${KIND_WORKER_NODES:-2}
 
 # constants
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
@@ -114,6 +115,7 @@ main() {
 	git_checkout
 	export CLUSTER_PROVIDER
 	export GRAFANA_ENABLE
+	export KIND_WORKER_NODES
 	cd "$DEV_CLUSTER_DIR"
 	"$DEV_CLUSTER_DIR/main.sh" "$op"
 

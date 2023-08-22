@@ -80,12 +80,14 @@ test: manifests generate fmt vet  ## Run tests.
 CLUSTER_PROVIDER ?= kind
 LOCAL_DEV_CLUSTER_VERSION ?= v0.0.3
 GRAFANA_ENABLE ?= true
+KIND_WORKER_NODES ?=2
 
 .PHONY: cluster-up
 cluster-up: ## setup a cluster for local development
 	CLUSTER_PROVIDER=$(CLUSTER_PROVIDER) \
 	VERSION=$(LOCAL_DEV_CLUSTER_VERSION) \
 	GRAFANA_ENABLE=$(GRAFANA_ENABLE) \
+	KIND_WORKER_NODES=$(KIND_WORKER_NODES) \
 	./hack/cluster.sh up
 
 .PHONY: cluster-prereqs
@@ -97,6 +99,7 @@ cluster-restart: ## restart the local development cluster
 	CLUSTER_PROVIDER=$(CLUSTER_PROVIDER) \
 	VERSION=$(LOCAL_DEV_CLUSTER_VERSION) \
 	GRAFANA_ENABLE=$(GRAFANA_ENABLE) \
+	KIND_WORKER_NODES=$(KIND_WORKER_NODES) \
 	./hack/cluster.sh restart
 
 .PHONY: cluster-down
