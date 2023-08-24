@@ -12,6 +12,10 @@
 │   ├── metadata
 │   └── tests
 │
+├── docs
+│   ├── developer    👈 developer / contributor (design) docs 
+│   └── user-guides
+│
 ├── config           👈 configuration is used to generate the bundle
 │   ├── crd
 │   ├── default

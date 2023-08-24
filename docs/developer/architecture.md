@@ -1,8 +1,8 @@
-# Kepler Operator Stack
+# Kepler Operator Design
 
-## Architecture / Topology
+## Architecture
 
 ![Architecture](assets/design-architecture.png)
 
-**NOTE:** Any subsequent changes can be made to `design-architecture` diagram using the excalidraw source 
-file located in [folder](assets/design-architecture.excalidraw).
+
+**NOTE:** The source of the diagram above is located [here](assets/design-architecture.excalidraw).
