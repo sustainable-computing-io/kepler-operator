@@ -18,13 +18,16 @@ package test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,8 +89,13 @@ func (f Framework) Scheme() *runtime.Scheme {
 	return scheme
 }
 
+var once sync.Once
+
 func (f Framework) NewClient(scheme *runtime.Scheme) client.Client {
 	f.T.Helper()
+	once.Do(func() {
+		ctrl.SetLogger(zap.New())
+	})
 	cfg := config.GetConfigOrDie()
 	c, err := client.New(cfg, client.Options{Scheme: scheme})
 	assert.NoError(f.T, err)
