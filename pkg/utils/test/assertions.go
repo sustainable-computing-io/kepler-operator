@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -80,8 +81,7 @@ func (f Framework) AssertResourceExits(name, ns string, obj client.Object, fns .
 		return getErr == nil, nil
 	})
 
-	kind := obj.GetObjectKind().GroupVersionKind().Kind
-	assert.NoError(f.T, getErr, "failed to find %s %s (timeout %v)", kind, key, opt.WaitTimeout)
+	assert.NoError(f.T, getErr, "failed to find %v (timeout %v)", key, opt.WaitTimeout)
 }
 
 func (f Framework) AssertNoResourceExits(name, ns string, obj client.Object, fns ...AssertOptionFn) {
@@ -97,7 +97,6 @@ func (f Framework) AssertNoResourceExits(name, ns string, obj client.Object, fns
 	})
 
 	if wait.Interrupted(err) {
-		kind := obj.GetObjectKind().GroupVersionKind().Kind
-		f.T.Errorf("%s %v exists after %v", kind, key, opt.WaitTimeout)
+		f.T.Errorf("%s (%v) exists after %v", k8s.GVKName(obj), key, opt.WaitTimeout)
 	}
 }
