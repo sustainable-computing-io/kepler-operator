@@ -110,6 +110,11 @@ func (f Framework) GetKepler(name string) *v1alpha1.Kepler {
 
 func (f Framework) CreateKepler(name string, fns ...keplerFn) *v1alpha1.Kepler {
 	kepler := v1alpha1.Kepler{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1alpha1.GroupVersion.String(),
+			Kind:       "Kepler",
+		},
+
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
@@ -124,7 +129,9 @@ func (f Framework) CreateKepler(name string, fns ...keplerFn) *v1alpha1.Kepler {
 		f.client.Delete(context.TODO(), &kepler)
 	})
 
-	err := f.client.Create(context.TODO(), &kepler)
+	err := f.client.Patch(context.TODO(), &kepler, client.Apply,
+		client.ForceOwnership, client.FieldOwner("e2e-test"),
+	)
 	assert.NoError(f.T, err, "failed to create kepler")
 
 	return &kepler
