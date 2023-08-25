@@ -14,8 +14,6 @@ import (
 )
 
 func TestDeleterReconcile(t *testing.T) {
-	f := test.NewFramework(t)
-	scheme := f.Scheme()
 	dep := k8s.Deployment("ns", "name").Build()
 	c := fake.NewFakeClient(dep)
 
@@ -30,8 +28,9 @@ func TestDeleterReconcile(t *testing.T) {
 	for _, tc := range tt {
 		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {
+			f := test.NewFramework(t, test.WithClient(c))
 			deleter := Deleter{Resource: tc.resource}
-			result := deleter.Reconcile(context.TODO(), c, scheme)
+			result := deleter.Reconcile(context.TODO(), c, f.Scheme())
 			assert.Exactly(t, Continue, result.Action)
 			assert.NoError(t, result.Error)
 

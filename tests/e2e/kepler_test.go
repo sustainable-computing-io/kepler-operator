@@ -3,28 +3,42 @@ package e2e
 import (
 	"testing"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
-
 	"github.com/stretchr/testify/assert"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/test"
 
-	"k8s.io/apimachinery/pkg/runtime"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/test"
+	appsv1 "k8s.io/api/apps/v1"
 )
 
-func k8sClient(scheme *runtime.Scheme) (client.Client, error) {
-	cfg := config.GetConfigOrDie()
-	c, err := client.New(cfg, client.Options{Scheme: scheme})
-	if err != nil {
-		return nil, err
-	}
+func TestKepler_Reconciliation(t *testing.T) {
+	f := test.NewFramework(t)
 
-	return c, nil
+	// pre-condition
+	f.AssertNoResourceExits("kepler", "", &v1alpha1.Kepler{}, test.NoWait())
+
+	// when
+	f.CreateKepler("kepler")
+	ds := appsv1.DaemonSet{}
+
+	// then
+	f.AssertResourceExits(exporter.DaemonSetName, components.Namespace, &ds)
+
+	kepler := f.GetKepler("kepler")
+	status := kepler.Status
+	reconciled, err := k8s.FindCondition(status.Conditions, v1alpha1.Reconciled)
+	assert.NoError(t, err, "unable to get reconciled condition")
+
+	assert.Equal(t, reconciled.ObservedGeneration, kepler.Generation)
+	assert.Equal(t, reconciled.Status, v1alpha1.ConditionTrue)
 }
 
-func TestKepler_Create(t *testing.T) {
+func TestBadKepler_Reconciliation(t *testing.T) {
 	f := test.NewFramework(t)
-	k8sClient, err := k8sClient(f.Scheme())
-	assert.NoError(t, err)
-	assert.NotNil(t, k8sClient)
+	f.AssertNoResourceExits("invalid-name", "", &v1alpha1.Kepler{}, test.NoWait())
+	f.CreateKepler("invalid-name")
+	ds := appsv1.DaemonSet{}
+	f.AssertNoResourceExits(exporter.DaemonSetName, components.Namespace, &ds)
 }
