@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -68,8 +69,5 @@ func (r Updater) Reconcile(ctx context.Context, c client.Client, scheme *runtime
 }
 
 func (r Updater) error(msg string, err error) error {
-	ns := r.Resource.GetNamespace()
-	name := r.Resource.GetName()
-	gvk := r.Resource.GetObjectKind().GroupVersionKind().String()
-	return fmt.Errorf("%s/%s (%s): updater: %s : %w", ns, name, gvk, msg, err)
+	return fmt.Errorf("%s: updater: %s : %w", k8s.GVKName(r.Resource), msg, err)
 }

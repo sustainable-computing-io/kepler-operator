@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -40,8 +41,5 @@ func (r Deleter) Reconcile(ctx context.Context, c client.Client, scheme *runtime
 }
 
 func (r Deleter) error(msg string, err error) error {
-	ns := r.Resource.GetNamespace()
-	name := r.Resource.GetName()
-	gvk := r.Resource.GetObjectKind().GroupVersionKind().String()
-	return fmt.Errorf("%s/%s (%s): deleter: %s : %w", ns, name, gvk, msg, err)
+	return fmt.Errorf("%s: deleter: %s : %w", k8s.GVKName(r.Resource), msg, err)
 }

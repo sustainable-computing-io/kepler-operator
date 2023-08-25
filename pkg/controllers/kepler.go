@@ -169,22 +169,22 @@ func (r KeplerReconciler) updateStatus(ctx context.Context, req ctrl.Request, re
 		}
 
 		if recErr != nil {
-			kepler.Status.Conditions = []metav1.Condition{{
-				Type:               v1alpha1.ConditionReconciled,
-				Status:             metav1.ConditionTrue,
+			kepler.Status.Conditions = []v1alpha1.Condition{{
+				Type:               v1alpha1.Reconciled,
+				Status:             v1alpha1.ConditionFalse,
 				ObservedGeneration: kepler.Generation,
 				LastTransitionTime: metav1.Now(),
-				Reason:             v1alpha1.ReconciledReasonError,
+				Reason:             v1alpha1.ReconcileError,
 				Message:            recErr.Error(),
 			}}
 		} else {
-			kepler.Status.Conditions = []metav1.Condition{{
-				Type:               v1alpha1.ConditionReconciled,
-				Status:             metav1.ConditionTrue,
+			kepler.Status.Conditions = []v1alpha1.Condition{{
+				Type:               v1alpha1.Reconciled,
+				Status:             v1alpha1.ConditionTrue,
 				ObservedGeneration: kepler.Generation,
-				Reason:             v1alpha1.ReconciledReasonComplete,
-				Message:            "Reconcile succeeded",
 				LastTransitionTime: metav1.Now(),
+				Reason:             v1alpha1.ReconcileComplete,
+				Message:            "Reconcile succeeded",
 			}}
 		}
 		return r.Client.Status().Update(ctx, kepler)
@@ -221,13 +221,13 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 			return nil
 		}
 
-		invalidKepler.Status.Conditions = []metav1.Condition{{
-			Type:               v1alpha1.ConditionReconciled,
-			Status:             metav1.ConditionTrue,
+		invalidKepler.Status.Conditions = []v1alpha1.Condition{{
+			Type:               v1alpha1.Reconciled,
+			Status:             v1alpha1.ConditionFalse,
 			ObservedGeneration: invalidKepler.Generation,
 			LastTransitionTime: metav1.Now(),
-			Reason:             v1alpha1.InvalidKeplerObjectReason,
-			Message:            "Only a single instance of Kepler named kepler is allowed",
+			Reason:             v1alpha1.InvalidKeplerResource,
+			Message:            "Only a single instance of Kepler named kepler is reconciled",
 		}}
 		return r.Client.Status().Update(ctx, invalidKepler)
 	})
