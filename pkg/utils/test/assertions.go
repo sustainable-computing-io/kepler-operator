@@ -54,7 +54,7 @@ func PollInterval(interval time.Duration) AssertOptionFn {
 }
 
 func NoWait() AssertOptionFn {
-	return Wait(0, 0)
+	return Wait(1*time.Millisecond, 1*time.Millisecond)
 }
 
 func assertOption(fns ...AssertOptionFn) AssertOption {
