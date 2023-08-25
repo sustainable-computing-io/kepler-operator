@@ -41,7 +41,7 @@ import (
 
 // default ForeverTestTimeout is 30, some test fail because they take more than 30s
 // change to custom in order to let the test finish withouth errors
-const TestTimeout = 40 * time.Second
+const TestTimeout = 1 * time.Minute
 
 type Framework struct {
 	T      *testing.T

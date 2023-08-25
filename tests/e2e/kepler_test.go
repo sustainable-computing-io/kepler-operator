@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -57,7 +56,7 @@ func TestKepler_Deletion(t *testing.T) {
 
 	// It cleans up the resources
 	f.AssertNoResourceExits(exporter.DaemonSetName, components.Namespace, &appsv1.DaemonSet{})
-	f.AssertNoResourceExits(components.Namespace, "", &corev1.Namespace{}, test.Timeout(60*time.Second))
+	f.AssertNoResourceExits(components.Namespace, "", &corev1.Namespace{})
 }
 
 func TestBadKepler_Reconciliation(t *testing.T) {
