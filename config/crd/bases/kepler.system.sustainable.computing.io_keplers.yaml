@@ -39,6 +39,8 @@ spec:
                   port:
                     default: 9103
                     format: int32
+                    maximum: 65535
+                    minimum: 1
                     type: integer
                 type: object
             type: object

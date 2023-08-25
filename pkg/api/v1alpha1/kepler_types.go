@@ -95,6 +95,8 @@ type ExporterSpec struct {
 	// TODO: fix the default version before dev-preview
 
 	// +kubebuilder:default=9103
+	// +kubebuilder:validation:Maximum=65535
+	// +kubebuilder:validation:Minimum=1
 	Port int32 `json:"port,omitempty"`
 }
 
