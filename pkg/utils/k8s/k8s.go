@@ -17,6 +17,7 @@ limitations under the License.
 package k8s
 
 import (
+	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -75,4 +76,13 @@ func EnvFromField(path string) *corev1.EnvVarSource {
 	return &corev1.EnvVarSource{
 		FieldRef: &corev1.ObjectFieldSelector{FieldPath: path},
 	}
+}
+
+func FindCondition(c []v1alpha1.Condition, t v1alpha1.ConditionType) (v1alpha1.Condition, error) {
+	for _, cond := range c {
+		if cond.Type == t {
+			return cond, nil
+		}
+	}
+	return v1alpha1.Condition{}, fmt.Errorf("condition %s not found", t)
 }

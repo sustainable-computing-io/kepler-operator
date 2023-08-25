@@ -104,13 +104,76 @@ type KeplerSpec struct {
 	Exporter ExporterSpec `json:"exporter,omitempty"`
 }
 
+type ConditionType string
+
+const (
+	Available  ConditionType = "Available"
+	Reconciled ConditionType = "Reconciled"
+)
+
+type ConditionReason string
+
+const (
+	// ReconcileComplete indicates the CR was successfully reconciled
+	ReconcileComplete ConditionReason = "ReconcileSuccess"
+
+	// ReconcileError indicates an error was encountered while reconciling the CR
+	ReconcileError ConditionReason = "ReconcileError"
+
+	// InvalidKeplerResource indicates the CR name was invalid
+	InvalidKeplerResource ConditionReason = "InvalidKeplerResource"
+)
+
+// These are valid condition statuses.
+// "ConditionTrue" means a resource is in the condition.
+// "ConditionFalse" means a resource is not in the condition.
+// "ConditionUnknown" means kubernetes can't decide if a resource is in the condition or not.
+// In the future, we could add other intermediate conditions, e.g. ConditionDegraded.
+type ConditionStatus string
+
+const (
+	ConditionTrue    ConditionStatus = "True"
+	ConditionFalse   ConditionStatus = "False"
+	ConditionUnknown ConditionStatus = "Unknown"
+)
+
+type Condition struct {
+	// Type of Kepler Condition - Reconciled, Available ...
+	Type ConditionType `json:"type"`
+	// status of the condition, one of True, False, Unknown.
+	Status ConditionStatus `json:"status"`
+	//
+	// observedGeneration represents the .metadata.generation that the condition was set based upon.
+	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+	// with respect to the current state of the instance.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	// lastTransitionTime is the last time the condition transitioned from one status to another.
+	// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Format=date-time
+	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
+	// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+	// +required
+	Reason ConditionReason `json:"reason"`
+	// message is a human readable message indicating details about the transition.
+	// This may be an empty string.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MaxLength=32768
+	Message string `json:"message"`
+}
+
 // KeplerStatus defines the observed state of Kepler
 type KeplerStatus struct {
 	// conditions represent the latest available observations of the kepler-system
 
 	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
 	// +listType=atomic
-	Conditions []metav1.Condition `json:"conditions"`
+	Conditions []Condition `json:"conditions"`
 }
 
 //+kubebuilder:object:root=true
