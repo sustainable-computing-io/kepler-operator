@@ -18,13 +18,16 @@ package test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,7 +41,7 @@ import (
 
 // default ForeverTestTimeout is 30, some test fail because they take more than 30s
 // change to custom in order to let the test finish withouth errors
-const TestTimeout = 40 * time.Second
+const TestTimeout = 1 * time.Minute
 
 type Framework struct {
 	T      *testing.T
@@ -86,8 +89,13 @@ func (f Framework) Scheme() *runtime.Scheme {
 	return scheme
 }
 
+var once sync.Once
+
 func (f Framework) NewClient(scheme *runtime.Scheme) client.Client {
 	f.T.Helper()
+	once.Do(func() {
+		ctrl.SetLogger(zap.New())
+	})
 	cfg := config.GetConfigOrDie()
 	c, err := client.New(cfg, client.Options{Scheme: scheme})
 	assert.NoError(f.T, err)
@@ -110,6 +118,11 @@ func (f Framework) GetKepler(name string) *v1alpha1.Kepler {
 
 func (f Framework) CreateKepler(name string, fns ...keplerFn) *v1alpha1.Kepler {
 	kepler := v1alpha1.Kepler{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1alpha1.GroupVersion.String(),
+			Kind:       "Kepler",
+		},
+
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
@@ -124,7 +137,9 @@ func (f Framework) CreateKepler(name string, fns ...keplerFn) *v1alpha1.Kepler {
 		f.client.Delete(context.TODO(), &kepler)
 	})
 
-	err := f.client.Create(context.TODO(), &kepler)
+	err := f.client.Patch(context.TODO(), &kepler, client.Apply,
+		client.ForceOwnership, client.FieldOwner("e2e-test"),
+	)
 	assert.NoError(f.T, err, "failed to create kepler")
 
 	return &kepler
