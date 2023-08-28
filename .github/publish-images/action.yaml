@@ -1,0 +1,61 @@
+name: Build and Publish Images
+description: 'Publishes operator and bundle images to an Image Registry'
+inputs:
+  image_registry:
+    description: "image registry"
+    required: true
+  registry_login:
+    description: "registry username"
+    required: true
+  registry_token:
+    description: "registry token"
+    required: true
+
+  version:
+    description: "operator version"
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Checkout source
+      uses: actions/checkout@v3
+
+    - uses: actions/setup-go@main
+      with:
+        go-version-file: go.mod
+        check-latest: true
+        cache: true
+
+    - name: Login to Image Registry 
+      uses: docker/login-action@v2
+      if: "!startsWith(inputs.image_registry, 'localhost')"
+      with:
+        registry: ${{ inputs.image_registry }}
+        username: ${{ inputs.registry_login }}
+        password: ${{ inputs.registry_token }}
+      
+
+    - name: Build Operator
+      shell: bash
+      run: |
+        make operator-build
+      env:
+        VERSION: ${{ inputs.version }}
+        IMG_BASE: ${{ inputs.image_registry }}
+
+    - name: Build Bundle
+      shell: bash
+      run: |
+        make bundle bundle-build
+      env:
+        VERSION: ${{ inputs.version }}
+        IMG_BASE: ${{ inputs.image_registry }}
+
+    - name: Push Images
+      shell: bash
+      if: "!startsWith(inputs.image_registry, 'localhost')"
+      run: |
+        make operator-push  bundle-push
+      env:
+        VERSION: ${{ inputs.version }}
+        IMG_BASE: ${{ inputs.image_registry }}

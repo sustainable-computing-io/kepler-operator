@@ -17,10 +17,13 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
+
       - name: Install Go
         uses: actions/setup-go@main
         with:
           go-version-file: go.mod
+          cache: true
+
       - name: Install all tools
         run: make tools
       - name: use kepler action for kind cluster build
@@ -30,8 +33,16 @@ jobs:
           runningBranch: kind
       - name: Ensure cluster is able to run OLM bundles
         run: make cluster-prereqs
+
+      - uses: ./.github/compute-version
+        id: version
+
       - name: Run e2e tests
-        run: ./tests/run-e2e.sh --ci
+        run: |
+          ./tests/run-e2e.sh --ci
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+
   e2e-success:
     name: Successful e2e tests
     needs: [e2e]
