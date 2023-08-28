@@ -73,10 +73,22 @@ var (
 	linuxNodeSelector = k8s.StringMap{
 		"kubernetes.io/os": "linux",
 	}
+
+	// Default Toleration is allow all nodes
+	defaultTolerations = []corev1.Toleration{{
+		Operator: corev1.TolerationOpExists,
+	}}
 )
 
 func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
 	exporter := k.Spec.Exporter
+
+	nodeSelector := k.Spec.Exporter.NodeSelector
+
+	tolerations := k.Spec.Exporter.Tolerations
+	if len(tolerations) == 0 {
+		tolerations = defaultTolerations
+	}
 
 	bindAddress := "0.0.0.0:" + strconv.Itoa(int(exporter.Port))
 
@@ -99,17 +111,10 @@ func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
 					Labels:    podSelector,
 				},
 				Spec: corev1.PodSpec{
-					NodeSelector:       linuxNodeSelector,
+					NodeSelector:       linuxNodeSelector.Merge(nodeSelector),
 					ServiceAccountName: ServiceAccountName,
 					DNSPolicy:          corev1.DNSPolicy(corev1.DNSClusterFirstWithHostNet),
-					Tolerations: []corev1.Toleration{
-						{
-							Effect: corev1.TaintEffectNoSchedule, Key: "node-role.kubernetes.io/master",
-						},
-						{
-							Effect: corev1.TaintEffectNoSchedule, Key: "node-role.kubernetes.io/infra",
-						},
-					},
+					Tolerations:        tolerations,
 					Containers: []corev1.Container{{
 						Name:            "kepler-exporter",
 						SecurityContext: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
