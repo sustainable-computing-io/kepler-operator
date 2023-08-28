@@ -1,6 +1,7 @@
 name: images
 
 on:
+  pull_request:
   push:
     branches: [ v1alpha1 ]
 
@@ -15,38 +16,23 @@ jobs:
         - uses: actions/setup-go@main
           with:
             go-version-file: go.mod
+            cache: true
 
-        - name: Login to Quay
-          uses: docker/login-action@v2
-          with:
-            registry: quay.io/sustainable_computing_io
-            username: ${{ secrets.BOT_NAME }}
-            password: ${{ secrets.BOT_TOKEN }}
-
-        - name: Generate Version
+        - uses: ./.github/compute-version
           id: version
-          run: |
-            version="$(cat VERSION)-$(date +%Y%m%d%H%M%S)"
-            echo VERSION=$version
-            echo "version=$version" >> $GITHUB_OUTPUT
 
-        - name: Build Operator
-          run: |
-            make operator-build
-          env:
-            VERSION: ${{ steps.version.outputs.version }}
-            IMG_BASE: ${{ vars.IMG_BASE }}
+        - name: build and publish images to external registry
+          uses: ./.github/publish-images
+          if: github.event_name == 'push'
+          with:
+            image_registry: ${{ vars.IMG_BASE }}
+            registry_login: ${{ secrets.BOT_NAME }}
+            registry_token: ${{ secrets.BOT_TOKEN }}
+            version: ${{ steps.version.outputs.version }}
 
-        - name: Build Bundle
-          run: |
-            make bundle bundle-build
-          env:
-            VERSION: ${{ steps.version.outputs.version }}
-            IMG_BASE: ${{ vars.IMG_BASE }}
-
-        - name: Push Images
-          run: |
-            make operator-push  bundle-push
-          env:
-            VERSION: ${{ steps.version.outputs.version }}
-            IMG_BASE: ${{ vars.IMG_BASE }}
+        - name: build images for PR checks
+          uses: ./.github/publish-images
+          if: github.event_name != 'push'
+          with:
+            image_registry: "localhost:5001"
+            version: ${{ steps.version.outputs.version }}
