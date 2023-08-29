@@ -21,6 +21,10 @@ func HostPIDFromDS(ds *appsv1.DaemonSet) bool {
 	return ds.Spec.Template.Spec.HostPID
 }
 
+func VolumeMountsFromDS(ds *appsv1.DaemonSet) []corev1.VolumeMount {
+	return ds.Spec.Template.Spec.Containers[0].VolumeMounts
+}
+
 func TestNodeSelection(t *testing.T) {
 
 	tt := []struct {
@@ -116,6 +120,39 @@ func TestHostPID(t *testing.T) {
 			}
 			actual := HostPIDFromDS(NewDaemonSet(&k))
 			assert.Equal(t, actual, tc.hostPID)
+		})
+	}
+}
+func TestVolumeMounts(t *testing.T) {
+	tt := []struct {
+		spec         v1alpha1.ExporterSpec
+		volumeMounts []corev1.VolumeMount
+		scenario     string
+	}{
+		{
+			spec: v1alpha1.ExporterSpec{},
+			volumeMounts: []corev1.VolumeMount{
+				{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
+				{Name: "tracing", MountPath: "/sys", ReadOnly: true},
+				{Name: "kernel-src", MountPath: "/usr/src/kernels", ReadOnly: true},
+				{Name: "proc", MountPath: "/proc"},
+				{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
+			},
+			scenario: "default case",
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			k := v1alpha1.Kepler{
+				Spec: v1alpha1.KeplerSpec{
+					Exporter: tc.spec,
+				},
+			}
+			actual := VolumeMountsFromDS(NewDaemonSet(&k))
+			assert.Equal(t, actual, tc.volumeMounts)
 		})
 	}
 }
