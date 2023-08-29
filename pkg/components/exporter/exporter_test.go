@@ -179,7 +179,7 @@ func TestVolumeMounts(t *testing.T) {
 	}
 }
 
-func TestSCCAllowHostIPCIsFalse(t *testing.T) {
+func TestSCCAllows(t *testing.T) {
 	tt := []struct {
 		spec      v1alpha1.ExporterSpec
 		sccAllows SCCAllows
