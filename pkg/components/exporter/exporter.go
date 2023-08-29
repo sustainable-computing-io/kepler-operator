@@ -149,9 +149,9 @@ func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
 							{Name: "NODE_IP", ValueFrom: k8s.EnvFromField("status.hostIP")},
 							{Name: "NODE_NAME", ValueFrom: k8s.EnvFromField("spec.nodeName")}},
 						VolumeMounts: []corev1.VolumeMount{
-							{Name: "lib-modules", MountPath: "/lib/modules"},
-							{Name: "tracing", MountPath: "/sys"},
-							{Name: "kernel-src", MountPath: "/usr/src/kernels"},
+							{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
+							{Name: "tracing", MountPath: "/sys", ReadOnly: true},
+							{Name: "kernel-src", MountPath: "/usr/src/kernels", ReadOnly: true},
 							{Name: "proc", MountPath: "/proc"},
 							{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
 						}, // VolumeMounts
