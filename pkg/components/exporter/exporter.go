@@ -151,7 +151,6 @@ func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
 							{Name: "lib-modules", MountPath: "/lib/modules"},
 							{Name: "tracing", MountPath: "/sys"},
 							{Name: "kernel-src", MountPath: "/usr/src/kernels"},
-							{Name: "kernel-debug", MountPath: "/sys/kernel/debug"},
 							{Name: "proc", MountPath: "/proc"},
 							{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
 						}, // VolumeMounts
@@ -160,7 +159,6 @@ func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
 						k8s.VolumeFromHost("lib-modules", "/lib/modules"),
 						k8s.VolumeFromHost("tracing", "/sys"),
 						k8s.VolumeFromHost("proc", "/proc"),
-						k8s.VolumeFromHost("kernel-debug", "/sys/kernel/debug"),
 						k8s.VolumeFromHost("kernel-src", "/usr/src/kernels"),
 						k8s.VolumeFromConfigMap("cfm", ConfigmapName),
 					}, // Volumes
