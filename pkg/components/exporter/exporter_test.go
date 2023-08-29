@@ -17,6 +17,10 @@ func TolerationsFromDS(ds *appsv1.DaemonSet) []corev1.Toleration {
 	return ds.Spec.Template.Spec.Tolerations
 }
 
+func HostPIDFromDS(ds *appsv1.DaemonSet) bool {
+	return ds.Spec.Template.Spec.HostPID
+}
+
 func TestNodeSelection(t *testing.T) {
 
 	tt := []struct {
@@ -84,6 +88,34 @@ func TestTolerations(t *testing.T) {
 			}
 			actual := TolerationsFromDS(NewDaemonSet(&k))
 			assert.Equal(t, actual, tc.tolerations)
+		})
+	}
+}
+
+func TestHostPID(t *testing.T) {
+	tt := []struct {
+		spec     v1alpha1.ExporterSpec
+		hostPID  bool
+		scenario string
+	}{
+		{
+			spec:     v1alpha1.ExporterSpec{},
+			hostPID:  true,
+			scenario: "default case",
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			k := v1alpha1.Kepler{
+				Spec: v1alpha1.KeplerSpec{
+					Exporter: tc.spec,
+				},
+			}
+			actual := HostPIDFromDS(NewDaemonSet(&k))
+			assert.Equal(t, actual, tc.hostPID)
 		})
 	}
 }
