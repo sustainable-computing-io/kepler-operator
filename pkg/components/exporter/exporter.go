@@ -111,6 +111,7 @@ func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
 					Labels:    podSelector,
 				},
 				Spec: corev1.PodSpec{
+					HostPID:            true,
 					NodeSelector:       linuxNodeSelector.Merge(nodeSelector),
 					ServiceAccountName: ServiceAccountName,
 					DNSPolicy:          corev1.DNSPolicy(corev1.DNSClusterFirstWithHostNet),
