@@ -312,10 +312,10 @@ func NewSCC(d components.Detail, k *v1alpha1.Kepler) *secv1.SecurityContextConst
 
 		AllowPrivilegedContainer: true,
 		AllowHostDirVolumePlugin: true,
-		AllowHostIPC:             true,
-		AllowHostNetwork:         true,
+		AllowHostIPC:             false,
+		AllowHostNetwork:         false,
 		AllowHostPID:             true,
-		AllowHostPorts:           true,
+		AllowHostPorts:           false,
 		DefaultAddCapabilities:   []corev1.Capability{corev1.Capability("SYS_ADMIN")},
 
 		FSGroup: secv1.FSGroupStrategyOptions{
