@@ -51,7 +51,9 @@ func (runner Runner) Run(ctx context.Context) (ctrl.Result, error) {
 			}
 		case Stop:
 			runner.Logger.V(3).Info("stopping further reconciliation as requested")
-			return ctrl.Result{Requeue: true}, err
+			return ctrl.Result{
+				Requeue: err == nil, // requeue if err is nil
+			}, err
 
 		case Requeue:
 			if err != nil {
