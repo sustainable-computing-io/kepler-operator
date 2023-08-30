@@ -137,10 +137,13 @@ const (
 
 	// DaemonSetNotFound indicates the DaemonSet created for a kepler was not found
 	DaemonSetNotFound           ConditionReason = "DaemonSetNotFound"
+	DaemonSetError              ConditionReason = "DaemonSetError"
 	DaemonSetInProgess          ConditionReason = "DaemonSetInProgress"
 	DaemonSetUnavailable        ConditionReason = "DaemonSetUnavailable"
 	DaemonSetPartiallyAvailable ConditionReason = "DaemonSetPartiallyAvailable"
+	DaemonSetRolloutInProgress  ConditionReason = "DaemonSetRolloutInProgress"
 	DaemonSetReady              ConditionReason = "DaemonSetReady"
+	DaemonSetOutOfSync          ConditionReason = "DaemonSetOutOfSync"
 )
 
 // These are valid condition statuses.
