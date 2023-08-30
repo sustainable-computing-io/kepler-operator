@@ -3,49 +3,12 @@ package exporter
 import (
 	"testing"
 
-	secv1 "github.com/openshift/api/security/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
-	appsv1 "k8s.io/api/apps/v1"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 )
-
-type SCCAllows struct {
-	AllowPrivilegedContainer bool
-	AllowHostDirVolumePlugin bool
-	AllowHostIPC             bool
-	AllowHostNetwork         bool
-	AllowHostPID             bool
-	AllowHostPorts           bool
-}
-
-func NodeSelectorFromDS(ds *appsv1.DaemonSet) map[string]string {
-	return ds.Spec.Template.Spec.NodeSelector
-}
-
-func TolerationsFromDS(ds *appsv1.DaemonSet) []corev1.Toleration {
-	return ds.Spec.Template.Spec.Tolerations
-}
-
-func HostPIDFromDS(ds *appsv1.DaemonSet) bool {
-	return ds.Spec.Template.Spec.HostPID
-}
-
-func VolumeMountsFromDS(ds *appsv1.DaemonSet) []corev1.VolumeMount {
-	return ds.Spec.Template.Spec.Containers[0].VolumeMounts
-}
-
-func AllowsFromSCC(SCC *secv1.SecurityContextConstraints) SCCAllows {
-	return SCCAllows{
-		AllowPrivilegedContainer: SCC.AllowPrivilegedContainer,
-		AllowHostDirVolumePlugin: SCC.AllowHostDirVolumePlugin,
-		AllowHostIPC:             SCC.AllowHostIPC,
-		AllowHostNetwork:         SCC.AllowHostNetwork,
-		AllowHostPID:             SCC.AllowHostPID,
-		AllowHostPorts:           SCC.AllowHostPorts,
-	}
-}
 
 func TestNodeSelection(t *testing.T) {
 
@@ -75,7 +38,7 @@ func TestNodeSelection(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := NodeSelectorFromDS(NewDaemonSet(components.Full, &k))
+			actual := k8s.NodeSelectorFromDS(NewDaemonSet(components.Full, &k))
 			assert.Equal(t, actual, tc.selector)
 		})
 	}
@@ -112,7 +75,7 @@ func TestTolerations(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := TolerationsFromDS(NewDaemonSet(components.Full, &k))
+			actual := k8s.TolerationsFromDS(NewDaemonSet(components.Full, &k))
 			assert.Equal(t, actual, tc.tolerations)
 		})
 	}
@@ -140,7 +103,7 @@ func TestHostPID(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := HostPIDFromDS(NewDaemonSet(&k))
+			actual := k8s.HostPIDFromDS(NewDaemonSet(components.Full, &k))
 			assert.Equal(t, actual, tc.hostPID)
 		})
 	}
@@ -173,7 +136,7 @@ func TestVolumeMounts(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := VolumeMountsFromDS(NewDaemonSet(&k))
+			actual := k8s.VolumeMountsFromDS(NewDaemonSet(components.Full, &k))
 			assert.Equal(t, actual, tc.volumeMounts)
 		})
 	}
@@ -182,12 +145,12 @@ func TestVolumeMounts(t *testing.T) {
 func TestSCCAllows(t *testing.T) {
 	tt := []struct {
 		spec      v1alpha1.ExporterSpec
-		sccAllows SCCAllows
+		sccAllows k8s.SCCAllows
 		scenario  string
 	}{
 		{
 			spec: v1alpha1.ExporterSpec{},
-			sccAllows: SCCAllows{
+			sccAllows: k8s.SCCAllows{
 				AllowPrivilegedContainer: true,
 				AllowHostDirVolumePlugin: true,
 				AllowHostIPC:             false,
@@ -208,7 +171,7 @@ func TestSCCAllows(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := AllowsFromSCC(NewSCC(components.Full, &k))
+			actual := k8s.AllowsFromSCC(NewSCC(components.Full, &k))
 			assert.Equal(t, actual, tc.sccAllows)
 		})
 	}
