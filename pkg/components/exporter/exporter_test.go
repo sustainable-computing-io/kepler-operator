@@ -75,7 +75,7 @@ func TestNodeSelection(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := NodeSelectorFromDS(NewDaemonSet(&k))
+			actual := NodeSelectorFromDS(NewDaemonSet(components.Full, &k))
 			assert.Equal(t, actual, tc.selector)
 		})
 	}
@@ -112,7 +112,7 @@ func TestTolerations(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := TolerationsFromDS(NewDaemonSet(&k))
+			actual := TolerationsFromDS(NewDaemonSet(components.Full, &k))
 			assert.Equal(t, actual, tc.tolerations)
 		})
 	}
