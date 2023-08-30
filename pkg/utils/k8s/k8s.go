@@ -81,6 +81,17 @@ func EnvFromField(path string) *corev1.EnvVarSource {
 	}
 }
 
+func EnvFromConfigMap(key, cmName string) *corev1.EnvVarSource {
+	return &corev1.EnvVarSource{
+		ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+			Key: key,
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: cmName,
+			},
+		},
+	}
+}
+
 func GVKName(o client.Object) string {
 	ns := o.GetNamespace()
 	name := o.GetName()
