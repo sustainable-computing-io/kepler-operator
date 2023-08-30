@@ -210,20 +210,23 @@ func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
 			Labels:    labels,
 		},
 		Data: map[string]string{
-			// TODO: decide what this should be
-			"KEPLER_NAMESPACE":     components.Namespace,
-			"KEPLER_LOG_LEVEL":     "5",
-			"METRIC_PATH":          "/metrics",
-			"BIND_ADDRESS":         bindAddress,
-			"ENABLE_GPU":           "true",
-			"ENABLE_EBPF_CGROUPID": "true",
-			"CPU_ARCH_OVERRIDE":    "",
-			"CGROUP_METRICS":       "*",
-			// TODO: clean this long time
-			"MODEL_CONFIG": "| CONTAINER_COMPONENTS_ESTIMATOR=false CONTAINER_COMPONENTS_INIT_URL=https://raw.githubusercontent.com/sustainable-computing-io/kepler-model-server/main/tests/test_models/DynComponentModelWeight/CgroupOnly/ScikitMixed/ScikitMixed.json",
-
-			"EXPOSE_HW_COUNTER_METRICS": "true",
-			"EXPOSE_CGROUP_METRICS":     "true",
+			"KEPLER_NAMESPACE":                  components.Namespace,
+			"KEPLER_LOG_LEVEL":                  "5",
+			"METRIC_PATH":                       "/metrics",
+			"BIND_ADDRESS":                      bindAddress,
+			"ENABLE_GPU":                        "true",
+			"ENABLE_QAT":                        "false",
+			"ENABLE_EBPF_CGROUPID":              "true",
+			"EXPOSE_HW_COUNTER_METRICS":         "true",
+			"EXPOSE_IRQ_COUNTER_METRICS":        "true",
+			"EXPOSE_KUBELET_METRICS":            "true",
+			"EXPOSE_CGROUP_METRICS":             "true",
+			"ENABLE_PROCESS_METRICS":            "false",
+			"CPU_ARCH_OVERRIDE":                 "",
+			"CGROUP_METRICS":                    "*",
+			"REDFISH_PROBE_INTERVAL_IN_SECONDS": "60",
+			"REDFISH_SKIP_SSL_VERIFY":           "true",
+			"MODEL_CONFIG":                      "CONTAINER_COMPONENTS_ESTIMATOR=false",
 		},
 	}
 }
