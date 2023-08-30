@@ -102,6 +102,7 @@ type ExporterSpec struct {
 
 	// Defines which Nodes the Pod is scheduled on
 	// +optional
+	// +kubebuilder:default={"kubernetes.io/os":"linux"}
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// If specified, define Pod's tolerations
