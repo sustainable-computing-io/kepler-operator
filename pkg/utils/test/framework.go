@@ -18,12 +18,14 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -39,9 +41,12 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
-// default ForeverTestTimeout is 30, some test fail because they take more than 30s
-// change to custom in order to let the test finish withouth errors
-const TestTimeout = 1 * time.Minute
+// default ForeverTestTimeout is 30 seconds, some tests fail because they take
+// more than 30s, some times, close to 2 minutes, so we set it to 2 minutes.
+//
+// NOTE: if a specific test case requires more than 2 minutes, use Timeout()
+// function to set the timeout for just that assertion.
+const TestTimeout = 2 * time.Minute
 
 type Framework struct {
 	T      *testing.T
@@ -112,7 +117,7 @@ func WithExporterPort(port int32) keplerFn {
 
 func (f Framework) GetKepler(name string) *v1alpha1.Kepler {
 	kepler := v1alpha1.Kepler{}
-	f.AssertResourceExits(name, "", &kepler)
+	f.AssertResourceExists(name, "", &kepler)
 	return &kepler
 }
 
@@ -133,30 +138,55 @@ func (f Framework) CreateKepler(name string, fns ...keplerFn) *v1alpha1.Kepler {
 		fn(&kepler)
 	}
 
-	f.T.Cleanup(func() {
-		f.client.Delete(context.TODO(), &kepler)
-	})
-
+	f.T.Logf("%s: creating/updating kepler %s", time.Now().UTC().Format(time.RFC3339), name)
 	err := f.client.Patch(context.TODO(), &kepler, client.Apply,
 		client.ForceOwnership, client.FieldOwner("e2e-test"),
 	)
 	assert.NoError(f.T, err, "failed to create kepler")
+
+	f.T.Cleanup(func() {
+		f.DeleteKepler(name)
+	})
 
 	return &kepler
 }
 
 func (f Framework) DeleteKepler(name string) {
 	f.T.Helper()
-	k := v1alpha1.Kepler{}
 
+	k := v1alpha1.Kepler{}
 	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
 	if errors.IsNotFound(err) {
 		return
 	}
 	assert.NoError(f.T, err, "failed to get kepler :%s", name)
 
-	err = f.client.Delete(context.Background(), &k)
-	assert.NoError(f.T, err, "failed to delete kepler :%s", name)
+	f.T.Logf("%s: deleting kepler %s", time.Now().UTC().Format(time.RFC3339), name)
 
-	f.AssertNoResourceExits(name, "", &k)
+	err = f.client.Delete(context.Background(), &k)
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete kepler:%s :%v", name, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("kepler %s is deleted", name), func() (bool, error) {
+		k := v1alpha1.Kepler{}
+		err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
+		return errors.IsNotFound(err), nil
+	})
+}
+
+func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionType) *v1alpha1.Kepler {
+	f.T.Helper()
+	k := v1alpha1.Kepler{}
+	f.WaitUntil(fmt.Sprintf("kepler %s is %s", name, t),
+		func() (bool, error) {
+			err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
+			if errors.IsNotFound(err) {
+				return true, fmt.Errorf("kepler %s is not found", name)
+			}
+
+			condition, _ := k8s.FindCondition(k.Status.Conditions, t)
+			return condition.Status == v1alpha1.ConditionTrue, nil
+		})
+	return &k
 }

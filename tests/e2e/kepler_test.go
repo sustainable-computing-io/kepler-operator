@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -14,55 +15,59 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func TestKepler_Reconciliation(t *testing.T) {
-	f := test.NewFramework(t)
-
-	// pre-condition
-	f.AssertNoResourceExits("kepler", "", &v1alpha1.Kepler{}, test.NoWait())
-
-	// when
-	f.CreateKepler("kepler")
-	ds := appsv1.DaemonSet{}
-
-	// then
-	f.AssertResourceExits(exporter.DaemonSetName, components.Namespace, &ds)
-	f.AssertResourceExits(components.Namespace, "", &corev1.Namespace{})
-
-	kepler := f.GetKepler("kepler")
-	status := kepler.Status
-	reconciled, err := k8s.FindCondition(status.Conditions, v1alpha1.Reconciled)
-	assert.NoError(t, err, "unable to get reconciled condition")
-
-	assert.Equal(t, reconciled.ObservedGeneration, kepler.Generation)
-	assert.Equal(t, reconciled.Status, v1alpha1.ConditionTrue)
-}
-
 func TestKepler_Deletion(t *testing.T) {
 	f := test.NewFramework(t)
 
 	// pre-condition: ensure kepler exists
 	f.CreateKepler("kepler")
+	f.WaitUntilKeplerCondition("kepler", v1alpha1.Available)
+
+	//
 	ds := appsv1.DaemonSet{}
-	f.AssertResourceExits(exporter.DaemonSetName, components.Namespace, &ds)
+	f.AssertResourceExists(exporter.DaemonSetName, components.Namespace, &ds, test.Timeout(10*time.Second))
 
-	kepler := f.GetKepler("kepler")
-	status := kepler.Status
-	reconciled, err := k8s.FindCondition(status.Conditions, v1alpha1.Reconciled)
-	assert.NoError(t, err, "unable to get reconciled condition")
-	assert.Equal(t, reconciled.Status, v1alpha1.ConditionTrue)
-
-	// When kepler is deleted
 	f.DeleteKepler("kepler")
 
-	// It cleans up the resources
-	f.AssertNoResourceExits(exporter.DaemonSetName, components.Namespace, &appsv1.DaemonSet{})
-	f.AssertNoResourceExits(components.Namespace, "", &corev1.Namespace{})
+	ns := components.NewKeplerNamespace()
+	f.AssertNoResourceExists(ns.Name, "", ns)
+	f.AssertNoResourceExists(exporter.DaemonSetName, components.Namespace, &ds)
+}
+
+func TestKepler_Reconciliation(t *testing.T) {
+	f := test.NewFramework(t)
+
+	// pre-condition
+	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.NoWait())
+
+	// when
+	f.CreateKepler("kepler")
+
+	// then
+	f.AssertResourceExists(components.Namespace, "", &corev1.Namespace{})
+	ds := appsv1.DaemonSet{}
+	f.AssertResourceExists(exporter.DaemonSetName, components.Namespace, &ds)
+
+	kepler := f.WaitUntilKeplerCondition("kepler", v1alpha1.Reconciled)
+	reconciled, err := k8s.FindCondition(kepler.Status.Conditions, v1alpha1.Reconciled)
+	assert.NoError(t, err, "unable to get reconciled condition")
+	assert.Equal(t, reconciled.ObservedGeneration, kepler.Generation)
+	assert.Equal(t, reconciled.Status, v1alpha1.ConditionTrue)
+
+	kepler = f.WaitUntilKeplerCondition("kepler", v1alpha1.Available)
+	available, err := k8s.FindCondition(kepler.Status.Conditions, v1alpha1.Available)
+	assert.NoError(t, err, "unable to get available condition")
+	assert.Equal(t, available.ObservedGeneration, kepler.Generation)
+	assert.Equal(t, available.Status, v1alpha1.ConditionTrue)
+
 }
 
 func TestBadKepler_Reconciliation(t *testing.T) {
 	f := test.NewFramework(t)
-	f.AssertNoResourceExits("invalid-name", "", &v1alpha1.Kepler{}, test.NoWait())
+	// Ensure Kepler is not deployed (by any chance)
+	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
+	f.AssertNoResourceExists("invalid-name", "", &v1alpha1.Kepler{}, test.NoWait())
 	f.CreateKepler("invalid-name")
+
 	ds := appsv1.DaemonSet{}
-	f.AssertNoResourceExits(exporter.DaemonSetName, components.Namespace, &ds)
+	f.AssertNoResourceExists(exporter.DaemonSetName, components.Namespace, &ds)
 }

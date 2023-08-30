@@ -69,7 +69,15 @@ func assertOption(fns ...AssertOptionFn) AssertOption {
 	return option
 }
 
-func (f Framework) AssertResourceExits(name, ns string, obj client.Object, fns ...AssertOptionFn) {
+func (f Framework) WaitUntil(msg string, fn wait.ConditionFunc, fns ...AssertOptionFn) {
+	f.T.Helper()
+	opt := assertOption(fns...)
+
+	err := wait.PollImmediate(opt.PollInterval, opt.WaitTimeout, fn)
+	assert.NoError(f.T, err, "failed waiting for %s (timeout %v)", msg, opt.WaitTimeout)
+}
+
+func (f Framework) AssertResourceExists(name, ns string, obj client.Object, fns ...AssertOptionFn) {
 	f.T.Helper()
 	opt := assertOption(fns...)
 	key := types.NamespacedName{Name: name, Namespace: ns}
@@ -84,7 +92,7 @@ func (f Framework) AssertResourceExits(name, ns string, obj client.Object, fns .
 	assert.NoError(f.T, getErr, "failed to find %v (timeout %v)", key, opt.WaitTimeout)
 }
 
-func (f Framework) AssertNoResourceExits(name, ns string, obj client.Object, fns ...AssertOptionFn) {
+func (f Framework) AssertNoResourceExists(name, ns string, obj client.Object, fns ...AssertOptionFn) {
 	f.T.Helper()
 	opt := assertOption(fns...)
 	key := types.NamespacedName{Name: name, Namespace: ns}
