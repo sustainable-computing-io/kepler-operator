@@ -42,17 +42,3 @@ jobs:
           ./tests/run-e2e.sh --ci
         env:
           VERSION: ${{ steps.version.outputs.version }}
-
-  e2e-success:
-    name: Successful e2e tests
-    needs: [e2e]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Successful
-        run: echo "Previous steps were successful"
-#TO-DO
-# Add tests for e2e that checks if all the kepler metrics are present
-# kubectl wait --for=condition=Ready pod --all -n kepler-operator-system --timeout 3m
-# - name: Setup tmate session
-#         if: ${{ failure() }}
-#         uses: mxschmitt/action-tmate@v3
