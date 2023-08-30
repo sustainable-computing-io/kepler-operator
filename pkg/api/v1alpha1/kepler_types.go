@@ -134,6 +134,13 @@ const (
 
 	// InvalidKeplerResource indicates the CR name was invalid
 	InvalidKeplerResource ConditionReason = "InvalidKeplerResource"
+
+	// DaemonSetNotFound indicates the DaemonSet created for a kepler was not found
+	DaemonSetNotFound           ConditionReason = "DaemonSetNotFound"
+	DaemonSetInProgess          ConditionReason = "DaemonSetInProgress"
+	DaemonSetUnavailable        ConditionReason = "DaemonSetUnavailable"
+	DaemonSetPartiallyAvailable ConditionReason = "DaemonSetPartiallyAvailable"
+	DaemonSetReady              ConditionReason = "DaemonSetReady"
 )
 
 // These are valid condition statuses.
@@ -181,6 +188,36 @@ type Condition struct {
 
 // KeplerStatus defines the observed state of Kepler
 type KeplerStatus struct {
+	// The number of nodes that are running at least 1 kepler pod and are
+	// supposed to run the kepler pod.
+	CurrentNumberScheduled int32 `json:"currentNumberScheduled"`
+
+	// The number of nodes that are running the kepler pod, but are not supposed
+	// to run the kepler pod.
+	NumberMisscheduled int32 `json:"numberMisscheduled"`
+
+	// The total number of nodes that should be running the kepler
+	// pod (including nodes correctly running the kepler pod).
+	DesiredNumberScheduled int32 `json:"desiredNumberScheduled"`
+
+	// numberReady is the number of nodes that should be running the kepler pod
+	// and have one or more of the kepler pod running with a Ready Condition.
+	NumberReady int32 `json:"numberReady"`
+
+	// The total number of nodes that are running updated kepler pod
+	// +optional
+	UpdatedNumberScheduled int32 `json:"updatedNumberScheduled,omitempty"`
+
+	// The number of nodes that should be running the kepler pod and have one or
+	// more of the kepler pod running and available
+	// +optional
+	NumberAvailable int32 `json:"numberAvailable,omitempty"`
+
+	// The number of nodes that should be running the
+	// kepler pod and have none of the kepler pod running and available
+	// +optional
+	NumberUnavailable int32 `json:"numberUnavailable,omitempty"`
+
 	// conditions represent the latest available observations of the kepler-system
 
 	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
@@ -192,6 +229,16 @@ type KeplerStatus struct {
 //+kubebuilder:resource:scope="Cluster"
 //+kubebuilder:subresource:status
 
+// +kubebuilder:printcolumn:name="Port",type=integer,JSONPath=`.spec.exporter.port`
+// +kubebuilder:printcolumn:name="Desired",type=integer,JSONPath=`.status.desiredNumberScheduled`
+// +kubebuilder:printcolumn:name="Current",type=integer,JSONPath=`.status.currentNumberScheduled`
+// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.numberReady`
+// +kubebuilder:printcolumn:name="Up-to-date",type=integer,JSONPath=`.status.updatedNumberScheduled`
+// +kubebuilder:printcolumn:name="Available",type=integer,JSONPath=`.status.numberAvailable`
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Node-Selector",type=string,JSONPath=`.spec.exporter.nodeSelector`,priority=10
+// +kubebuilder:printcolumn:name="Tolerations",type=string,JSONPath=`.spec.exporter.tolerations`,priority=10
+//
 // Kepler is the Schema for the keplers API
 type Kepler struct {
 	metav1.TypeMeta   `json:",inline"`
