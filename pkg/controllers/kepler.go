@@ -311,19 +311,31 @@ func availableCondition(dset *appsv1.DaemonSet) v1alpha1.Condition {
 }
 
 func (r KeplerReconciler) reconcilersForKepler(k *v1alpha1.Kepler) []reconciler.Reconciler {
-	// start with namespace
 	rs := []reconciler.Reconciler{}
 
-	if cleanup := !k.DeletionTimestamp.IsZero(); cleanup {
-		rs = append(rs, deletersForResources(components.NewKeplerNamespace())...)
-	} else {
-		rs = append(rs, reconciler.Updater{Owner: k, Resource: components.NewKeplerNamespace()})
+	cleanup := !k.DeletionTimestamp.IsZero()
+	if !cleanup {
+		// NOTE: create namespace first and for deletion, reverse the order
+		rs = append(rs, reconciler.Updater{
+			Owner:    k,
+			Resource: components.NewKeplerNamespace(),
+			OnError:  reconciler.Requeue,
+			Logger:   r.logger,
+		})
 	}
 
 	rs = append(rs, exporterReconcilers(k)...)
 
 	// TODO: add this when modelServer is supported by Kepler Spec
 	// rs = append(rs, modelServerReconcilers(k)...)
+
+	if cleanup {
+		rs = append(rs, reconciler.Deleter{
+			OnError:     reconciler.Requeue,
+			Resource:    components.NewKeplerNamespace(),
+			WaitTimeout: 2 * time.Minute,
+		})
+	}
 
 	// Add/Remove finalizer at the end
 	rs = append(rs, reconciler.Finalizer{Resource: k, Finalizer: KeplerFinalizer, Logger: r.logger})
@@ -346,6 +358,13 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 			LastTransitionTime: metav1.Now(),
 			Reason:             v1alpha1.InvalidKeplerResource,
 			Message:            "Only a single instance of Kepler named kepler is reconciled",
+		}, {
+			Type:               v1alpha1.Available,
+			Status:             v1alpha1.ConditionUnknown,
+			ObservedGeneration: invalidKepler.Generation,
+			LastTransitionTime: metav1.Now(),
+			Reason:             v1alpha1.InvalidKeplerResource,
+			Message:            "This instance of Kepler is invalid",
 		}}
 		return r.Client.Status().Update(ctx, invalidKepler)
 	})
@@ -359,6 +378,14 @@ func exporterReconcilers(k *v1alpha1.Kepler) []reconciler.Reconciler {
 	// TODO: validate if this required anymore after the cluster-scoped CRD change
 	if cleanup := !k.DeletionTimestamp.IsZero(); cleanup {
 		return deletersForResources(
+
+			// namespace scoped
+			exporter.NewServiceAccount(),
+			exporter.NewConfigMap(components.Metadata, k),
+			exporter.NewDaemonSet(components.Metadata, k),
+			exporter.NewService(k),
+
+			// cluster-scoped
 			exporter.NewSCC(components.Metadata, k),
 			exporter.NewClusterRoleBinding(components.Metadata),
 			exporter.NewClusterRole(components.Metadata),
@@ -374,7 +401,7 @@ func exporterReconcilers(k *v1alpha1.Kepler) []reconciler.Reconciler {
 		// namespace scoped
 		exporter.NewServiceAccount(),
 		exporter.NewConfigMap(components.Full, k),
-		exporter.NewDaemonSet(k),
+		exporter.NewDaemonSet(components.Full, k),
 		exporter.NewService(k),
 	)
 }

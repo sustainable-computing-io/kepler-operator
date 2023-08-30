@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -45,7 +46,7 @@ func TestNodeSelection(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := NodeSelectorFromDS(NewDaemonSet(&k))
+			actual := NodeSelectorFromDS(NewDaemonSet(components.Full, &k))
 			assert.Equal(t, actual, tc.selector)
 		})
 	}
@@ -82,7 +83,7 @@ func TestTolerations(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := TolerationsFromDS(NewDaemonSet(&k))
+			actual := TolerationsFromDS(NewDaemonSet(components.Full, &k))
 			assert.Equal(t, actual, tc.tolerations)
 		})
 	}
