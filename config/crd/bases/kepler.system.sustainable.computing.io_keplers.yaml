@@ -14,7 +14,37 @@ spec:
     singular: kepler
   scope: Cluster
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.exporter.port
+      name: Port
+      type: integer
+    - jsonPath: .status.desiredNumberScheduled
+      name: Desired
+      type: integer
+    - jsonPath: .status.currentNumberScheduled
+      name: Current
+      type: integer
+    - jsonPath: .status.numberReady
+      name: Ready
+      type: integer
+    - jsonPath: .status.updatedNumberScheduled
+      name: Up-to-date
+      type: integer
+    - jsonPath: .status.numberAvailable
+      name: Available
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .spec.exporter.nodeSelector
+      name: Node-Selector
+      priority: 10
+      type: string
+    - jsonPath: .spec.exporter.tolerations
+      name: Tolerations
+      priority: 10
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Kepler is the Schema for the keplers API
@@ -39,6 +69,8 @@ spec:
                   nodeSelector:
                     additionalProperties:
                       type: string
+                    default:
+                      kubernetes.io/os: linux
                     description: Defines which Nodes the Pod is scheduled on
                     type: object
                   port:
@@ -137,8 +169,48 @@ spec:
                   type: object
                 type: array
                 x-kubernetes-list-type: atomic
+              currentNumberScheduled:
+                description: The number of nodes that are running at least 1 kepler
+                  pod and are supposed to run the kepler pod.
+                format: int32
+                type: integer
+              desiredNumberScheduled:
+                description: The total number of nodes that should be running the
+                  kepler pod (including nodes correctly running the kepler pod).
+                format: int32
+                type: integer
+              numberAvailable:
+                description: The number of nodes that should be running the kepler
+                  pod and have one or more of the kepler pod running and available
+                format: int32
+                type: integer
+              numberMisscheduled:
+                description: The number of nodes that are running the kepler pod,
+                  but are not supposed to run the kepler pod.
+                format: int32
+                type: integer
+              numberReady:
+                description: numberReady is the number of nodes that should be running
+                  the kepler pod and have one or more of the kepler pod running with
+                  a Ready Condition.
+                format: int32
+                type: integer
+              numberUnavailable:
+                description: The number of nodes that should be running the kepler
+                  pod and have none of the kepler pod running and available
+                format: int32
+                type: integer
+              updatedNumberScheduled:
+                description: The total number of nodes that are running updated kepler
+                  pod
+                format: int32
+                type: integer
             required:
             - conditions
+            - currentNumberScheduled
+            - desiredNumberScheduled
+            - numberMisscheduled
+            - numberReady
             type: object
         type: object
     served: true

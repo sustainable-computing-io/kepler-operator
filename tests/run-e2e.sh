@@ -109,7 +109,7 @@ run_e2e() {
 	local error_log="$LOGS_DIR/operator-errors.log"
 
 	log_events "$OPERATORS_NS" &
-	log_events "e2e-tests" &
+	log_events "openshift-kepler-operator" &
 	watch_operator_errors "$error_log" &
 
 	local ret=0
@@ -290,10 +290,6 @@ ensure_deploy_img_is_always_pulled() {
 	ok "Operator deployment imagePullPolicy is Always"
 }
 
-reset_env() {
-	kubectl delete --wait ns e2e-tests || true
-}
-
 # wait_for_operator requires the namespace where the operator is installed
 wait_for_operator() {
 	header "Waiting  for Kepler Operator ($OPERATORS_NS) to be Ready"
@@ -333,8 +329,6 @@ main() {
 
 	cd "$PROJECT_ROOT"
 
-	# delete the e2e-tests but continue deploying the operator
-	reset_env & # note must wait before running tests
 	init_logs_dir
 	print_config
 
@@ -344,11 +338,9 @@ main() {
 		restart_operator || die "restarting operator failed 🤕"
 	fi
 
-	# wait for the deletion to complete before running tests
-	wait
-
 	local -i ret=0
 	run_e2e || ret=$?
+
 	info "e2e test - exit code: $ret"
 	line 50 heavy
 

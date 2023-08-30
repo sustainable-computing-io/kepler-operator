@@ -80,12 +80,22 @@ var (
 	}}
 )
 
-func NewDaemonSet(k *v1alpha1.Kepler) *appsv1.DaemonSet {
+func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSet {
+	if detail == components.Metadata {
+		return &appsv1.DaemonSet{
+			TypeMeta: metav1.TypeMeta{APIVersion: appsv1.SchemeGroupVersion.String(), Kind: "DaemonSet"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      DaemonSetName,
+				Namespace: components.Namespace,
+				Labels:    labels,
+			},
+		}
+	}
+
 	exporter := k.Spec.Exporter
+	nodeSelector := exporter.NodeSelector
 
-	nodeSelector := k.Spec.Exporter.NodeSelector
-
-	tolerations := k.Spec.Exporter.Tolerations
+	tolerations := exporter.Tolerations
 	if len(tolerations) == 0 {
 		tolerations = defaultTolerations
 	}
@@ -257,7 +267,7 @@ func NewClusterRoleBinding(c components.Detail) *rbacv1.ClusterRoleBinding {
 				Kind:       "ClusterRoleBinding",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:   ClusterRoleName,
+				Name:   ClusterRoleBindingName,
 				Labels: labels,
 			},
 		}
