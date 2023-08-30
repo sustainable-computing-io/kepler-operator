@@ -132,10 +132,11 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 						Command: []string{
 							"/usr/bin/kepler",
 							"-address", bindAddress,
-							"-enable-gpu=true",
+							"-enable-gpu=$(ENABLE_GPU)",
 							"-enable-cgroup-id=true",
-							"-v=1",
+							"-v=$(KEPLER_LOG_LEVEL)",
 							"-kernel-source-dir=/usr/share/kepler/kernel_sources",
+							"-redfish-cred-file-path=/etc/redfish/redfish.csv",
 						},
 						Ports: []corev1.ContainerPort{{
 							ContainerPort: int32(exporter.Port),
@@ -156,7 +157,9 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 							TimeoutSeconds:      10},
 						Env: []corev1.EnvVar{
 							{Name: "NODE_IP", ValueFrom: k8s.EnvFromField("status.hostIP")},
-							{Name: "NODE_NAME", ValueFrom: k8s.EnvFromField("spec.nodeName")}},
+							{Name: "NODE_NAME", ValueFrom: k8s.EnvFromField("spec.nodeName")},
+							{Name: "KEPLER_LOG_LEVEL", ValueFrom: k8s.EnvFromConfigMap("KEPLER_LOG_LEVEL", ConfigmapName)},
+							{Name: "ENABLE_GPU", ValueFrom: k8s.EnvFromConfigMap("ENABLE_GPU", ConfigmapName)}},
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "lib-modules", MountPath: "/lib/modules"},
 							{Name: "tracing", MountPath: "/sys"},
@@ -211,7 +214,7 @@ func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
 		},
 		Data: map[string]string{
 			"KEPLER_NAMESPACE":                  components.Namespace,
-			"KEPLER_LOG_LEVEL":                  "5",
+			"KEPLER_LOG_LEVEL":                  "1",
 			"METRIC_PATH":                       "/metrics",
 			"BIND_ADDRESS":                      bindAddress,
 			"ENABLE_GPU":                        "true",
