@@ -162,6 +162,7 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 							{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
 							{Name: "tracing", MountPath: "/sys", ReadOnly: true},
 							{Name: "kernel-src", MountPath: "/usr/src/kernels", ReadOnly: true},
+							{Name: "kernel-debug", MountPath: "/sys/kernel/debug"},
 							{Name: "proc", MountPath: "/proc"},
 							{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
 						}, // VolumeMounts
@@ -171,6 +172,7 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 						k8s.VolumeFromHost("tracing", "/sys"),
 						k8s.VolumeFromHost("proc", "/proc"),
 						k8s.VolumeFromHost("kernel-src", "/usr/src/kernels"),
+						k8s.VolumeFromHost("kernel-debug", "/sys/kernel/debug"),
 						k8s.VolumeFromConfigMap("cfm", ConfigmapName),
 					}, // Volumes
 				}, // PodSpec

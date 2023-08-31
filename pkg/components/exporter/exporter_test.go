@@ -120,6 +120,7 @@ func TestVolumeMounts(t *testing.T) {
 				{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
 				{Name: "tracing", MountPath: "/sys", ReadOnly: true},
 				{Name: "kernel-src", MountPath: "/usr/src/kernels", ReadOnly: true},
+				{Name: "kernel-debug", MountPath: "/sys/kernel/debug"},
 				{Name: "proc", MountPath: "/proc"},
 				{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
 			},
