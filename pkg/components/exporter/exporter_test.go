@@ -142,6 +142,40 @@ func TestVolumeMounts(t *testing.T) {
 		})
 	}
 }
+func TestVolumes(t *testing.T) {
+	tt := []struct {
+		spec     v1alpha1.ExporterSpec
+		volumes  []corev1.Volume
+		scenario string
+	}{
+		{
+			spec: v1alpha1.ExporterSpec{},
+			volumes: []corev1.Volume{
+				k8s.VolumeFromHost("lib-modules", "/lib/modules"),
+				k8s.VolumeFromHost("tracing", "/sys"),
+				k8s.VolumeFromHost("proc", "/proc"),
+				k8s.VolumeFromHost("kernel-src", "/usr/src/kernels"),
+				k8s.VolumeFromHost("kernel-debug", "/sys/kernel/debug"),
+				k8s.VolumeFromConfigMap("cfm", ConfigmapName),
+			},
+			scenario: "default case",
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			k := v1alpha1.Kepler{
+				Spec: v1alpha1.KeplerSpec{
+					Exporter: tc.spec,
+				},
+			}
+			actual := k8s.VolumesFromDS(NewDaemonSet(components.Full, &k))
+			assert.Equal(t, actual, tc.volumes)
+		})
+	}
+}
 
 func TestSCCAllows(t *testing.T) {
 	tt := []struct {

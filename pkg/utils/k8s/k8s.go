@@ -127,6 +127,10 @@ func VolumeMountsFromDS(ds *appsv1.DaemonSet) []corev1.VolumeMount {
 	return ds.Spec.Template.Spec.Containers[0].VolumeMounts
 }
 
+func VolumesFromDS(ds *appsv1.DaemonSet) []corev1.Volume {
+	return ds.Spec.Template.Spec.Volumes
+}
+
 func AllowsFromSCC(SCC *secv1.SecurityContextConstraints) SCCAllows {
 	return SCCAllows{
 		AllowPrivilegedContainer: SCC.AllowPrivilegedContainer,
