@@ -239,9 +239,18 @@ update_cluster_mon_crds() {
 	return 0
 }
 
+kind_load_images() {
+	header "Load Images"
+	while read -r img; do
+		run docker pull "$img"
+		run kind load docker-image "$img"
+	done < <(grep -e '=\s\+"quay.io' -r pkg/components/exporter | cut -f2 -d'"')
+}
+
 deploy_operator() {
 	header "Build and Deploy Operator"
 
+	kind_load_images
 	delete_olm_subscription || true
 	ensure_imgpullpolicy_always_in_yaml
 	update_cluster_mon_crds
