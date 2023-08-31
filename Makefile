@@ -73,7 +73,7 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests generate fmt vet  ## Run tests.
+test:  fmt vet  ## Run tests.
 		go test ./pkg/... -coverprofile cover.out
 
 ##@ Development env
@@ -122,7 +122,7 @@ run: install fmt vet ## Run a controller from your host.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: operator-build
-operator-build: test ## Build docker image with the manager.
+operator-build: manifests generate test ## Build docker image with the manager.
 	go mod tidy
 	docker build -t $(OPERATOR_IMG) \
 	--build-arg TARGETOS=$(GOOS) \
@@ -243,7 +243,7 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 endif
 
 .PHONY: bundle
-bundle: manifests kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
+bundle: operator-build kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
 	OPERATOR_IMG=$(OPERATOR_IMG) \
 	VERSION=$(VERSION) \
 	BUNDLE_GEN_FLAGS='$(BUNDLE_GEN_FLAGS)' \
