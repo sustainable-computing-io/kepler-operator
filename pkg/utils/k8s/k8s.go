@@ -21,6 +21,7 @@ import (
 
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -70,6 +71,18 @@ func VolumeFromPVC(name, pvcName string) corev1.Volume {
 		VolumeSource: corev1.VolumeSource{
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 				ClaimName: pvcName,
+			},
+		},
+	}
+}
+
+func VolumeFromSecret(name, secretName string) corev1.Volume {
+	return corev1.Volume{
+		Name: name,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: secretName,
+				Optional:   pointer.Bool(true),
 			},
 		},
 	}

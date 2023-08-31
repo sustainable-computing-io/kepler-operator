@@ -49,6 +49,8 @@ const (
 	ServiceName   = prefix + "svc"
 
 	StableImage = "quay.io/sustainable_computing_io/kepler:release-0.5.4"
+
+	RedfishSecretName = "redfish"
 )
 
 // Config that will be set from outside
@@ -166,7 +168,8 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 							{Name: "kernel-src", MountPath: "/usr/src/kernels"},
 							{Name: "kernel-debug", MountPath: "/sys/kernel/debug"},
 							{Name: "proc", MountPath: "/proc"},
-							{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
+							{Name: "cfm", MountPath: "/etc/kepler/kepler.config", ReadOnly: true},
+							{Name: "redfish-cred", MountPath: "/etc/redfish", ReadOnly: true},
 						}, // VolumeMounts
 					}}, // Container: kepler /  Containers
 					Volumes: []corev1.Volume{
@@ -175,6 +178,7 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 						k8s.VolumeFromHost("proc", "/proc"),
 						k8s.VolumeFromHost("kernel-debug", "/sys/kernel/debug"),
 						k8s.VolumeFromHost("kernel-src", "/usr/src/kernels"),
+						k8s.VolumeFromSecret("redfish-cred", RedfishSecretName),
 						k8s.VolumeFromConfigMap("cfm", ConfigmapName),
 					}, // Volumes
 				}, // PodSpec
