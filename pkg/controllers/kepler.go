@@ -267,6 +267,18 @@ func availableCondition(dset *appsv1.DaemonSet) v1alpha1.Condition {
 
 	c := v1alpha1.Condition{Type: v1alpha1.Available}
 
+	// NumberReady: The number of nodes that should be running the daemon pod and
+	// have one or more of the daemon pod running with a Ready Condition.
+	//
+	// DesiredNumberScheduled: The total number of nodes that should be running
+	// the daemon pod (including nodes correctly running the daemon pod).
+	if ds.NumberReady == 0 || ds.DesiredNumberScheduled == 0 {
+		c.Status = v1alpha1.ConditionFalse
+		c.Reason = v1alpha1.DaemonSetPodsNotRunning
+		c.Message = fmt.Sprintf("Kepler daemonset %q is not rolled out to any node; check nodeSelector and tolerations", dsName)
+		return c
+	}
+
 	// UpdatedNumberScheduled: The total number of nodes that are running updated daemon pod
 	//
 	// DesiredNumberScheduled: The total number of nodes that should be running

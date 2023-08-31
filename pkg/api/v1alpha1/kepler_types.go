@@ -141,6 +141,7 @@ const (
 	DaemonSetInProgess          ConditionReason = "DaemonSetInProgress"
 	DaemonSetUnavailable        ConditionReason = "DaemonSetUnavailable"
 	DaemonSetPartiallyAvailable ConditionReason = "DaemonSetPartiallyAvailable"
+	DaemonSetPodsNotRunning     ConditionReason = "DaemonSetPodsNotRunning"
 	DaemonSetRolloutInProgress  ConditionReason = "DaemonSetRolloutInProgress"
 	DaemonSetReady              ConditionReason = "DaemonSetReady"
 	DaemonSetOutOfSync          ConditionReason = "DaemonSetOutOfSync"
