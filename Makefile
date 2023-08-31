@@ -3,6 +3,8 @@
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+THIS_FILE := $(lastword $(MAKEFILE_LIST))
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -34,8 +36,28 @@ IMG_BASE ?= quay.io/sustainable_computing_io
 # You can use it as an arg. (E.g make operator-build OPERATOR_IMG=<some-registry>:<version>)
 OPERATOR_IMG ?= $(IMG_BASE)/kepler-operator:$(VERSION)
 
+.PHONY: fresh
+fresh: ## default target - sets up a k8s cluster with images ready for deployment
+	@$(MAKE) -f $(THIS_FILE) \
+		cluster-restart \
+		operator-build operator-push \
+		bundle bundle-build \
+		bundle-push \
+		IMG_BASE=localhost:5001 VERSION=0.0.0-dev ;\
+	
+	@echo -e '\n        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
+	@echo -e ' 🎊  Operator has been successfully built and deployed! 🎊 \n'
+	@kubectl cluster-info
+	@echo -e '        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
+	@echo -e ' 🔔 Next step see kepler in action:'
+	@echo -e '    ❯   ./tmp/bin/operator-sdk run bundle localhost:5001/kepler-operator-bundle:0.0.0-dev \ '
+	@echo -e '         --install-mode AllNamespaces --namespace operators --skip-tls '
+	@echo -e '    ❯ kubectl apply -f config/samples/kepler.system_v1alpha1_kepler.yaml \n'
+	@echo -e '        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
+
+
 .PHONY: all
-all: build
+all: operator-build bundle bundle-build
 
 ##@ General
 
@@ -52,7 +74,7 @@ all: build
 
 .PHONY: help
 help: ## Display this help.
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(THIS_FILE)
 
 ##@ Development
 
@@ -78,7 +100,7 @@ test:  fmt vet  ## Run tests.
 
 ##@ Development env
 CLUSTER_PROVIDER ?= kind
-LOCAL_DEV_CLUSTER_VERSION ?= v0.0.3
+LOCAL_DEV_CLUSTER_VERSION ?= main
 GRAFANA_ENABLE ?= true
 KIND_WORKER_NODES ?=2
 
