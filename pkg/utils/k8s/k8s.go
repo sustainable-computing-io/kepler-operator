@@ -19,12 +19,23 @@ package k8s
 import (
 	"fmt"
 
+	secv1 "github.com/openshift/api/security/v1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type StringMap map[string]string
+
+type SCCAllows struct {
+	AllowPrivilegedContainer bool
+	AllowHostDirVolumePlugin bool
+	AllowHostIPC             bool
+	AllowHostNetwork         bool
+	AllowHostPID             bool
+	AllowHostPorts           bool
+}
 
 func (l StringMap) Merge(other StringMap) StringMap {
 	ret := StringMap{}
@@ -109,4 +120,35 @@ func FindCondition(c []v1alpha1.Condition, t v1alpha1.ConditionType) (v1alpha1.C
 		}
 	}
 	return v1alpha1.Condition{}, fmt.Errorf("condition %s not found", t)
+}
+
+func NodeSelectorFromDS(ds *appsv1.DaemonSet) map[string]string {
+	return ds.Spec.Template.Spec.NodeSelector
+}
+
+func TolerationsFromDS(ds *appsv1.DaemonSet) []corev1.Toleration {
+	return ds.Spec.Template.Spec.Tolerations
+}
+
+func HostPIDFromDS(ds *appsv1.DaemonSet) bool {
+	return ds.Spec.Template.Spec.HostPID
+}
+
+func VolumeMountsFromDS(ds *appsv1.DaemonSet) []corev1.VolumeMount {
+	return ds.Spec.Template.Spec.Containers[0].VolumeMounts
+}
+
+func VolumesFromDS(ds *appsv1.DaemonSet) []corev1.Volume {
+	return ds.Spec.Template.Spec.Volumes
+}
+
+func AllowsFromSCC(SCC *secv1.SecurityContextConstraints) SCCAllows {
+	return SCCAllows{
+		AllowPrivilegedContainer: SCC.AllowPrivilegedContainer,
+		AllowHostDirVolumePlugin: SCC.AllowHostDirVolumePlugin,
+		AllowHostIPC:             SCC.AllowHostIPC,
+		AllowHostNetwork:         SCC.AllowHostNetwork,
+		AllowHostPID:             SCC.AllowHostPID,
+		AllowHostPorts:           SCC.AllowHostPorts,
+	}
 }

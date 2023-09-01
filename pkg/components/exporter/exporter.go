@@ -121,6 +121,7 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 					Labels:    podSelector,
 				},
 				Spec: corev1.PodSpec{
+					HostPID:            true,
 					NodeSelector:       linuxNodeSelector.Merge(nodeSelector),
 					ServiceAccountName: ServiceAccountName,
 					DNSPolicy:          corev1.DNSPolicy(corev1.DNSClusterFirstWithHostNet),
@@ -161,9 +162,9 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 							{Name: "KEPLER_LOG_LEVEL", ValueFrom: k8s.EnvFromConfigMap("KEPLER_LOG_LEVEL", ConfigmapName)},
 							{Name: "ENABLE_GPU", ValueFrom: k8s.EnvFromConfigMap("ENABLE_GPU", ConfigmapName)}},
 						VolumeMounts: []corev1.VolumeMount{
-							{Name: "lib-modules", MountPath: "/lib/modules"},
-							{Name: "tracing", MountPath: "/sys"},
-							{Name: "kernel-src", MountPath: "/usr/src/kernels"},
+							{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
+							{Name: "tracing", MountPath: "/sys", ReadOnly: true},
+							{Name: "kernel-src", MountPath: "/usr/src/kernels", ReadOnly: true},
 							{Name: "kernel-debug", MountPath: "/sys/kernel/debug"},
 							{Name: "proc", MountPath: "/proc"},
 							{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
@@ -173,8 +174,8 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 						k8s.VolumeFromHost("lib-modules", "/lib/modules"),
 						k8s.VolumeFromHost("tracing", "/sys"),
 						k8s.VolumeFromHost("proc", "/proc"),
-						k8s.VolumeFromHost("kernel-debug", "/sys/kernel/debug"),
 						k8s.VolumeFromHost("kernel-src", "/usr/src/kernels"),
+						k8s.VolumeFromHost("kernel-debug", "/sys/kernel/debug"),
 						k8s.VolumeFromConfigMap("cfm", ConfigmapName),
 					}, // Volumes
 				}, // PodSpec
@@ -329,10 +330,10 @@ func NewSCC(d components.Detail, k *v1alpha1.Kepler) *secv1.SecurityContextConst
 
 		AllowPrivilegedContainer: true,
 		AllowHostDirVolumePlugin: true,
-		AllowHostIPC:             true,
-		AllowHostNetwork:         true,
+		AllowHostIPC:             false,
+		AllowHostNetwork:         false,
 		AllowHostPID:             true,
-		AllowHostPorts:           true,
+		AllowHostPorts:           false,
 		DefaultAddCapabilities:   []corev1.Capability{corev1.Capability("SYS_ADMIN")},
 
 		FSGroup: secv1.FSGroupStrategyOptions{
