@@ -23,6 +23,9 @@ oc_apply_kepler_ns() {
 oc_get_kepler_ns() {
 	oc get -n "$KEPLER_DEPLOYMENT_NS" "$@"
 }
+oc_create_kepler_ns() {
+	run oc -n "$KEPLER_DEPLOYMENT_NS" create "$@"
+}
 
 validate_cluster() {
 	header "Validating cluster"
@@ -184,7 +187,7 @@ setup_grafana() {
 	ok "grafana crds created\n"
 
 	info "Creating a grafana instance"
-	oc_apply_kepler_ns -f hack/dashboard/openshift/grafana-config/02-grafana-instance.yaml
+	oc_apply_kepler_ns -f hack/dashboard/openshift/grafana-config/01-grafana-instance.yaml
 	ok "Grafana created"
 }
 
@@ -215,6 +218,9 @@ setup_grafana_dashboard() {
 		envsubst <hack/dashboard/openshift/grafana-config/03-grafana-datasource-UPDATETHIS.yaml |
 		oc apply -n "$KEPLER_DEPLOYMENT_NS" -f -
 	ok "created grafana datasource \n"
+
+	info "Creating dashboard config map"
+	oc_create_kepler_ns configmap grafana-dashboard-cm --from-file=hack/dashboard/assets/dashboard.json
 
 	info "Creating Dashboard"
 	oc_apply_kepler_ns \

@@ -5,4 +5,6 @@ metadata:
   labels:
     app: grafana
 spec:
-  url: https://raw.githubusercontent.com/sustainable-computing-io/kepler-operator/v1alpha1/hack/dashboard/assets/dashboard.json
+  configMapRef:
+    name: grafana-dashboard-cm
+    key: dashboard.json
