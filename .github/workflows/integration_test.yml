@@ -31,6 +31,9 @@ jobs:
         with:
           cluster_provider: kind
           runningBranch: kind
+        env:
+          PROMETHEUS_ENABLE: "true"
+
       - name: Ensure cluster is able to run OLM bundles
         run: make cluster-prereqs
 
