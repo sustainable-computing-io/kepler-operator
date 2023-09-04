@@ -70,6 +70,7 @@ spec:
         - /manager
         args:
         - --leader-elect
+        - --zap-log-level=5
         image: '<OPERATOR_IMG>'
         imagePullPolicy: IfNotPresent
         name: manager
@@ -99,5 +100,9 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+          name: metrics
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

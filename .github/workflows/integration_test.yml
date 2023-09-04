@@ -31,6 +31,9 @@ jobs:
         with:
           cluster_provider: kind
           runningBranch: kind
+        env:
+          PROMETHEUS_ENABLE: "true"
+
       - name: Ensure cluster is able to run OLM bundles
         run: make cluster-prereqs
 
@@ -42,3 +45,22 @@ jobs:
           ./tests/run-e2e.sh --ci
         env:
           VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Capture cluster state
+        if: always()
+        shell: bash
+        run: |
+          # Capture apiserver state
+          # TODO: enable this when we have oc installed as part of `make tools`
+          # oc adm inspect node --dest-dir cluster-state || true
+          # oc adm inspect -A statefulset --dest-dir cluster-state || true
+          # oc adm inspect -A deployment --dest-dir cluster-state || true
+          # oc adm inspect -A ns --dest-dir cluster-state || true
+          cp -r tmp/e2e cluster-state/ || true
+
+      - name: Archive production artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: cluster-state
+          path: cluster-state

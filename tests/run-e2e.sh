@@ -80,11 +80,27 @@ push_bundle() {
 
 }
 
+gather_olm() {
+	header "Gather OLM resources"
+
+	for x in $(kubectl api-resources --api-group=operators.coreos.com -o name); do
+		run kubectl get "$x" -n "$OPERATORS_NS" -o yaml | tee "$LOGS_DIR/$x.yaml"
+	done
+}
+
 run_bundle() {
 	header "Running Bundle"
+	local -i ret=0
 
 	run ./tmp/bin/operator-sdk run bundle "$BUNDLE_IMG" \
-		--install-mode AllNamespaces --namespace "$OPERATORS_NS" --skip-tls
+		--install-mode AllNamespaces --namespace "$OPERATORS_NS" --skip-tls || {
+		ret=$?
+
+		fail "Running Bundle failed"
+		gather_olm || true
+	}
+
+	return $ret
 }
 
 log_events() {
