@@ -48,7 +48,7 @@ const (
 	DaemonSetName = prefix + "ds"
 	ServiceName   = prefix + "svc"
 
-	StableImage = "quay.io/sustainable_computing_io/kepler:release-0.5.4"
+	StableImage = "quay.io/sustainable_computing_io/kepler:release-0.5.5"
 )
 
 // Config that will be set from outside
