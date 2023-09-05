@@ -97,7 +97,7 @@ run_bundle() {
 		ret=$?
 
 		fail "Running Bundle failed"
-		gather_olm || true
+		$CI_MODE && { gather_olm || true; }
 	}
 
 	return $ret
