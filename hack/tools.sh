@@ -32,6 +32,7 @@ declare -r KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION:-v3.8.7}
 declare -r CONTROLLER_TOOLS_VERSION=${CONTROLLER_TOOLS_VERSION:-v0.12.1}
 declare -r OPERATOR_SDK_VERSION=${OPERATOR_SDK_VERSION:-v1.27.0}
 declare -r YQ_VERSION=${YQ_VERSION:-v4.34.2}
+declare -r CRDOC_VERSION=${CRDOC_VERSION:-v0.6.2}
 
 # install
 declare -r KUSTOMIZE_INSTALL_SCRIPT="https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
@@ -119,6 +120,23 @@ install_yq() {
 	}
 	chmod +x "$LOCAL_BIN/yq"
 	ok "yq was installed successfully"
+}
+
+install_crdoc() {
+	local version_regex="version $CRDOC_VERSION"
+
+	[[ $(command -v crdoc) ]] &&
+		[[ $(crdoc --version) =~ $version_regex ]] && {
+		ok "crdoc is already installed"
+		return 0
+	}
+	info "installing crdoc with version: $CRDOC_VERSION"
+	GOBIN=$LOCAL_BIN \
+		go install "fybrik.io/crdoc@$CRDOC_VERSION" || {
+		fail "failed to install crdoc"
+		return 1
+	}
+	ok "crdoc was installed successfully"
 }
 
 install_all() {

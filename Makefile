@@ -98,6 +98,10 @@ vet: ## Run go vet against code.
 test:  fmt vet  ## Run tests.
 		go test ./pkg/... -coverprofile cover.out
 
+.PHONY: docs
+docs: crdoc manifests ## Generate docs.
+	$(CRDOC) --resources config/crd/bases --output docs/api.md
+
 ##@ Development env
 CLUSTER_PROVIDER ?= kind
 LOCAL_DEV_CLUSTER_VERSION ?= main
@@ -191,6 +195,7 @@ LOCALBIN ?= $(shell pwd)/tmp/bin
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+CRDOC ?= $(LOCALBIN)/crdoc
 
 .PHONY: tools
 tools:
@@ -204,6 +209,9 @@ kustomize: ## Download kustomize locally if necessary.
 controller-gen:  ## Download controller-gen locally if necessary.
 	@./hack/tools.sh controller-gen
 
+.PHONY: crdoc
+crdoc:  ## Download crdoc locally if necessary.
+	@./hack/tools.sh crdoc
 
 .PHONY: operator-sdk
 operator-sdk: ## Download operator-sdk locally if necessary.
@@ -327,4 +335,3 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	docker push $(CATALOG_IMG)
-
