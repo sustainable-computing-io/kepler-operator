@@ -1,13 +1,12 @@
-name: images
+name: Publish Images
 
 on:
-  pull_request:
   push:
     branches: [ v1alpha1 ]
 
 jobs:
-  push-image:
-      name: Push operator container images
+  publish:
+      name: Publish operator container images
       runs-on: ubuntu-latest
       steps:
         - name: Checkout source
@@ -23,16 +22,8 @@ jobs:
 
         - name: build and publish images to external registry
           uses: ./.github/publish-images
-          if: github.event_name == 'push'
           with:
             image_registry: ${{ vars.IMG_BASE }}
             registry_login: ${{ secrets.BOT_NAME }}
             registry_token: ${{ secrets.BOT_TOKEN }}
-            version: ${{ steps.version.outputs.version }}
-
-        - name: build images for PR checks
-          uses: ./.github/publish-images
-          if: github.event_name != 'push'
-          with:
-            image_registry: "localhost:5001"
             version: ${{ steps.version.outputs.version }}
