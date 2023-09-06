@@ -1,0 +1,162 @@
+name: pr-checks
+
+on:
+  pull_request:
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+
+      - name: make docs
+        run: |
+          make docs
+          git diff --exit-code
+
+  gofmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+      - name: run gofmt test
+        run: ./automation/presubmit-tests/gofmt.sh
+
+  escapes_detect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+
+      - name: run escapes detect
+        run: make escapes_detect
+
+  golangci:
+    permissions:
+      contents: read
+      # NOTE: allow read access to pull request. Use with `only-new-issues` option.
+      pull-requests: read
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: code checkout
+        uses: actions/checkout@v3
+      - uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.53
+          args: --timeout=3m --issues-exit-code=0 ./...
+          only-new-issues: true
+
+  vulnerability_detect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+      - name: run vulnerability detect
+        run: make govulncheck
+
+  bundle:
+    needs: [docs, golangci, gofmt, vulnerability_detect, escapes_detect]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+      - name: bundle
+        run: |
+          make generate manifests bundle
+          git diff --ignore-matching-lines='createdAt:' --exit-code
+
+  build-images:
+    needs: [docs, golangci, gofmt, vulnerability_detect, escapes_detect]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+
+      - uses: ./.github/compute-version
+        id: version
+
+      - name: build images for PR checks
+        uses: ./.github/publish-images
+        with:
+          image_registry: "localhost:5001"
+          version: ${{ steps.version.outputs.version }}
+
+  e2e:
+    needs: [docs, golangci, gofmt, vulnerability_detect, escapes_detect]
+    env:
+      KIND_VERSION: "0.15.0"
+      GO111MODULE: "on"
+      OPERATOR_IMAGE: "quay.io/sustainable_computing_io/kepler-operator"
+      KUBECONFIG: /tmp/.kube/config
+      KIND_WORKER_NODES: 2
+    name: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Install Go
+        uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+
+      - name: Install all tools
+        run: make tools
+      - name: use kepler action for kind cluster build
+        uses: sustainable-computing-io/kepler-action@v0.0.1
+        with:
+          cluster_provider: kind
+          runningBranch: kind
+        env:
+          PROMETHEUS_ENABLE: "true"
+
+      - name: Ensure cluster is able to run OLM bundles
+        run: make cluster-prereqs
+
+      - uses: ./.github/compute-version
+        id: version
+
+      - name: Run e2e tests
+        run: |
+          ./tests/run-e2e.sh --ci
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Capture cluster state
+        if: always()
+        shell: bash
+        run: |
+          # Capture apiserver state
+          # TODO: enable this when we have oc installed as part of `make tools`
+          # oc adm inspect node --dest-dir cluster-state || true
+          # oc adm inspect -A statefulset --dest-dir cluster-state || true
+          # oc adm inspect -A deployment --dest-dir cluster-state || true
+          # oc adm inspect -A ns --dest-dir cluster-state || true
+          cp -r tmp/e2e cluster-state/ || true
+
+      - name: Archive production artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: cluster-state
+          path: cluster-state

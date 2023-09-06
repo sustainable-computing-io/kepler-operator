@@ -63,7 +63,7 @@ jobs:
       - name: Commit bundle changes and tag it
         run: |
           git add VERSION bundle
-          git commit -m 'ci: update VERSION'
+          git commit -m "ci: update VERSION to $VERSION"
           git tag -a "v$VERSION" -m "$VERSION"
           git show --stat
         env:
