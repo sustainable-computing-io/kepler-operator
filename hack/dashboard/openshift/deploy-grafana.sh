@@ -74,7 +74,7 @@ validate_cluster() {
 		ret=1
 	}
 
-	oc get kepler kepler || {
+	[[ $(oc get kepler kepler -o=jsonpath='{.status.conditions[?(@.type=="Available")].status}') == "True" ]] || {
 		fail "Mising kepler deployment. Did you create kepler instance?"
 		ret=1
 	}
@@ -102,7 +102,7 @@ enable_userworkload_monitoring() {
 
 	wait_until 10 10 "$UWM_NS to be created " oc get ns "$UWM_NS"
 	wait_until 10 10 "User Workload Prometheus to be created" \
-		oc get -n "$UWM_NS" prometheus user-workload
+		oc wait --for condition=Available -n "$UWM_NS" prometheus user-workload
 }
 
 patch_enable_uwm() {
