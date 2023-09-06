@@ -27,3 +27,4 @@ jobs:
             registry_login: ${{ secrets.BOT_NAME }}
             registry_token: ${{ secrets.BOT_TOKEN }}
             version: ${{ steps.version.outputs.version }}
+            additional_tags: v1alpha1

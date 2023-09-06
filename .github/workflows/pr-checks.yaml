@@ -83,6 +83,24 @@ jobs:
           make generate manifests bundle
           git diff --ignore-matching-lines='createdAt:' --exit-code
 
+  build-images:
+    needs: [docs, golangci, gofmt, vulnerability_detect, escapes_detect]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+
+      - uses: ./.github/compute-version
+        id: version
+
+      - name: build images for PR checks
+        uses: ./.github/publish-images
+        with:
+          image_registry: "localhost:5001"
+          version: ${{ steps.version.outputs.version }}
+
   e2e:
     needs: [docs, golangci, gofmt, vulnerability_detect, escapes_detect]
     env:
