@@ -87,6 +87,7 @@ main() {
 		    - husky-parul
 		    - KaiyiLiu1234
 		    - sthaha
+		    - vimalk78
 		updateGraph: replaces-mode
 	EOF
 
