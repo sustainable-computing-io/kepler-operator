@@ -32,6 +32,7 @@ source "$PROJECT_ROOT/hack/utils.bash"
 #   com.redhat.openshift.versions: "v4.9-v4.12"
 
 OPERATOR_IMG=${OPERATOR_IMG:-quay.io/sustainable_computing_io/kepler-operator}
+VERSION_REPLACED=${VERSION_REPLACED:-}
 VERSION=${VERSION:-"$(cat "$PROJECT_ROOT/VERSION")"}
 BUNDLE_GEN_FLAGS=${BUNDLE_GEN_FLAGS:-}
 
@@ -44,12 +45,14 @@ main() {
 	# NOTE: get the current version in the bundle csv, which is the version that
 	# this generation replaces in normal case
 
-	local old_version=""
-	old_version="$(yq -r .spec.version "$CSV_FILE")"
-	local old_bundle_version="kepler-operator.v$old_version"
+	local version_replaced="$VERSION_REPLACED"
+	[[ -z "$version_replaced" ]] && {
+		version_replaced="$(yq -r .spec.version "$CSV_FILE")"
+	}
 
+	local old_bundle_version="kepler-operator.v$version_replaced"
 	# NOTE: if this is just a regeneration, then use the old replaces itself
-	[[ "$old_version" == "$VERSION" ]] &&
+	[[ "$version_replaced" == "$VERSION" ]] &&
 		old_bundle_version=$(yq .spec.replaces "$CSV_FILE")
 
 	info "Found old version: $old_bundle_version"
@@ -66,13 +69,14 @@ main() {
 		tee tmp/pre-bundle.yaml |
 		operator-sdk generate bundle "${gen_opts[@]}"
 
-	[[ "$old_version" != "$VERSION" ]] && {
-		info "Replacing old version $old_version ->  $VERSION"
+	[[ "$version_replaced" != "$VERSION" ]] && {
+		info "Replacing old version $version_replaced ->  $VERSION"
 		sed \
 			-e "s|replaces: .*|replaces: $old_bundle_version|g" \
 			"$CSV_FILE" >"$CSV_FILE.tmp"
 		mv "$CSV_FILE.tmp" "$CSV_FILE"
 	}
+
 	run tree bundle/
 
 	info "updating ci/reviewers"
