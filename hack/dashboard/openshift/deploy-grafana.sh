@@ -4,7 +4,7 @@ set -eu -o pipefail
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 declare -r PROJECT_ROOT
-declare -r BACKUP_DIR=${BACKUP_DIR:-"$PROJECT_ROOT/tmp/grafana-deployment"}
+declare -r BACKUP_DIR=${BACKUP_DIR:-"$PROJECT_ROOT/tmp/grafana-deployment/$(date +%Y-%m-%d-%H-%M-%S)"}
 
 declare -r CMO_ENABLE_UWM_CFG=hack/dashboard/openshift/uwm/00-openshift-monitoring-user-projects.yaml
 declare -r MON_NS=openshift-monitoring
@@ -12,19 +12,30 @@ declare -r UWM_NS=openshift-user-workload-monitoring
 declare -r CMO_CM=cluster-monitoring-config
 declare -r BACKUP_CMO_CFG="$BACKUP_DIR/cmo-cm.yaml"
 
-declare -r KEPLER_DEPLOYMENT_NS=openshift-kepler-operator
+declare -r KEPLER_NS=openshift-kepler-operator
+declare -r GRAFANA_NS=kepler-grafana
 declare -r GRAFANA_SA=grafana
 
 source "$PROJECT_ROOT/hack/utils.bash"
 
-oc_apply_kepler_ns() {
-	run oc apply -n "$KEPLER_DEPLOYMENT_NS" "$@"
+oc_apply_grafana_ns() {
+	run oc apply -n "$GRAFANA_NS" "$@"
 }
-oc_get_kepler_ns() {
-	oc get -n "$KEPLER_DEPLOYMENT_NS" "$@"
+
+oc_replace_grafana_ns() {
+	oc replace --force -n "$GRAFANA_NS" "$@"
 }
-oc_create_kepler_ns() {
-	run oc -n "$KEPLER_DEPLOYMENT_NS" create "$@"
+
+oc_get_grafana_ns() {
+	oc get -n "$GRAFANA_NS" "$@"
+}
+
+oc_delete_grafana_ns() {
+	run oc -n "$GRAFANA_NS" delete --ignore-not-found=true "$@"
+}
+
+oc_create_grafana_ns() {
+	run oc -n "$GRAFANA_NS" create "$@"
 }
 
 validate_cluster() {
@@ -63,23 +74,51 @@ validate_cluster() {
 		ret=1
 	}
 
-	oc get ns $MON_NS -o name || {
+	oc get ns $MON_NS -o name >/dev/null 2>&1 || {
 		fail "$MON_NS namespace missing. Is this an OpenShift cluster?"
-		info "cluster:  $(oc whoami --show-server)"
+		info "cluster:  $(oc whoami --show-server)\n"
 		ret=1
 	}
 
-	oc get crds | grep kepler || {
-		fail "Missing Kepler CRD. Is Kepler Operator Installed?"
+	oc get crds keplers.kepler.system.sustainable.computing.io || {
+		fail "Missing Kepler CRD. Is Kepler Operator Installed?\n"
 		ret=1
 	}
 
-	[[ $(oc get kepler kepler -o=jsonpath='{.status.conditions[?(@.type=="Available")].status}') == "True" ]] || {
-		fail "Mising kepler deployment. Did you create kepler instance?"
+	oc get kepler kepler >/dev/null 2>&1 || {
+		fail "Missing kepler instance. Did you forget to create kepler?"
+		info_run "oc apply -f ./config/samples/kepler.system_v1alpha1_kepler.yaml"
 		ret=1
 	}
 
 	return $ret
+}
+
+wait_for_kepler_to_be_available() {
+	local timeout=2m
+	header "waiting for kepler to be available (timeout: $timeout)"
+	run oc wait --for=condition=Available kepler kepler --timeout=$timeout && {
+		ok "kepler is available"
+		return 0
+	}
+
+	fail "kepler not ready after waiting for $timeout."
+	run oc get kepler
+	line 50
+	oc get kepler kepler -o jsonpath="$(
+		cat <<-EOF
+			{range .status.conditions[?(@.status!="True")]}
+				{" * "}{.type}{":"} {.status}
+				      {.reason}
+				      {.message}
+			{end}
+		EOF
+	)"
+	line 50
+	echo
+	info "Please check the operator logs for more details."
+	info_run "oc logs -n openshift-operators deployment/kepler-operator-controller-manager"
+	return 1
 }
 
 enable_userworkload_monitoring() {
@@ -175,7 +214,11 @@ setup_grafana() {
 	header "Setting up Grafana"
 
 	info "Creating Grafana resources"
-	oc_apply_kepler_ns -k hack/dashboard/openshift/grafana-deploy
+
+	# NOTE: create | apply will create only if needed
+	info "Creating grafana namespace - $GRAFANA_NS"
+	oc create ns $GRAFANA_NS --dry-run=client -o yaml | oc apply -f -
+	oc_apply_grafana_ns -k hack/dashboard/openshift/grafana-deploy
 
 	wait_until 20 10 "Grafana to be deployed" \
 		oc get grafana,grafanadatasource
@@ -187,19 +230,19 @@ setup_grafana() {
 	ok "grafana crds created\n"
 
 	info "Creating a grafana instance"
-	oc_apply_kepler_ns -f hack/dashboard/openshift/grafana-config/01-grafana-instance.yaml
+	oc_apply_grafana_ns -f hack/dashboard/openshift/grafana-config/01-grafana-instance.yaml
 	ok "Grafana created"
 }
 
 config_grafana_sa() {
 	header "Grafana User Project Monitoring Setup"
 
-	oc_apply_kepler_ns -f hack/dashboard/openshift/grafana-config/02-grafana-sa.yaml
+	oc_apply_grafana_ns -f hack/dashboard/openshift/grafana-config/02-grafana-sa.yaml
 	wait_until 20 2 "Grafana Service Account" \
-		oc_get_kepler_ns serviceaccount $GRAFANA_SA
+		oc_get_grafana_ns serviceaccount $GRAFANA_SA
 
 	run oc adm policy add-cluster-role-to-user cluster-monitoring-view \
-		-z $GRAFANA_SA -n "$KEPLER_DEPLOYMENT_NS"
+		-z $GRAFANA_SA -n "$GRAFANA_NS"
 
 	ok "grafana $GRAFANA_SA added to cluster-monitoring-view"
 }
@@ -209,43 +252,52 @@ setup_grafana_dashboard() {
 
 	info "Creating datasource"
 	local sa_token=""
-	# sa_token="$(oc -n "$KEPLER_DEPLOYMENT_NS" create token "$GRAFANA_SA")"
-	oc -n "$KEPLER_DEPLOYMENT_NS" create token --duration=8760h "$GRAFANA_SA" >tmp/grafana-token
+	# sa_token="$(oc -n "$GRAFANA_NS" create token "$GRAFANA_SA")"
+	oc_create_grafana_ns token --duration=8760h "$GRAFANA_SA" >tmp/grafana-token
 	sa_token=$(cat tmp/grafana-token)
 
 	# Deploy from updated manifest
 	BEARER_TOKEN="$sa_token" \
 		envsubst <hack/dashboard/openshift/grafana-config/03-grafana-datasource-UPDATETHIS.yaml |
-		oc apply -n "$KEPLER_DEPLOYMENT_NS" -f -
+		oc apply -n "$GRAFANA_NS" -f -
 	ok "created grafana datasource \n"
 
 	info "Creating dashboard config map"
-	oc_create_kepler_ns configmap grafana-dashboard-cm --from-file=hack/dashboard/assets/dashboard.json
+	oc_delete_grafana_ns configmap grafana-dashboard-cm
+	oc_create_grafana_ns configmap grafana-dashboard-cm --from-file=hack/dashboard/assets/dashboard.json
 
 	info "Creating Dashboard"
-	oc_apply_kepler_ns \
-		-f hack/dashboard/openshift/grafana-config/04-grafana-dashboard.yaml
+	oc_delete_grafana_ns -f hack/dashboard/openshift/grafana-config/04-grafana-dashboard.yaml
+	oc_create_grafana_ns -f hack/dashboard/openshift/grafana-config/04-grafana-dashboard.yaml
 
 	# NOTE: route name is dependent on the grafana instance
 	wait_until 20 2 "Grafana dashboard" \
-		oc_get_kepler_ns route grafana-route
+		oc_get_grafana_ns route grafana-route
 
 	ok "created grafana dashboard\n"
+}
+
+grafana_login_url() {
+	local grafana_url=""
+	echo "https://$(oc_get_grafana_ns route grafana-route -o jsonpath='{.spec.host}')/login"
+
 }
 
 show_key_info() {
 	header "Grafana Dashboard Setup Complete"
 
 	local grafana_url=""
-	grafana_url="https://$(oc_get_kepler_ns route grafana-route -o jsonpath='{.spec.host}')/login"
+	grafana_url=$(grafana_login_url)
 
 	# disable use find instead of ls
 	# shellcheck disable=SC2012
-	cat <<-EOF
+	[[ -d "$BACKUP_DIR" ]] && cat <<-EOF
 		  📦 Cluster Monitoring Configuration 
 			    Backup Directory: $BACKUP_DIR
 			$(ls "$BACKUP_DIR" | sed -e "s|^|      • |g")
+	EOF
 
+	cat <<-EOF
 		  📈 Grafana Configuration:
 
 			   Dashboard URL: $grafana_url
@@ -254,6 +306,11 @@ show_key_info() {
 	EOF
 
 	line 55 heavy
+}
+
+scrape_kepler_metrics() {
+	header "Scraping kepler metrics"
+	run oc apply -n "$KEPLER_NS" -f hack/dashboard/openshift/kepler/00-servicemonitor.yaml
 }
 
 main() {
@@ -268,10 +325,16 @@ main() {
 	}
 	ok "cluster validated"
 
+	wait_for_kepler_to_be_available
+
 	enable_userworkload_monitoring
+	scrape_kepler_metrics
 	setup_grafana
 	config_grafana_sa
 	setup_grafana_dashboard
+	# remove backup dir if no backups were made
+	[[ -z "$(ls -A "$BACKUP_DIR")" ]] && rm -rf "$BACKUP_DIR"
+
 	show_key_info
 
 }

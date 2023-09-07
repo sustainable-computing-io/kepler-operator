@@ -43,7 +43,7 @@ err() {
 }
 
 warn() {
-	echo -e " ⚠️  $*" >&2
+	echo -e "   $*" >&2
 }
 
 ok() {
@@ -56,6 +56,10 @@ skip() {
 
 fail() {
 	echo -e " ❌ FAIL: $*" >&2
+}
+
+info_run() {
+	echo -e "      $*\n" >&2
 }
 
 run() {
