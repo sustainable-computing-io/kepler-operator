@@ -272,10 +272,14 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 	BUNDLE_GEN_FLAGS += --use-image-digests
 endif
 
+# VERSION_REPLACED defines the version replaced in the bundle
+VERSION_REPLACED ?=
+
 .PHONY: bundle
 bundle: operator-build kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
 	OPERATOR_IMG=$(OPERATOR_IMG) \
 	VERSION=$(VERSION) \
+	VERSION_REPLACED=$(VERSION_REPLACED) \
 	BUNDLE_GEN_FLAGS='$(BUNDLE_GEN_FLAGS)' \
 		hack/bundle.sh
 
