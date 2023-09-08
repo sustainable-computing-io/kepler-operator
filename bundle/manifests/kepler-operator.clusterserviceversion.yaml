@@ -24,13 +24,13 @@ metadata:
       ]
     capabilities: Basic Install
     categories: Monitoring
-    containerImage: quay.io/sustainable_computing_io/kepler-operator:0.7.1
-    createdAt: "2023-09-07T08:36:11Z"
+    containerImage: quay.io/sustainable_computing_io/kepler-operator:0.7.2
+    createdAt: "2023-09-08T08:37:47Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.27.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/sustainable-computing-io/kepler-operator
-  name: kepler-operator.v0.7.1
+  name: kepler-operator.v0.7.2
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -212,7 +212,7 @@ spec:
                 - --zap-log-level=5
                 command:
                 - /manager
-                image: quay.io/sustainable_computing_io/kepler-operator:0.7.1
+                image: quay.io/sustainable_computing_io/kepler-operator:0.7.2
                 imagePullPolicy: IfNotPresent
                 livenessProbe:
                   httpGet:
@@ -313,5 +313,5 @@ spec:
   provider:
     name: Kepler Operator Contributors
     url: https://sustainable-computing.io/
-  replaces: kepler-operator.v0.7.0
-  version: 0.7.1
+  replaces: kepler-operator.v0.7.1
+  version: 0.7.2
