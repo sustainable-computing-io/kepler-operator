@@ -23,10 +23,95 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": 2,
-  "iteration": 1694154532971,
+  "iteration": 1694196150140,
   "links": [],
   "liveNow": false,
   "panels": [
+    {
+      "description": "",
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 0,
+        "y": 0
+      },
+      "id": 20,
+      "options": {
+        "content": "<h1 style=\"text-align: center;\">${cpu_architecture}</h1>",
+        "mode": "markdown"
+      },
+      "pluginVersion": "8.5.5",
+      "title": "CPU- Architecture",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 3,
+        "y": 0
+      },
+      "id": 22,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["last"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(kepler_node_info)",
+          "instant": false,
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Total Kepler Pods",
+      "type": "stat"
+    },
     {
       "collapsed": false,
       "datasource": "prometheus",
@@ -34,7 +119,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 4
       },
       "id": 8,
       "panels": [],
@@ -52,12 +137,6 @@
           "color": {
             "mode": "thresholds"
           },
-          "custom": {
-            "align": "auto",
-            "displayMode": "auto",
-            "filterable": true,
-            "inspect": false
-          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -65,64 +144,32 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
           "unit": "kwatth"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value (lastNotNull)"
-            },
-            "properties": [
-              {
-                "id": "custom.displayMode",
-                "value": "gradient-gauge"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "container_namespace"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 300
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 1
+        "y": 5
       },
       "id": 18,
       "options": {
-        "footer": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
           "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
+          "limit": 10,
+          "values": true
         },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "Value (lastNotNull)"
-          }
-        ]
+        "showUnfilled": true
       },
       "pluginVersion": "8.5.5",
       "targets": [
@@ -147,9 +194,7 @@
           "options": {
             "fields": {
               "Value": {
-                "aggregations": [
-                  "lastNotNull"
-                ],
+                "aggregations": ["lastNotNull"],
                 "operation": "aggregate"
               },
               "container_namespace": {
@@ -158,9 +203,21 @@
               }
             }
           }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "Value (lastNotNull)"
+              }
+            ]
+          }
         }
       ],
-      "type": "table"
+      "type": "bargauge"
     },
     {
       "datasource": {
@@ -174,11 +231,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisLabel": "watt",
+            "axisLabel": "",
             "axisPlacement": "left",
             "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 44,
+            "drawStyle": "line",
+            "fillOpacity": 0,
             "gradientMode": "opacity",
             "hideFrom": {
               "graph": false,
@@ -187,16 +244,16 @@
               "viz": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 0,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
             },
-            "showPoints": "always",
+            "showPoints": "never",
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "normal"
+              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -215,7 +272,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "watt"
         },
         "overrides": [
           {
@@ -284,14 +342,12 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 17
       },
       "id": 16,
       "options": {
         "legend": {
-          "calcs": [
-            "mean"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "table",
           "placement": "right",
           "sortBy": "Mean",
@@ -306,9 +362,9 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_package_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_package_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m]))",
           "hide": false,
-          "interval": "",
+          "interval": "5m",
           "legendFormat": "{{pod_name}} / {{container_namespace}} / PKG",
           "range": true,
           "refId": "A"
@@ -316,9 +372,9 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_dram_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_dram_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m]))",
           "hide": false,
-          "interval": "",
+          "interval": "5m",
           "legendFormat": "{{pod_name}} / {{container_namespace}} / DRAM",
           "range": true,
           "refId": "B"
@@ -329,9 +385,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_other_host_components_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_other_host_components_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m]))",
           "hide": false,
-          "interval": "",
+          "interval": "5m",
           "legendFormat": "{{pod_name}} / {{container_namespace}} / OTHER",
           "range": true,
           "refId": "C"
@@ -342,8 +398,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m]))",
           "hide": false,
+          "interval": "5m",
           "legendFormat": "{{pod_name}} / {{container_namespace}} / GPU",
           "range": true,
           "refId": "D"
@@ -364,11 +421,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisLabel": "watt",
+            "axisLabel": "",
             "axisPlacement": "left",
             "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 44,
+            "drawStyle": "line",
+            "fillOpacity": 11,
             "gradientMode": "opacity",
             "hideFrom": {
               "graph": false,
@@ -377,16 +434,16 @@
               "viz": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 0,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
             },
-            "showPoints": "always",
+            "showPoints": "never",
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "normal"
+              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -405,7 +462,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "watt"
         },
         "overrides": [
           {
@@ -474,20 +532,17 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 23
+        "y": 27
       },
       "id": 2,
       "options": {
         "legend": {
-          "calcs": [
-            "mean",
-            "max"
-          ],
+          "calcs": ["mean", "max"],
           "displayMode": "table",
           "placement": "bottom"
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
@@ -498,9 +553,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum(irate(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[1m])))",
+          "expr": "topk(10, sum(irate(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[5m])))",
           "hide": false,
-          "interval": "",
+          "interval": "5m",
           "legendFormat": "PKG",
           "range": true,
           "refId": "A"
@@ -511,9 +566,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum(irate(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[1m])))",
+          "expr": "topk(10, sum(irate(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[5m])))",
           "hide": false,
-          "interval": "",
+          "interval": "5m",
           "legendFormat": "DRAM",
           "range": true,
           "refId": "B"
@@ -524,8 +579,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10,sum(irate(kepler_container_other_host_components_joules_total{container_namespace=~\"$namespace\"}[1m])))",
+          "expr": "topk(10,sum(irate(kepler_container_other_host_components_joules_total{container_namespace=~\"$namespace\"}[5m])))",
           "hide": false,
+          "interval": "5m",
           "legendFormat": "OTHER",
           "range": true,
           "refId": "C"
@@ -536,8 +592,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum(irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\"}[1m])))",
+          "expr": "topk(10, sum(irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\"}[5m])))",
           "hide": false,
+          "interval": "5m",
           "legendFormat": " GPU",
           "range": true,
           "refId": "D"
@@ -558,11 +615,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisLabel": "kWh",
+            "axisLabel": "",
             "axisPlacement": "left",
             "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 44,
+            "drawStyle": "line",
+            "fillOpacity": 11,
             "gradientMode": "opacity",
             "hideFrom": {
               "graph": false,
@@ -571,16 +628,16 @@
               "viz": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 0,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
             },
-            "showPoints": "always",
+            "showPoints": "never",
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "normal"
+              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -599,7 +656,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "kwatth"
         },
         "overrides": [
           {
@@ -668,22 +726,19 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 23
+        "y": 27
       },
       "id": 17,
       "options": {
         "legend": {
-          "calcs": [
-            "mean",
-            "max"
-          ],
+          "calcs": ["mean", "max"],
           "displayMode": "table",
           "placement": "bottom",
           "sortBy": "Max",
           "sortDesc": true
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
@@ -696,7 +751,7 @@
           "editorMode": "code",
           "expr": "topk(10, sum(\n  (increase(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[1h])\n    *$watt_per_second_to_kWh\n  ) *\n  (count_over_time(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[24h])/\n    count_over_time(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[1h])\n  )\n))",
           "hide": false,
-          "interval": "",
+          "interval": "5m",
           "legendFormat": "PKG (CORE+UNCORE)",
           "range": true,
           "refId": "A"
@@ -709,7 +764,7 @@
           "editorMode": "code",
           "expr": "topk(10, sum(\n  (increase(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[1h])\n    *$watt_per_second_to_kWh\n  ) *\n  (count_over_time(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[24h])/\n    count_over_time(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[1h])\n  )\n))",
           "hide": false,
-          "interval": "",
+          "interval": "5m",
           "legendFormat": "DRAM",
           "range": true,
           "refId": "B"
@@ -722,6 +777,7 @@
           "editorMode": "code",
           "expr": "topk(10, sum(\n  (increase(\n    kepler_container_other_host_components_joules_total{container_namespace=~\"$namespace\"}[1h])\n    *$watt_per_second_to_kWh\n  ) *\n  (count_over_time(\n    kepler_container_other_host_components_joules_total{container_namespace=~\"$namespace\"}[24h])/\n    count_over_time(\n      kepler_container_other_host_components_joules_total{container_namespace=~\"$namespace\"}[1h])\n  )\n))",
           "hide": false,
+          "interval": "5m",
           "legendFormat": "OTHER",
           "range": true,
           "refId": "C"
@@ -734,6 +790,7 @@
           "editorMode": "code",
           "expr": "topk(10, sum(\n  (increase(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\"}[1h])\n    *$watt_per_second_to_kWh\n  ) *\n  (count_over_time(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\"}[24h])/\n    count_over_time(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\"}[1h])\n  )\n))",
           "hide": false,
+          "interval": "5m",
           "legendFormat": " GPU",
           "range": true,
           "refId": "D"
@@ -837,6 +894,28 @@
         "query": "0.000000277777777777778",
         "skipUrlSync": false,
         "type": "constant"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kepler_node_info,cpu_architecture)",
+        "description": "fetch the type of cpu-architecture from kepler_node_info metric",
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "name": "cpu_architecture",
+        "options": [],
+        "query": {
+          "query": "label_values(kepler_node_info,cpu_architecture)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
       }
     ]
   },
