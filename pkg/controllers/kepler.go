@@ -387,16 +387,8 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 
 func exporterReconcilers(k *v1alpha1.Kepler) []reconciler.Reconciler {
 
-	// TODO: validate if this required anymore after the cluster-scoped CRD change
 	if cleanup := !k.DeletionTimestamp.IsZero(); cleanup {
 		return deletersForResources(
-
-			// namespace scoped
-			exporter.NewServiceAccount(),
-			exporter.NewConfigMap(components.Metadata, k),
-			exporter.NewDaemonSet(components.Metadata, k),
-			exporter.NewService(k),
-
 			// cluster-scoped
 			exporter.NewSCC(components.Metadata, k),
 			exporter.NewClusterRoleBinding(components.Metadata),
