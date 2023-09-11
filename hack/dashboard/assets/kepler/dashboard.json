@@ -28,27 +28,169 @@
   "liveNow": false,
   "panels": [
     {
-      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "List of different CPU architecture with number of nodes",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
-        "h": 4,
-        "w": 3,
+        "h": 7,
+        "w": 6,
         "x": 0,
         "y": 0
       },
-      "id": 20,
+      "id": 29,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "kepler_node_nodeInfo",
+          "url": "https://github.com/sustainable-computing-io/kepler-doc/blob/84e3e01a0110829937cd40f9634dd8d0c92540a4/docs/design/metrics.md#kepler-metrics-for-node-information"
+        }
+      ],
       "options": {
-        "content": "<h1 style=\"text-align: center;\">${cpu_architecture}</h1>",
-        "mode": "markdown"
+        "footer": {
+          "enablePagination": true,
+          "fields": ["Value"],
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true
       },
       "pluginVersion": "8.5.5",
-      "title": "CPU- Architecture",
-      "type": "text"
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum by (cpu_architecture)(kepler_node_info)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "CPU Architecture",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {},
+            "renameByName": {
+              "Value": "Number of Nodes",
+              "cpu_architecture": "Architecture"
+            }
+          }
+        }
+      ],
+      "type": "table"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
+      "description": "Total energy consumption of the host. (kWh per day)",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "kwatth"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 3,
+        "x": 6,
+        "y": 0
+      },
+      "id": 25,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "kepler_node_platform_joules_total",
+          "url": "https://github.com/sustainable-computing-io/kepler-doc/blob/84e3e01a0110829937cd40f9634dd8d0c92540a4/docs/design/metrics.md#kepler-metrics-for-node-energy-consumption"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "value"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (source) (\n    (\n      sum by (source) (\n        increase(kepler_node_platform_joules_total[1h])\n      ) * $watt_per_second_to_kWh\n    ) * (\n      sum by (source) (\n        count_over_time(kepler_node_platform_joules_total[24h])\n      ) / sum by (source) (\n        count_over_time(kepler_node_platform_joules_total[1h])\n      )\n    )\n  )",
+          "hide": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Total Energy Consumption ($source)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Total number of Kepler pods up and running",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -76,15 +218,15 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 7,
         "w": 3,
-        "x": 3,
+        "x": 9,
         "y": 0
       },
       "id": 22,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
@@ -119,7 +261,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 4
+        "y": 7
       },
       "id": 8,
       "panels": [],
@@ -131,7 +273,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "",
+      "description": "Total Power Consumption for Top 10 Namespaces (kWh per day)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -155,9 +297,16 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 5
+        "y": 8
       },
       "id": 18,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "kepler_container_packages_joules_total",
+          "url": "https://github.com/sustainable-computing-io/kepler-doc/blob/84e3e01a0110829937cd40f9634dd8d0c92540a4/docs/design/metrics.md#kepler-metrics-for-container-energy-consumption"
+        }
+      ],
       "options": {
         "displayMode": "gradient",
         "minVizHeight": 10,
@@ -179,7 +328,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum by (container_namespace) (\n  (increase(kepler_container_package_joules_total{container_namespace=~\".*\"}[1h])\n    *$watt_per_second_to_kWh\n  ) *\n  (count_over_time(kepler_container_package_joules_total{container_namespace=~\".*\"}[24h])/\n    count_over_time(kepler_container_package_joules_total{container_namespace=~\".*\"}[1h])\n  )\n)\n+\nsum by (container_namespace) (\n  (increase(kepler_container_dram_joules_total{container_namespace=~\".*\"}[1h])\n    *$watt_per_second_to_kWh\n  ) *\n  (count_over_time(kepler_container_dram_joules_total{container_namespace=~\".*\"}[24h])/\n    count_over_time(kepler_container_dram_joules_total{container_namespace=~\".*\"}[1h])\n  )\n))",
+          "expr": "topk(10,\n  sum by (container_namespace) (\n    (\n      sum by (container_namespace) (\n        increase(kepler_container_package_joules_total{container_namespace=~\".*\"}[1h])\n      ) * $watt_per_second_to_kWh\n    ) * (\n      sum by (container_namespace) (\n        count_over_time(kepler_container_package_joules_total{container_namespace=~\".*\"}[24h])\n      ) / sum by (container_namespace) (\n        count_over_time(kepler_container_package_joules_total{container_namespace=~\".*\"}[1h])\n      )\n    )\n    +\n    (\n      sum by (container_namespace) (\n        increase(kepler_container_dram_joules_total{container_namespace=~\".*\"}[1h])\n      ) * $watt_per_second_to_kWh\n    ) * (\n      sum by (container_namespace) (\n        count_over_time(kepler_container_dram_joules_total{container_namespace=~\".*\"}[24h])\n      ) / sum by (container_namespace) (\n        count_over_time(kepler_container_dram_joules_total{container_namespace=~\".*\"}[1h])\n      )\n    )\n  )\n)\n",
           "format": "table",
           "interval": "",
           "legendFormat": "{{container_namespace}}",
@@ -187,7 +336,7 @@
           "refId": "A"
         }
       ],
-      "title": "Total Power Consumption (PKG+DRAM) for Top 10 Namespaces (kWh per day)",
+      "title": "Total Power Consumption (PKG+DRAM) for Top 10 Namespaces",
       "transformations": [
         {
           "id": "groupBy",
@@ -224,7 +373,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "",
+      "description": "Cumulative energy consumed by the CPU socket, including all cores and uncore components (e.g. last-level cache, integrated GPU and memory controller).\n",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -266,16 +415,411 @@
               {
                 "color": "green",
                 "value": null
-              },
+              }
+            ]
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "id": 16,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "kepler_container_package_joules_total",
+          "url": "https://github.com/sustainable-computing-io/kepler-doc/blob/84e3e01a0110829937cd40f9634dd8d0c92540a4/docs/design/metrics.md#kepler-metrics-for-container-energy-consumption"
+        }
+      ],
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "right",
+          "sortBy": "Mean",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "prometheus",
+          "editorMode": "code",
+          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_package_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m]))",
+          "hide": false,
+          "interval": "5m",
+          "legendFormat": "{{pod_name}} / {{container_namespace}} / PKG",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Pod/Process (PKG) Power Consumption (W) in Namespace: $namespace",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "The total energy spent in DRAM by a container.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "left",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "graph": false,
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
               {
-                "color": "red",
-                "value": 80
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "id": 23,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "kepler_container_dram_joules_total",
+          "url": "https://github.com/sustainable-computing-io/kepler-doc/blob/84e3e01a0110829937cd40f9634dd8d0c92540a4/docs/design/metrics.md#kepler-metrics-for-container-energy-consumption"
+        }
+      ],
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "right",
+          "sortBy": "Mean",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "prometheus",
+          "editorMode": "code",
+          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_dram_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m]))",
+          "hide": false,
+          "interval": "5m",
+          "legendFormat": "{{pod_name}} / {{container_namespace}} / DRAM",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Pod/Process (DRAM) Power Consumption (W) in Namespace: $namespace",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Cumulative energy consumption on other host components besides the CPU and DRAM",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "left",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "graph": false,
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      },
+      "id": 26,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "kepler_container_other_joules_total",
+          "url": "https://github.com/sustainable-computing-io/kepler-doc/blob/84e3e01a0110829937cd40f9634dd8d0c92540a4/docs/design/metrics.md#kepler-metrics-for-container-energy-consumption"
+        }
+      ],
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "right",
+          "sortBy": "Mean",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "prometheus",
+          "editorMode": "code",
+          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_other_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m]))",
+          "hide": false,
+          "interval": "5m",
+          "legendFormat": "{{pod_name}} / {{container_namespace}} / OTHER",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Pod/Process (OTHER) Power Consumption (W) in Namespace: $namespace",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Total energy consumption on the GPU that a certain container has used.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "left",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "graph": false,
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      },
+      "id": 27,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "kepler_container_gpu_joules_total",
+          "url": "https://github.com/sustainable-computing-io/kepler-doc/blob/84e3e01a0110829937cd40f9634dd8d0c92540a4/docs/design/metrics.md#kepler-metrics-for-container-energy-consumption"
+        }
+      ],
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "right",
+          "sortBy": "Mean",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "prometheus",
+          "editorMode": "code",
+          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m]))",
+          "hide": false,
+          "interval": "5m",
+          "legendFormat": "{{pod_name}} / {{container_namespace}} / GPU",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Pod/Process (GPU) Power Consumption (W) in Namespace: $namespace",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Power Consumption (W) of Top10 processes in Namespace or Top 10 Namespace if ALL namespaces is selected",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "left",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 11,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "graph": false,
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
               }
             ]
           },
           "unit": "watt"
         },
         "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*PKG.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
           {
             "matcher": {
               "id": "byRegexp",
@@ -320,211 +864,6 @@
                 }
               }
             ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*PKG.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 17
-      },
-      "id": 16,
-      "options": {
-        "legend": {
-          "calcs": ["lastNotNull"],
-          "displayMode": "table",
-          "placement": "right",
-          "sortBy": "Mean",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": "prometheus",
-          "editorMode": "code",
-          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_package_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m]))",
-          "hide": false,
-          "interval": "5m",
-          "legendFormat": "{{pod_name}} / {{container_namespace}} / PKG",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": "prometheus",
-          "editorMode": "code",
-          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_dram_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m]))",
-          "hide": false,
-          "interval": "5m",
-          "legendFormat": "{{pod_name}} / {{container_namespace}} / DRAM",
-          "range": true,
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_other_host_components_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m]))",
-          "hide": false,
-          "interval": "5m",
-          "legendFormat": "{{pod_name}} / {{container_namespace}} / OTHER",
-          "range": true,
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m]))",
-          "hide": false,
-          "interval": "5m",
-          "legendFormat": "{{pod_name}} / {{container_namespace}} / GPU",
-          "range": true,
-          "refId": "D"
-        }
-      ],
-      "title": "Pod/Process Power Consumption (W) in Namespace: $namespace",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "left",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 11,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "graph": false,
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "watt"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*Package.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*DRAM.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*OtherComponents.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "blue",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*GPU.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "semi-dark-green",
-                  "mode": "fixed"
-                }
-              }
-            ]
           }
         ]
       },
@@ -532,7 +871,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 27
+        "y": 40
       },
       "id": 2,
       "options": {
@@ -579,7 +918,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10,sum(irate(kepler_container_other_host_components_joules_total{container_namespace=~\"$namespace\"}[5m])))",
+          "expr": "topk(10,sum(irate(kepler_container_other_joules_total{container_namespace=~\"$namespace\"}[5m])))",
           "hide": false,
           "interval": "5m",
           "legendFormat": "OTHER",
@@ -600,7 +939,7 @@
           "refId": "D"
         }
       ],
-      "title": "Power Consumption (W) of Top10 processes in Namespace: $namespace or Top 10 Namespace if ALL namespaces is selected",
+      "title": "Power Consumption (W) of Top10 processes in Namespace: $namespace",
       "type": "timeseries"
     },
     {
@@ -608,7 +947,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "",
+      "description": "Total Power Consumption (kWh per day) of Top10 processes in Namespace or Top10 Namespace if All Namespaces selected",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -650,10 +989,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -663,7 +998,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": ".*Package.*"
+              "options": ".*PKG.*"
             },
             "properties": [
               {
@@ -693,7 +1028,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": ".*OtherComponents.*"
+              "options": ".*OTHER.*"
             },
             "properties": [
               {
@@ -726,7 +1061,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 27
+        "y": 40
       },
       "id": 17,
       "options": {
@@ -775,7 +1110,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum(\n  (increase(\n    kepler_container_other_host_components_joules_total{container_namespace=~\"$namespace\"}[1h])\n    *$watt_per_second_to_kWh\n  ) *\n  (count_over_time(\n    kepler_container_other_host_components_joules_total{container_namespace=~\"$namespace\"}[24h])/\n    count_over_time(\n      kepler_container_other_host_components_joules_total{container_namespace=~\"$namespace\"}[1h])\n  )\n))",
+          "expr": "topk(10, sum(\n  (increase(\n    kepler_container_other_joules_total{container_namespace=~\"$namespace\"}[1h])\n    *$watt_per_second_to_kWh\n  ) *\n  (count_over_time(\n    kepler_container_other_joules_total{container_namespace=~\"$namespace\"}[24h])/\n    count_over_time(\n      kepler_container_other_joules_total{container_namespace=~\"$namespace\"}[1h])\n  )\n))",
           "hide": false,
           "interval": "5m",
           "legendFormat": "OTHER",
@@ -796,7 +1131,7 @@
           "refId": "D"
         }
       ],
-      "title": "Total Power Consumption (kWh per day) of Top10 processes in Namespace: $namespace or Top10 Namesapces if All Namespaces selected",
+      "title": "Total Power Consumption (kWh per day) of Top10 processes in Namespace: $namespace",
       "type": "timeseries"
     }
   ],
@@ -867,6 +1202,7 @@
           "uid": "${datasource}"
         },
         "definition": "label_values(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}, pod_name)",
+        "description": "Number of pods inside namespace",
         "hide": 0,
         "includeAll": true,
         "label": "Pod",
@@ -900,15 +1236,15 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(kepler_node_info,cpu_architecture)",
-        "description": "fetch the type of cpu-architecture from kepler_node_info metric",
+        "definition": "label_values(kepler_node_platform_joules_total,source)",
+        "description": "Source Type",
         "hide": 2,
         "includeAll": false,
         "multi": false,
-        "name": "cpu_architecture",
+        "name": "source",
         "options": [],
         "query": {
-          "query": "label_values(kepler_node_info,cpu_architecture)",
+          "query": "label_values(kepler_node_platform_joules_total,source)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
