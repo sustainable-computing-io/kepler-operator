@@ -277,6 +277,8 @@ escapes_detect: mod-tidy
 	@go build -tags $(GO_BUILD_TAGS) -gcflags="-m -l" ./... 2>&1 | grep "escapes to heap" || true
 
 
+CHANNELS ?=alpha,dev-preview
+
 ##@ OLM bundle
 #
 # CHANNELS define the bundle channels used in the bundle.
