@@ -35,6 +35,7 @@ IMG_BASE ?= quay.io/sustainable_computing_io
 # OPERATOR_IMG define the image:tag used for the operator
 # You can use it as an arg. (E.g make operator-build OPERATOR_IMG=<some-registry>:<version>)
 OPERATOR_IMG ?= $(IMG_BASE)/kepler-operator:$(VERSION)
+ADDITIONAL_TAGS ?=
 
 .PHONY: fresh
 fresh: ## default target - sets up a k8s cluster with images ready for deployment
@@ -144,6 +145,44 @@ build: manifests generate fmt vet ## Build manager binary.
 run: install fmt vet ## Run a controller from your host.
 	go run ./cmd/manager/... --zap-devel --zap-log-level=8 | tee tmp/operator.log
 
+
+# docker_tag accepts an image:tag and a list of additional tags comma-separated
+# it tags the image with the additional tags
+# E.g. given foo:bar, a,b,c, it will tag foo:bar as  foo:a, foo:b, foo:c
+define docker_tag
+@{ \
+	set -eu ;\
+	img="$(1)" ;\
+	tags="$(2)" ;\
+	echo "tagging container image $$img with additional tags: '$$tags'" ;\
+	\
+	img_path=$${img%:*} ;\
+	for tag in $$(echo $$tags | tr -s , ' ' ); do \
+		docker tag $$img $$img_path:$$tag ;\
+	done \
+}
+endef
+
+
+# docker_push accepts an image:tag and a list of additional tags comma-separated
+# it push the image:tag all other images with the additional tags
+# E.g. given foo:bar, a,b,c, it will push foo:bar, foo:a, foo:b, foo:c
+define docker_push
+@{ \
+	set -eu ;\
+	img="$(1)" ;\
+	tags="$(2)" ;\
+	echo "docker push $$img and additional tags: '$$tags'" ;\
+	\
+	img_path=$${img%:*} ;\
+	docker push $$img ;\
+	for tag in $$(echo $$tags | tr -s , ' ' ); do \
+		docker push $$img_path:$$tag ;\
+	done \
+}
+endef
+
+
 # If you wish built the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
@@ -151,13 +190,15 @@ run: install fmt vet ## Run a controller from your host.
 operator-build: manifests generate test ## Build docker image with the manager.
 	go mod tidy
 	docker build -t $(OPERATOR_IMG) \
-	--build-arg TARGETOS=$(GOOS) \
-	--build-arg TARGETARCH=$(GOARCH) \
-	--platform=linux/$(GOARCH) .
+		--build-arg TARGETOS=$(GOOS) \
+		--build-arg TARGETARCH=$(GOARCH) \
+		--platform=linux/$(GOARCH) .
+	$(call docker_tag,$(OPERATOR_IMG),$(ADDITIONAL_TAGS))
+
 
 .PHONY: operator-push
 operator-push: ## Push docker image with the manager.
-	docker push $(OPERATOR_IMG)
+	$(call docker_push,$(OPERATOR_IMG),$(ADDITIONAL_TAGS))
 
 
 ##@ Deployment
@@ -288,10 +329,11 @@ bundle-build: ## Build the bundle image.
 	docker build -f bundle.Dockerfile \
 		-t $(BUNDLE_IMG) \
 		--platform=linux/$(GOARCH) .
+	$(call docker_tag,$(BUNDLE_IMG),$(ADDITIONAL_TAGS))
 
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.
-	docker push $(BUNDLE_IMG)
+	$(call docker_push,$(BUNDLE_IMG),$(ADDITIONAL_TAGS))
 
 .PHONY: create-bundle
 create-bundle:
