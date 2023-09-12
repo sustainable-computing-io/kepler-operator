@@ -56,6 +56,17 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - servicemonitors
+  verbs:
+  - create
+  - delete
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - rbac.authorization.k8s.io
   resources:
   - '*'
