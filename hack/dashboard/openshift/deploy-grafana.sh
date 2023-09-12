@@ -12,7 +12,6 @@ declare -r UWM_NS=openshift-user-workload-monitoring
 declare -r CMO_CM=cluster-monitoring-config
 declare -r BACKUP_CMO_CFG="$BACKUP_DIR/cmo-cm.yaml"
 
-declare -r KEPLER_NS=openshift-kepler-operator
 declare -r GRAFANA_NS=kepler-grafana
 declare -r GRAFANA_SA=grafana
 
@@ -308,11 +307,6 @@ show_key_info() {
 	line 55 heavy
 }
 
-scrape_kepler_metrics() {
-	header "Scraping kepler metrics"
-	run oc apply -n "$KEPLER_NS" -f hack/dashboard/openshift/kepler/00-servicemonitor.yaml
-}
-
 main() {
 	cd "$PROJECT_ROOT"
 	mkdir -p "$BACKUP_DIR"
@@ -328,7 +322,6 @@ main() {
 	wait_for_kepler_to_be_available
 
 	enable_userworkload_monitoring
-	scrape_kepler_metrics
 	setup_grafana
 	config_grafana_sa
 	setup_grafana_dashboard

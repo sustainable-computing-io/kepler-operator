@@ -24,6 +24,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 
 	secv1 "github.com/openshift/api/security/v1"
+	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -46,7 +47,10 @@ const (
 
 	ConfigmapName = prefix + "cm"
 	DaemonSetName = prefix + "ds"
-	ServiceName   = prefix + "svc"
+
+	ServiceName        = prefix + "svc"
+	ServicePortName    = "http"
+	ServiceMonitorName = prefix + "smon"
 
 	StableImage = "quay.io/sustainable_computing_io/kepler:release-0.5.5"
 )
@@ -388,12 +392,48 @@ func NewService(k *v1alpha1.Kepler) *corev1.Service {
 			ClusterIP: "None",
 			Selector:  podSelector,
 			Ports: []corev1.ServicePort{{
-				Name: "http",
+				Name: ServicePortName,
 				Port: int32(exporter.Port),
 				TargetPort: intstr.IntOrString{
 					Type:   intstr.Int,
 					IntVal: int32(exporter.Port),
 				}},
+			},
+		},
+	}
+}
+
+func NewServiceMonitor() *monv1.ServiceMonitor {
+	relabelings := []*monv1.RelabelConfig{{
+		Action:      "replace",
+		Regex:       "(.*)",
+		Replacement: "$1",
+		SourceLabels: []monv1.LabelName{
+			"__meta_kubernetes_pod_node_name",
+		},
+		TargetLabel: "instance",
+	}}
+
+	return &monv1.ServiceMonitor{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: monv1.SchemeGroupVersion.String(),
+			Kind:       "ServiceMonitor",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ServiceMonitorName,
+			Namespace: components.Namespace,
+			Labels:    labels,
+		},
+		Spec: monv1.ServiceMonitorSpec{
+			Endpoints: []monv1.Endpoint{{
+				Port:           ServicePortName,
+				Interval:       "3s",
+				Scheme:         "http",
+				RelabelConfigs: relabelings,
+			}},
+			JobLabel: "app.kubernetes.io/name",
+			Selector: metav1.LabelSelector{
+				MatchLabels: labels,
 			},
 		},
 	}

@@ -25,7 +25,7 @@ metadata:
     capabilities: Basic Install
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.7.3
-    createdAt: "2023-09-11T23:15:31Z"
+    createdAt: "2023-09-12T05:21:37Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.27.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -51,6 +51,12 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:conditions
       version: v1alpha1
+    required:
+    - description: prometheus service monitor
+      displayName: ServiceMonitor
+      kind: ServiceMonitor
+      name: servicemonitors.monitoring.coreos.com
+      version: v1
   description: |
     ### Introduction
     Kepler (Kubernetes Efficient Power Level Exporter) uses eBPF to probe
@@ -136,6 +142,17 @@ spec:
           - '*'
           verbs:
           - '*'
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - servicemonitors
+          verbs:
+          - create
+          - delete
+          - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - rbac.authorization.k8s.io
           resources:
