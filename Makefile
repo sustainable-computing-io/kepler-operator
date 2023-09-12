@@ -142,9 +142,12 @@ build: manifests generate fmt vet ## Build manager binary.
 	go build -o bin/manager cmd/manager/...
 
 .PHONY: run
-run: install fmt vet ## Run a controller from your host.
-	go run ./cmd/manager/... --zap-devel --zap-log-level=8 | tee tmp/operator.log
+run: install fmt vet ## Run a controller from your host against openshift cluster
+	go run ./cmd/manager/... --zap-devel --zap-log-level=8 --openshift | tee tmp/operator.log
 
+.PHONY: run-k8s
+run-k8s: install fmt vet ## Run a controller from your host against vanilla k8s cluster
+	go run ./cmd/manager/... --zap-devel --zap-log-level=8  | tee tmp/operator.log
 
 # docker_tag accepts an image:tag and a list of additional tags comma-separated
 # it tags the image with the additional tags
