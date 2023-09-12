@@ -96,15 +96,15 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 		}
 	}
 
-	exporter := k.Spec.Exporter
-	nodeSelector := exporter.NodeSelector
+	deployment := k.Spec.Exporter.Deployment
+	nodeSelector := deployment.NodeSelector
 
-	tolerations := exporter.Tolerations
+	tolerations := deployment.Tolerations
 	if len(tolerations) == 0 {
 		tolerations = defaultTolerations
 	}
 
-	bindAddress := "0.0.0.0:" + strconv.Itoa(int(exporter.Port))
+	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
 
 	return &appsv1.DaemonSet{
 		TypeMeta: metav1.TypeMeta{
@@ -144,14 +144,14 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 							"-redfish-cred-file-path=/etc/redfish/redfish.csv",
 						},
 						Ports: []corev1.ContainerPort{{
-							ContainerPort: int32(exporter.Port),
+							ContainerPort: int32(deployment.Port),
 							Name:          "http",
 						}},
 						LivenessProbe: &corev1.Probe{
 							ProbeHandler: corev1.ProbeHandler{
 								HTTPGet: &corev1.HTTPGetAction{
 									Path:   "/healthz",
-									Port:   intstr.IntOrString{Type: intstr.Int, IntVal: exporter.Port},
+									Port:   intstr.IntOrString{Type: intstr.Int, IntVal: deployment.Port},
 									Scheme: "HTTP",
 								},
 							},
@@ -204,8 +204,8 @@ func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
 		}
 	}
 
-	exporter := k.Spec.Exporter
-	bindAddress := "0.0.0.0:" + strconv.Itoa(int(exporter.Port))
+	deployment := k.Spec.Exporter.Deployment
+	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
 
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
@@ -375,7 +375,7 @@ func NewServiceAccount() *corev1.ServiceAccount {
 }
 
 func NewService(k *v1alpha1.Kepler) *corev1.Service {
-	exporter := k.Spec.Exporter
+	deployment := k.Spec.Exporter.Deployment
 
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -393,10 +393,10 @@ func NewService(k *v1alpha1.Kepler) *corev1.Service {
 			Selector:  podSelector,
 			Ports: []corev1.ServicePort{{
 				Name: ServicePortName,
-				Port: int32(exporter.Port),
+				Port: int32(deployment.Port),
 				TargetPort: intstr.IntOrString{
 					Type:   intstr.Int,
-					IntVal: int32(exporter.Port),
+					IntVal: int32(deployment.Port),
 				}},
 			},
 		},

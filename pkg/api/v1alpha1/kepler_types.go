@@ -92,9 +92,7 @@ type EstimatorSpec struct {
 	InitUrl          string `json:"initUrl,omitempty"`
 }
 
-type ExporterSpec struct {
-	// TODO: fix the default version before dev-preview
-
+type ExporterDeploymentSpec struct {
 	// +kubebuilder:default=9103
 	// +kubebuilder:validation:Maximum=65535
 	// +kubebuilder:validation:Minimum=1
@@ -108,6 +106,10 @@ type ExporterSpec struct {
 	// If specified, define Pod's tolerations
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+}
+
+type ExporterSpec struct {
+	Deployment ExporterDeploymentSpec `json:"deployment,omitempty"`
 }
 
 // KeplerSpec defines the desired state of Kepler
