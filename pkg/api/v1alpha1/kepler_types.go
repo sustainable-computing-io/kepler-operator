@@ -114,7 +114,6 @@ type ExporterSpec struct {
 
 // KeplerSpec defines the desired state of Kepler
 type KeplerSpec struct {
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:exporterFields"
 	Exporter ExporterSpec `json:"exporter,omitempty"`
 }
 
