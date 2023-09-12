@@ -111,6 +111,33 @@ KeplerSpec defines the desired state of Kepler
         </tr>
     </thead>
     <tbody><tr>
+        <td><b><a href="#keplerspecexporterdeployment">deployment</a></b></td>
+        <td>object</td>
+        <td>
+          <br/>
+        </td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### Kepler.spec.exporter.deployment
+<sup><sup>[↩ Parent](#keplerspecexporter)</sup></sup>
+
+
+
+
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
         <td><b>nodeSelector</b></td>
         <td>map[string]string</td>
         <td>
@@ -132,7 +159,7 @@ KeplerSpec defines the desired state of Kepler
         </td>
         <td>false</td>
       </tr><tr>
-        <td><b><a href="#keplerspecexportertolerationsindex">tolerations</a></b></td>
+        <td><b><a href="#keplerspecexporterdeploymenttolerationsindex">tolerations</a></b></td>
         <td>[]object</td>
         <td>
           If specified, define Pod's tolerations<br/>
@@ -142,8 +169,8 @@ KeplerSpec defines the desired state of Kepler
 </table>
 
 
-### Kepler.spec.exporter.tolerations[index]
-<sup><sup>[↩ Parent](#keplerspecexporter)</sup></sup>
+### Kepler.spec.exporter.deployment.tolerations[index]
+<sup><sup>[↩ Parent](#keplerspecexporterdeployment)</sup></sup>
 
 
 
