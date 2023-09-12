@@ -53,6 +53,7 @@ type KeplerReconciler struct {
 // RBAC for running Kepler exporter
 //+kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=list;watch;create;update;patch;delete;use
+//+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=list;watch;create;update;patch;delete
 
 // RBAC required by Kepler exporter
 //+kubebuilder:rbac:groups=core,resources=nodes/metrics;nodes/proxy;nodes/stats,verbs=get;list;watch
@@ -407,6 +408,7 @@ func exporterReconcilers(k *v1alpha1.Kepler) []reconciler.Reconciler {
 		exporter.NewConfigMap(components.Full, k),
 		exporter.NewDaemonSet(components.Full, k),
 		exporter.NewService(k),
+		exporter.NewServiceMonitor(),
 	)
 }
 
