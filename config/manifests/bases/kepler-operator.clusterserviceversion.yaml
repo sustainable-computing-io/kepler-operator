@@ -26,12 +26,6 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:conditions
       version: v1alpha1
-    required:
-    - description: prometheus service monitor
-      displayName: ServiceMonitor
-      kind: ServiceMonitor
-      name: servicemonitors.monitoring.coreos.com
-      version: v1
   description: |
     ### Introduction
     Kepler (Kubernetes Efficient Power Level Exporter) uses eBPF to probe
