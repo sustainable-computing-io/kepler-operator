@@ -69,6 +69,8 @@ spec:
       - command:
         - /manager
         args:
+        # TODO: move --openshift to openshift specific kustomize directory
+        - --openshift
         - --leader-elect
         - --zap-log-level=5
         image: '<OPERATOR_IMG>'

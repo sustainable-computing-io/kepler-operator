@@ -41,6 +41,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/controllers"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -69,6 +70,7 @@ func env(name, defaultValue string) string {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
+	var openshift bool
 	var probeAddr string
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -76,6 +78,9 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+
+	flag.BoolVar(&openshift, "openshift", false,
+		"Indicate if the operator is running on an OpenShift cluster.")
 
 	// NOTE: KEPLER_IMAGE can be set as env or flag, flag takes precedence over env
 	keplerImage := env("KEPLER_IMAGE", exporter.StableImage)
@@ -122,9 +127,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	cluster := k8s.Kubernetes
+	if openshift {
+		cluster = k8s.OpenShift
+	}
+
 	if err = (&controllers.KeplerReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:  mgr.GetClient(),
+		Scheme:  mgr.GetScheme(),
+		Cluster: cluster,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Kepler")
 		os.Exit(1)

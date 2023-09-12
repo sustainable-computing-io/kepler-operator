@@ -26,6 +26,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type Cluster int
+
+const (
+	Kubernetes Cluster = iota
+	OpenShift
+)
+
 type StringMap map[string]string
 
 type SCCAllows struct {

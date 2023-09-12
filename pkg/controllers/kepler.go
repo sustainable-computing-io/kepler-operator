@@ -15,6 +15,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/reconciler"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,7 +40,8 @@ type KeplerReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	logger logr.Logger
+	logger  logr.Logger
+	Cluster k8s.Cluster
 }
 
 // Owned resource
@@ -70,16 +72,19 @@ func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	genChanged := builder.WithPredicates(predicate.GenerationChangedPredicate{})
 
-	return ctrl.NewControllerManagedBy(mgr).
+	c := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Kepler{}).
 		Owns(&corev1.ConfigMap{}, genChanged).
 		Owns(&corev1.ServiceAccount{}, genChanged).
 		Owns(&corev1.Service{}, genChanged).
 		Owns(&appsv1.DaemonSet{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Owns(&rbacv1.ClusterRoleBinding{}, genChanged).
-		Owns(&rbacv1.ClusterRole{}, genChanged).
-		Owns(&secv1.SecurityContextConstraints{}, genChanged).
-		Complete(r)
+		Owns(&rbacv1.ClusterRole{}, genChanged)
+
+	if r.Cluster == k8s.OpenShift {
+		c = c.Owns(&secv1.SecurityContextConstraints{}, genChanged)
+	}
+	return c.Complete(r)
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -337,7 +342,7 @@ func (r KeplerReconciler) reconcilersForKepler(k *v1alpha1.Kepler) []reconciler.
 		})
 	}
 
-	rs = append(rs, exporterReconcilers(k)...)
+	rs = append(rs, exporterReconcilers(k, r.Cluster)...)
 
 	// TODO: add this when modelServer is supported by Kepler Spec
 	// rs = append(rs, modelServerReconcilers(k)...)
@@ -386,20 +391,25 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, err
 }
 
-func exporterReconcilers(k *v1alpha1.Kepler) []reconciler.Reconciler {
+func exporterReconcilers(k *v1alpha1.Kepler, cluster k8s.Cluster) []reconciler.Reconciler {
 
 	if cleanup := !k.DeletionTimestamp.IsZero(); cleanup {
-		return deletersForResources(
+		rs := deletersForResources(
 			// cluster-scoped
-			exporter.NewSCC(components.Metadata, k),
 			exporter.NewClusterRoleBinding(components.Metadata),
 			exporter.NewClusterRole(components.Metadata),
 		)
+
+		if cluster == k8s.OpenShift {
+			rs = append(rs,
+				resourceDeleter(exporter.NewSCC(components.Metadata, k)),
+			)
+		}
+		return rs
 	}
 
-	return updatersForResources(k,
+	rs := updatersForResources(k,
 		// cluster-scoped resources first
-		exporter.NewSCC(components.Full, k),
 		exporter.NewClusterRole(components.Full),
 		exporter.NewClusterRoleBinding(components.Full),
 
@@ -410,6 +420,12 @@ func exporterReconcilers(k *v1alpha1.Kepler) []reconciler.Reconciler {
 		exporter.NewService(k),
 		exporter.NewServiceMonitor(),
 	)
+
+	if cluster == k8s.OpenShift {
+		updater := newUpdaterForKepler(k)
+		rs = append(rs, updater(exporter.NewSCC(components.Full, k)))
+	}
+	return rs
 }
 
 func updatersForResources(k *v1alpha1.Kepler, resources ...client.Object) []reconciler.Reconciler {
@@ -425,9 +441,13 @@ func updatersForResources(k *v1alpha1.Kepler, resources ...client.Object) []reco
 func deletersForResources(resources ...client.Object) []reconciler.Reconciler {
 	rs := []reconciler.Reconciler{}
 	for _, res := range resources {
-		rs = append(rs, reconciler.Deleter{Resource: res})
+		rs = append(rs, resourceDeleter(res))
 	}
 	return rs
+}
+
+func resourceDeleter(obj client.Object) *reconciler.Deleter {
+	return &reconciler.Deleter{Resource: obj}
 }
 
 // TODO: decide if this this should move to reconciler

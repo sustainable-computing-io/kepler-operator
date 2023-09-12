@@ -27,7 +27,7 @@ metadata:
     capabilities: Basic Install
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.7.3
-    createdAt: "2023-09-12T11:48:55Z"
+    createdAt: "2023-09-12T12:19:29Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.27.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -216,6 +216,7 @@ spec:
                         - linux
               containers:
               - args:
+                - --openshift
                 - --leader-elect
                 - --zap-log-level=5
                 command:
