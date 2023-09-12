@@ -23,7 +23,11 @@ func TestNodeSelection(t *testing.T) {
 			scenario: "default case",
 		},
 		{
-			spec:     v1alpha1.ExporterSpec{NodeSelector: map[string]string{"k1": "v1"}},
+			spec: v1alpha1.ExporterSpec{
+				Deployment: v1alpha1.ExporterDeploymentSpec{
+					NodeSelector: map[string]string{"k1": "v1"},
+				},
+			},
 			selector: map[string]string{"k1": "v1", "kubernetes.io/os": "linux"},
 			scenario: "user defined node selector",
 		},
@@ -58,8 +62,12 @@ func TestTolerations(t *testing.T) {
 			scenario: "default case",
 		},
 		{
-			spec: v1alpha1.ExporterSpec{Tolerations: []corev1.Toleration{{
-				Effect: corev1.TaintEffectNoSchedule, Key: "key1"}}},
+			spec: v1alpha1.ExporterSpec{
+				Deployment: v1alpha1.ExporterDeploymentSpec{
+					Tolerations: []corev1.Toleration{{
+						Effect: corev1.TaintEffectNoSchedule, Key: "key1"}},
+				},
+			},
 			tolerations: []corev1.Toleration{{
 				Effect: corev1.TaintEffectNoSchedule, Key: "key1",
 			}},

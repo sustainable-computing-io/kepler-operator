@@ -319,7 +319,7 @@ endif
 VERSION_REPLACED ?=
 
 .PHONY: bundle
-bundle: operator-build kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
+bundle: generate manifests kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
 	OPERATOR_IMG=$(OPERATOR_IMG) \
 	VERSION=$(VERSION) \
 	VERSION_REPLACED=$(VERSION_REPLACED) \

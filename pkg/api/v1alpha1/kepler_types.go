@@ -92,9 +92,7 @@ type EstimatorSpec struct {
 	InitUrl          string `json:"initUrl,omitempty"`
 }
 
-type ExporterSpec struct {
-	// TODO: fix the default version before dev-preview
-
+type ExporterDeploymentSpec struct {
 	// +kubebuilder:default=9103
 	// +kubebuilder:validation:Maximum=65535
 	// +kubebuilder:validation:Minimum=1
@@ -110,9 +108,12 @@ type ExporterSpec struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
+type ExporterSpec struct {
+	Deployment ExporterDeploymentSpec `json:"deployment,omitempty"`
+}
+
 // KeplerSpec defines the desired state of Kepler
 type KeplerSpec struct {
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors="urn:alm:descriptor:com.tectonic.ui:exporterFields"
 	Exporter ExporterSpec `json:"exporter,omitempty"`
 }
 

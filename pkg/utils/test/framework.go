@@ -111,7 +111,7 @@ type keplerFn func(*v1alpha1.Kepler)
 
 func WithExporterPort(port int32) keplerFn {
 	return func(k *v1alpha1.Kepler) {
-		k.Spec.Exporter.Port = port
+		k.Spec.Exporter.Deployment.Port = port
 	}
 }
 

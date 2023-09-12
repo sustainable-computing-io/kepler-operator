@@ -8,4 +8,6 @@ metadata:
   name: kepler
 spec:
   exporter:
-    port: 9103
+    deployment:
+      port: 9103
+

@@ -17,7 +17,9 @@ metadata:
           },
           "spec": {
             "exporter": {
-              "port": 9103
+              "deployment": {
+                "port": 9103
+              }
             }
           }
         }
@@ -25,7 +27,7 @@ metadata:
     capabilities: Basic Install
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.7.3
-    createdAt: "2023-09-12T05:21:37Z"
+    createdAt: "2023-09-12T07:58:33Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.27.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -40,11 +42,6 @@ spec:
       displayName: Kepler
       kind: Kepler
       name: keplers.kepler.system.sustainable.computing.io
-      specDescriptors:
-      - displayName: Exporter
-        path: exporter
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:exporterFields
       statusDescriptors:
       - displayName: Conditions
         path: conditions

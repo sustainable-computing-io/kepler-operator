@@ -20,11 +20,6 @@ spec:
       displayName: Kepler
       kind: Kepler
       name: keplers.kepler.system.sustainable.computing.io
-      specDescriptors:
-      - displayName: Exporter
-        path: exporter
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:exporterFields
       statusDescriptors:
       - displayName: Conditions
         path: conditions
