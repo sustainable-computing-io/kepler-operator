@@ -331,13 +331,12 @@ func NewSCC(d components.Detail, k *v1alpha1.Kepler) *secv1.SecurityContextConst
 			Name:   SCCName,
 			Labels: labels,
 		},
-
-		AllowPrivilegedContainer: true,
 		AllowHostDirVolumePlugin: true,
-		AllowHostIPC:             false,
-		AllowHostNetwork:         false,
+		AllowPrivilegedContainer: true,
+		AllowHostNetwork:         true,
 		AllowHostPID:             true,
-		AllowHostPorts:           false,
+		AllowHostIPC:             true,
+		AllowHostPorts:           true,
 		DefaultAddCapabilities:   []corev1.Capability{corev1.Capability("SYS_ADMIN")},
 
 		FSGroup: secv1.FSGroupStrategyOptions{
@@ -350,13 +349,8 @@ func NewSCC(d components.Detail, k *v1alpha1.Kepler) *secv1.SecurityContextConst
 		SELinuxContext: secv1.SELinuxContextStrategyOptions{
 			Type: secv1.SELinuxStrategyRunAsAny,
 		},
-		//TODO: decide if "kepler" is really needed?
-		Users: []string{"kepler", FQServiceAccountName},
-		Volumes: []secv1.FSType{
-			secv1.FSType("configMap"),
-			secv1.FSType("projected"),
-			secv1.FSType("emptyDir"),
-			secv1.FSType("hostPath")},
+		Users:   []string{FQServiceAccountName},
+		Volumes: []secv1.FSType{secv1.FSTypeAll},
 	}
 }
 

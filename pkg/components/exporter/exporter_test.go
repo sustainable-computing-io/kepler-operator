@@ -196,10 +196,10 @@ func TestSCCAllows(t *testing.T) {
 			sccAllows: k8s.SCCAllows{
 				AllowPrivilegedContainer: true,
 				AllowHostDirVolumePlugin: true,
-				AllowHostIPC:             false,
-				AllowHostNetwork:         false,
+				AllowHostIPC:             true,
+				AllowHostNetwork:         true,
 				AllowHostPID:             true,
-				AllowHostPorts:           false,
+				AllowHostPorts:           true,
 			},
 			scenario: "default case",
 		},

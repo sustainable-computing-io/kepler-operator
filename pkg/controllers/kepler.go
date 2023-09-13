@@ -408,7 +408,13 @@ func exporterReconcilers(k *v1alpha1.Kepler, cluster k8s.Cluster) []reconciler.R
 		return rs
 	}
 
-	rs := updatersForResources(k,
+	rs := []reconciler.Reconciler{}
+	if cluster == k8s.OpenShift {
+		updater := newUpdaterForKepler(k)
+		rs = append(rs, updater(exporter.NewSCC(components.Full, k)))
+	}
+
+	rs = append(rs, updatersForResources(k,
 		// cluster-scoped resources first
 		exporter.NewClusterRole(components.Full),
 		exporter.NewClusterRoleBinding(components.Full),
@@ -419,12 +425,8 @@ func exporterReconcilers(k *v1alpha1.Kepler, cluster k8s.Cluster) []reconciler.R
 		exporter.NewDaemonSet(components.Full, k),
 		exporter.NewService(k),
 		exporter.NewServiceMonitor(),
-	)
+	)...)
 
-	if cluster == k8s.OpenShift {
-		updater := newUpdaterForKepler(k)
-		rs = append(rs, updater(exporter.NewSCC(components.Full, k)))
-	}
 	return rs
 }
 
