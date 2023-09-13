@@ -61,6 +61,16 @@ func (l StringMap) ToMap() map[string]string {
 	return l
 }
 
+func (l StringMap) AddIfNotEmpty(k, v string) StringMap {
+	if k == "" {
+		return StringMap{}
+	}
+	if v != "" {
+		l[k] = v
+	}
+	return l
+}
+
 func VolumeFromHost(name, path string) corev1.Volume {
 	return corev1.Volume{
 		Name: name,
@@ -89,6 +99,15 @@ func VolumeFromPVC(name, pvcName string) corev1.Volume {
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 				ClaimName: pvcName,
 			},
+		},
+	}
+}
+
+func VolumeFromEmptyDir(name string) corev1.Volume {
+	return corev1.Volume{
+		Name: name,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/components/modelserver"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/reconciler"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 
@@ -50,10 +51,12 @@ type KeplerReconciler struct {
 // common to all components deployed by operator
 //+kubebuilder:rbac:groups=core,resources=namespaces,verbs=list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=services;configmaps;serviceaccounts,verbs=list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=services;configmaps;persistentvolumeclaims,verbs=list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=*,verbs=*
 
 // RBAC for running Kepler exporter
 //+kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=list;watch;create;update;patch;delete;use
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=list;watch;create;update;patch;delete
 
@@ -344,8 +347,14 @@ func (r KeplerReconciler) reconcilersForKepler(k *v1alpha1.Kepler) []reconciler.
 
 	rs = append(rs, exporterReconcilers(k, r.Cluster)...)
 
-	// TODO: add this when modelServer is supported by Kepler Spec
-	// rs = append(rs, modelServerReconcilers(k)...)
+	if k.Spec.ModelServer != nil && k.Spec.ModelServer.Enabled {
+		reconcilers, err := modelServerReconcilers(k, r.Cluster)
+		if err != nil {
+			r.logger.Info(fmt.Sprintf("cannot init model server reconciler from config: %v", err))
+		} else {
+			rs = append(rs, reconcilers...)
+		}
+	}
 
 	if cleanup {
 		rs = append(rs, reconciler.Deleter{
@@ -425,7 +434,25 @@ func exporterReconcilers(k *v1alpha1.Kepler, cluster k8s.Cluster) []reconciler.R
 		updater := newUpdaterForKepler(k)
 		rs = append(rs, updater(exporter.NewSCC(components.Full, k)))
 	}
+
 	return rs
+}
+
+func modelServerReconcilers(k *v1alpha1.Kepler, cluster k8s.Cluster) ([]reconciler.Reconciler, error) {
+	ms := k.Spec.ModelServer
+	cm := modelserver.NewConfigMap(components.Full, ms)
+	deploy := modelserver.NewDeployment(ms)
+	svc := modelserver.NewService(ms)
+	pvc := modelserver.NewPVC()
+
+	rs := updatersForResources(k,
+		// namespace scoped
+		cm,
+		deploy,
+		svc,
+		pvc,
+	)
+	return rs, nil
 }
 
 func updatersForResources(k *v1alpha1.Kepler, resources ...client.Object) []reconciler.Reconciler {

@@ -39,7 +39,9 @@ import (
 
 	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/components/estimator"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/components/modelserver"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/controllers"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	//+kubebuilder:scaffold:imports
@@ -85,6 +87,12 @@ func main() {
 	// NOTE: KEPLER_IMAGE can be set as env or flag, flag takes precedence over env
 	keplerImage := env("KEPLER_IMAGE", exporter.StableImage)
 	flag.StringVar(&exporter.Config.Image, "kepler.image", keplerImage, "kepler image")
+
+	keplerEstimatorImage := env("KEPLER_ESTIMATOR_IMAGE", estimator.StableImage)
+	flag.StringVar(&estimator.Config.Image, "estimator.image", keplerEstimatorImage, "kepler estimator image")
+
+	keplerModelServerImage := env("KEPLER_MODEL_SERVER_IMAGE", modelserver.StableImage)
+	flag.StringVar(&modelserver.Config.Image, "model-server.image", keplerModelServerImage, "kepler model server image")
 
 	opts := zap.Options{
 		Development: true,

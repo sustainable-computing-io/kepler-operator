@@ -1,3 +1,4 @@
+# TODO: add integration test for all deployment choices (minimum, estimator-only, server-only, full)
 #!/usr/bin/env bash
 set -e -u -o pipefail
 

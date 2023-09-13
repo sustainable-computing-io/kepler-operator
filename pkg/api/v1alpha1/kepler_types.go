@@ -48,25 +48,32 @@ type HTTPHeader struct {
 type ModelServerTrainerSpec struct {
 	// TODO: consider namespacing all Prometheus related fields
 
+	// +kubebuilder:default=true
+	Enabled bool `json:"enabled,omitempty"`
+
+	Prom *PrometheusSpec `json:"prom,omitempty"`
+}
+
+type PrometheusSpec struct {
+	// +kubebuilder:default=""
+	Server string `json:"server,omitempty"`
+
 	// +kubebuilder:default=20
-	PromQueryInterval int `json:"promQueryInterval,omitempty"`
+	QueryInterval int `json:"queryInterval,omitempty"`
 
 	// +kubebuilder:default=3
-	PromQueryStep int `json:"promQueryStep,omitempty"`
+	QueryStep int `json:"queryStep,omitempty"`
 
-	PromHeaders []HTTPHeader `json:"promHeaders,omitempty"`
+	Headers []HTTPHeader `json:"headers,omitempty"`
 
 	// +kubebuilder:default=true
-	PromSSLDisable bool `json:"promSSLDisable,omitempty"`
-
-	// +kubebuilder:default=""
-	InitialModelsEndpoint string `json:"initialModelsEndpoint,omitempty"`
-
-	// +kubebuilder:default=""
-	InitialModelNames string `json:"initialModelNames,omitempty"`
+	SSLDisable bool `json:"sslDisable,omitempty"`
 }
 
 type ModelServerSpec struct {
+
+	// +kubebuilder:default=true
+	Enabled bool `json:"enabled,omitempty"`
 
 	// +kubebuilder:default=""
 	URL string `json:"url,omitempty"`
@@ -78,18 +85,41 @@ type ModelServerSpec struct {
 	Path string `json:"path,omitempty"`
 
 	// +kubebuilder:default=""
-	RequiredPath string `json:"requiredPath,omitempty"`
+	RequestPath string `json:"requestPath,omitempty"`
 
 	// +kubebuilder:default=""
-	PromServer string `json:"promServer,omitempty"`
+	ListPath string `json:"listPath,omitempty"`
 
 	Trainer *ModelServerTrainerSpec `json:"trainer,omitempty"`
+
+	// +kubebuilder:default=""
+	PipelineURL string `json:"pipelineUrl,omitempty"`
+
+	// +kubebuilder:default=""
+	ErrorKey string `json:"errKey,omitempty"`
 }
 
 type EstimatorSpec struct {
+	Node      EstimatorGroup `json:"node,omitempty"`
+	Container EstimatorGroup `json:"container,omitempty"`
+}
+
+type EstimatorGroup struct {
+	Total      *EstimatorConfig `json:"total,omitempty"`
+	Components *EstimatorConfig `json:"components,omitempty"`
+}
+
+type EstimatorConfig struct {
+	// +kubebuilder:default=false
+	SidecarEnabled bool `json:"sidecar,omitempty"`
+
+	InitUrl  string             `json:"initUrl,omitempty"`
+	Selector *ModelSelectorSpec `json:"selector,omitempty"`
+}
+
+type ModelSelectorSpec struct {
 	ModelName        string `json:"modelName,omitempty"`
 	FilterConditions string `json:"filterConditions,omitempty"`
-	InitUrl          string `json:"initUrl,omitempty"`
 }
 
 type ExporterDeploymentSpec struct {
@@ -114,7 +144,9 @@ type ExporterSpec struct {
 
 // KeplerSpec defines the desired state of Kepler
 type KeplerSpec struct {
-	Exporter ExporterSpec `json:"exporter,omitempty"`
+	Exporter    ExporterSpec     `json:"exporter,omitempty"`
+	Estimator   *EstimatorSpec   `json:"estimator,omitempty"`
+	ModelServer *ModelServerSpec `json:"modelServer,omitempty"`
 }
 
 type ConditionType string

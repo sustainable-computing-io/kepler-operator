@@ -64,6 +64,75 @@ spec:
           spec:
             description: KeplerSpec defines the desired state of Kepler
             properties:
+              estimator:
+                properties:
+                  container:
+                    properties:
+                      components:
+                        properties:
+                          initUrl:
+                            type: string
+                          selector:
+                            properties:
+                              filterConditions:
+                                type: string
+                              modelName:
+                                type: string
+                            type: object
+                          sidecar:
+                            default: false
+                            type: boolean
+                        type: object
+                      total:
+                        properties:
+                          initUrl:
+                            type: string
+                          selector:
+                            properties:
+                              filterConditions:
+                                type: string
+                              modelName:
+                                type: string
+                            type: object
+                          sidecar:
+                            default: false
+                            type: boolean
+                        type: object
+                    type: object
+                  node:
+                    properties:
+                      components:
+                        properties:
+                          initUrl:
+                            type: string
+                          selector:
+                            properties:
+                              filterConditions:
+                                type: string
+                              modelName:
+                                type: string
+                            type: object
+                          sidecar:
+                            default: false
+                            type: boolean
+                        type: object
+                      total:
+                        properties:
+                          initUrl:
+                            type: string
+                          selector:
+                            properties:
+                              filterConditions:
+                                type: string
+                              modelName:
+                                type: string
+                            type: object
+                          sidecar:
+                            default: false
+                            type: boolean
+                        type: object
+                    type: object
+                type: object
               exporter:
                 properties:
                   deployment:
@@ -124,6 +193,63 @@ spec:
                           type: object
                         type: array
                     type: object
+                type: object
+              modelServer:
+                properties:
+                  enabled:
+                    default: true
+                    type: boolean
+                  errKey:
+                    default: ""
+                    type: string
+                  listPath:
+                    default: ""
+                    type: string
+                  path:
+                    default: ""
+                    type: string
+                  pipelineUrl:
+                    default: ""
+                    type: string
+                  port:
+                    default: 8100
+                    type: integer
+                  requestPath:
+                    default: ""
+                    type: string
+                  trainer:
+                    properties:
+                      enabled:
+                        default: true
+                        type: boolean
+                      prom:
+                        properties:
+                          headers:
+                            items:
+                              properties:
+                                headerKey:
+                                  type: string
+                                headerValue:
+                                  type: string
+                              type: object
+                            type: array
+                          queryInterval:
+                            default: 20
+                            type: integer
+                          queryStep:
+                            default: 3
+                            type: integer
+                          server:
+                            default: ""
+                            type: string
+                          sslDisable:
+                            default: true
+                            type: boolean
+                        type: object
+                    type: object
+                  url:
+                    default: ""
+                    type: string
                 type: object
             type: object
           status:

@@ -1,8 +1,3 @@
-//go:build ignore
-// +build ignore
-
-// TODO: remove the tag above when model-server is added to Kepler Spec
-
 /*
 Copyright 2023.
 
@@ -41,25 +36,27 @@ import (
 const (
 	prefix = "model-server-"
 	// exported
-	PVCName            = prefix + "pvc"
-	ConfigmapName      = prefix + "cm"
-	ServiceName        = prefix + "svc"
-	DeploymentName     = prefix + "deploy"
-	ServiceAccountName = prefix + "sa"
+	PVCName        = prefix + "pvc"
+	ConfigmapName  = prefix + "cm"
+	ServiceName    = prefix + "svc"
+	DeploymentName = prefix + "deploy"
 )
 
 const (
-	defaultModelURL = "https://raw.githubusercontent.com/sustainable-computing-io/kepler-model-server/main/tests/test_models"
-	defaultModels   = `
-	AbsComponentModelWeight=KerasCompWeightFullPipeline
-	AbsComponentPower=KerasCompFullPipeline
-	DynComponentPower=ScikitMixed
-	`
+	defaultPromInterval = 20
+	defaultPromStep     = 3
+	defaultPromServer   = "http://prometheus-k8s." + components.Namespace + ".svc.cluster.local:9090/"
+	defaultModelServer  = "http://" + ServiceName + "." + components.Namespace + ".svc.cluster.local:%d"
+	StableImage         = "quay.io/sustainable_computing_io/kepler_model_server:v0.6"
+)
 
-	defaultPromServer  = "http://prometheus-k8s." + components.Namespace + ".svc.cluster.local:9090/"
-	defaultModelServer = "http://kepler-model-server." + components.Namespace + ".cluster.local:%d"
-
-	image = "quay.io/sustainable_computing_io/kepler_model_server:latest"
+// Config that will be set from outside
+var (
+	Config = struct {
+		Image string
+	}{
+		Image: StableImage,
+	}
 )
 
 var (
@@ -74,22 +71,7 @@ var (
 	})
 )
 
-func NewServiceAccount() *corev1.ServiceAccount {
-	return &corev1.ServiceAccount{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: corev1.SchemeGroupVersion.String(),
-			Kind:       "ServiceAccount",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ServiceAccountName,
-			Namespace: components.Namespace,
-			Labels:    labels,
-		},
-	}
-}
-
-func NewDeployment(k *v1alpha1.Kepler) *appsv1.Deployment {
-
+func NewDeployment(ms *v1alpha1.ModelServerSpec) *appsv1.Deployment {
 	volumes := []corev1.Volume{
 		k8s.VolumeFromPVC("mnt", PVCName),
 		k8s.VolumeFromConfigMap("cfm", ConfigmapName),
@@ -104,33 +86,36 @@ func NewDeployment(k *v1alpha1.Kepler) *appsv1.Deployment {
 		MountPath: "/mnt",
 	}}
 
-	// exporter will always be active
-	exporterPort := int32(k.Spec.Exporter.Port)
-	ms := k.Spec.ModelServer
-
+	port := ms.Port
 	containers := []corev1.Container{{
-		Image:           image,
+		Image:           Config.Image,
 		ImagePullPolicy: corev1.PullAlways,
-		Name:            "model-server-api",
+		Name:            "server-api",
 		Ports: []corev1.ContainerPort{{
-			ContainerPort: exporterPort,
+			ContainerPort: int32(port),
 			Name:          "http",
 		}},
 		VolumeMounts: mounts,
-		Command:      []string{"python3.8", "model_server.py"},
+		Command:      []string{"python3.8"},
+		Args:         []string{"-u", "src/server/model_server.py"},
 	}}
 
 	if ms.Trainer != nil {
 		containers = append(containers, corev1.Container{
-			Image:           image,
+			Image:           Config.Image,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            "online-trainer",
 			VolumeMounts:    mounts,
-			Command:         []string{"python3.8", "online_trainer.py"},
+			Command:         []string{"python3.8"},
+			Args:            []string{"-u", "src/train/online_trainer.py"},
 		})
 	}
 
 	return &appsv1.Deployment{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: appsv1.SchemeGroupVersion.String(),
+			Kind:       "Deployment",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DeploymentName,
 			Namespace: components.Namespace,
@@ -154,10 +139,13 @@ func NewDeployment(k *v1alpha1.Kepler) *appsv1.Deployment {
 	}
 }
 
-func NewService(k *v1alpha1.Kepler) *corev1.Service {
-	exporterPort := int32(k.Spec.Exporter.Port)
-
+func NewService(ms *v1alpha1.ModelServerSpec) *corev1.Service {
+	port := ms.Port
 	return &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "Service",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ServiceName,
 			Namespace: components.Namespace,
@@ -168,14 +156,24 @@ func NewService(k *v1alpha1.Kepler) *corev1.Service {
 			Selector:  labels,
 			Ports: []corev1.ServicePort{{
 				Name:       "http",
-				Port:       exporterPort,
+				Port:       int32(port),
 				TargetPort: intstr.FromString("http"),
 			}},
 		},
 	}
 }
 
-func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
+func ModelServerConfigForClient(ms *v1alpha1.ModelServerSpec) k8s.StringMap {
+	msConfig := k8s.StringMap{
+		"MODEL_SERVER_URL": defaultIfEmpty(ms.URL, serverUrl(*ms)),
+	}
+	msConfig = msConfig.AddIfNotEmpty("MODEL_SERVER_REQ_PATH", ms.RequestPath)
+	msConfig = msConfig.AddIfNotEmpty("MODEL_SERVER_MODEL_LIST_PATH", ms.ListPath)
+
+	return msConfig
+}
+
+func NewConfigMap(d components.Detail, ms *v1alpha1.ModelServerSpec) *corev1.ConfigMap {
 	if d == components.Metadata {
 		return &corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
@@ -189,22 +187,18 @@ func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
 			},
 		}
 	}
-
-	ms := k.Spec.ModelServer
-
 	msConfig := k8s.StringMap{
-		"MODEL_SERVER_ENABLE": "true",
-		"PROM_SERVER":         defaultIfEmpty(ms.PromServer, defaultPromServer),
-
-		"MODEL_SERVER_URL":      defaultIfEmpty(ms.URL, fmt.Sprintf(defaultModelServer, ms.Port)),
-		"MODEL_PATH":            defaultIfEmpty(ms.Path, "models"),
-		"MODEL_SERVER_PORT":     strconv.Itoa(ms.Port),
-		"MODEL_SERVER_REQ_PATH": defaultIfEmpty(ms.RequiredPath, "/model"),
-
-		"MNT_PATH": "/mnt",
+		"MODEL_PATH": defaultIfEmpty(ms.Path, "/mnt/models"),
 	}
+	msConfig = msConfig.AddIfNotEmpty("MODEL_SERVER_REQ_PATH", ms.RequestPath)
+	msConfig = msConfig.AddIfNotEmpty("MODEL_SERVER_MODEL_LIST_PATH", ms.ListPath)
+	msConfig = msConfig.AddIfNotEmpty("INITIAL_PIPELINE_URL", ms.PipelineURL)
+	msConfig = msConfig.AddIfNotEmpty("ERROR_KEY", ms.ErrorKey)
 
-	trainerSettings := settingsForTrainer(ms.Trainer)
+	if ms.Trainer != nil {
+		trainerSettings := settingsForTrainer(ms.Trainer)
+		msConfig = msConfig.Merge(trainerSettings)
+	}
 
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
@@ -216,35 +210,47 @@ func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
 			Namespace: components.Namespace,
 			Labels:    labels,
 		},
-		Data: msConfig.Merge(trainerSettings).ToMap(),
+		Data: msConfig.ToMap(),
 	}
 }
 
 func settingsForTrainer(trainer *v1alpha1.ModelServerTrainerSpec) k8s.StringMap {
-	if trainer == nil {
-		return nil
+	prom := trainer.Prom
+	if prom == nil {
+		return k8s.StringMap{}
 	}
 
-	// iterate through available headers and append to promHeaders (this string will be converted to dict in the image)
 	promHeaders := strings.Builder{}
-	for _, h := range trainer.PromHeaders {
+	interval := defaultPromInterval
+	step := defaultPromStep
+	// TODO: ensure trailing , is accepted
+	// iterate through available headers and append to promHeaders (this string will be converted to dict in the image)
+	for _, h := range prom.Headers {
 		promHeaders.WriteString(h.Key)
 		promHeaders.WriteString(":")
 		promHeaders.WriteString(h.Value)
 		promHeaders.WriteString(",")
 	}
-
-	return k8s.StringMap{
-		"PROM_SSL_DISABLE":    strconv.FormatBool(trainer.PromSSLDisable),
-		"PROM_HEADERS":        promHeaders.String(),
-		"PROM_QUERY_INTERVAL": strconv.Itoa(trainer.PromQueryInterval),
-		"PROM_QUERY_STEP":     strconv.Itoa(trainer.PromQueryStep),
-		"INITIAL_MODELS_LOC":  defaultIfEmpty(trainer.InitialModelsEndpoint, defaultModelURL),
-		"INITIAL_MODEL_NAMES": defaultIfEmpty(trainer.InitialModelNames, defaultModels),
+	if prom.QueryInterval > 0 {
+		interval = prom.QueryInterval
 	}
+
+	if prom.QueryStep > 0 {
+		step = prom.QueryStep
+	}
+	msConfig := k8s.StringMap{
+		"PROM_SERVER":         defaultIfEmpty(prom.Server, defaultPromServer),
+		"PROM_SSL_DISABLE":    strconv.FormatBool(prom.SSLDisable),
+		"PROM_QUERY_INTERVAL": strconv.Itoa(interval),
+		"PROM_QUERY_STEP":     strconv.Itoa(step),
+	}
+
+	msConfig = msConfig.AddIfNotEmpty("PROM_HEADERS", promHeaders.String())
+
+	return msConfig
 }
 
-func NewPVC(k *v1alpha1.Kepler) *corev1.PersistentVolumeClaim {
+func NewPVC() *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -273,4 +279,9 @@ func defaultIfEmpty(given, defaultVal string) string {
 		return given
 	}
 	return defaultVal
+}
+
+func serverUrl(ms v1alpha1.ModelServerSpec) string {
+	port := ms.Port
+	return fmt.Sprintf(defaultModelServer, port)
 }

@@ -39,6 +39,7 @@
 │   │
 │   ├── components         👈 source for creating kepler or other components
 │   │   ├── exporter          manifests like daemsonsets, service, etc
+│   │   ├── estimator         
 │   │   └── modelserver
 │   │
 │   ├── controllers        👈 controller-runtime components
