@@ -38,6 +38,12 @@
   - `packagemanifests`
   - `catalog`
 
+- The Operator should not enter into an infinite reconcile loop. This can be
+  verified by:
+	- checking the logs of the Operator.
+	- checking if the `metadata.resourceVersion` keeps increasing / changing in a
+	  short interval say every 2-5 seconds.
+
 #### Negative:
 
 - OpenShift console should log appropriate errors in case of unsuccessful installation of Operator.
