@@ -15,7 +15,7 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.exporter.port
+    - jsonPath: .spec.exporter.deployment.port
       name: Port
       type: integer
     - jsonPath: .status.desiredNumberScheduled
@@ -36,11 +36,11 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
-    - jsonPath: .spec.exporter.nodeSelector
+    - jsonPath: .spec.exporter.deployment.nodeSelector
       name: Node-Selector
       priority: 10
       type: string
-    - jsonPath: .spec.exporter.tolerations
+    - jsonPath: .spec.exporter.deployment.tolerations
       name: Tolerations
       priority: 10
       type: string
