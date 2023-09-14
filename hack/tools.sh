@@ -33,11 +33,13 @@ declare -r CONTROLLER_TOOLS_VERSION=${CONTROLLER_TOOLS_VERSION:-v0.12.1}
 declare -r OPERATOR_SDK_VERSION=${OPERATOR_SDK_VERSION:-v1.27.0}
 declare -r YQ_VERSION=${YQ_VERSION:-v4.34.2}
 declare -r CRDOC_VERSION=${CRDOC_VERSION:-v0.6.2}
+declare -r OC_VERSION=${OC_VERSION:-4.13.0}
 
 # install
 declare -r KUSTOMIZE_INSTALL_SCRIPT="https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 declare -r OPERATOR_SDK_INSTALL="https://github.com/operator-framework/operator-sdk/releases/download/$OPERATOR_SDK_VERSION/operator-sdk_${GOOS}_${GOARCH}"
 declare -r YQ_INSTALL="https://github.com/mikefarah/yq/releases/download/$YQ_VERSION/yq_${GOOS}_${GOARCH}"
+declare -r OC_URL="https://mirror.openshift.com/pub/openshift-v4/clients/ocp/$OC_VERSION"
 
 source "$PROJECT_ROOT/hack/utils.bash"
 
@@ -139,6 +141,28 @@ install_crdoc() {
 	ok "crdoc was installed successfully"
 }
 
+install_oc() {
+	local version=" $OC_VERSION"
+
+	[[ $(command -v oc) ]] &&
+		[[ $(oc version --client -oyaml | grep releaseClientVersion | cut -f2 -d:) == "$version" ]] && {
+		ok "oc is already installed"
+		return 0
+	}
+
+	info "installing oc with version: $OC_VERSION"
+	local os="$GOOS"
+	[[ $os == "darwin" ]] && os="mac"
+	local install="$OC_URL/openshift-client-$os.tar.gz"
+
+	curl -sNL "$install" | tar -xzf - -C "$LOCAL_BIN" || {
+		fail "failed to install oc"
+		return 1
+	}
+	chmod +x "$LOCAL_BIN/oc"
+	ok "oc was installed successfully"
+
+}
 install_all() {
 	info "installing all tools ..."
 	local ret=0
