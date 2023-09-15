@@ -265,6 +265,10 @@ operator-sdk: ## Download operator-sdk locally if necessary.
 yq: ## Download yq locally if necessary
 	@./hack/tools.sh yq
 
+.PHONY: oc
+oc: ## Download oc locally if necessary
+	@./hack/tools.sh oc
+
 .PHONY: install-govulncheck
 install-govulncheck: ## Download govulncheck locally if necessary
 	@./hack/tools.sh govulncheck
