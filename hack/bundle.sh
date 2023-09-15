@@ -101,6 +101,14 @@ main() {
 		--select-optional name=operatorhub \
 		--optional-values=k8s-version=1.25 \
 		--select-optional suite=operatorframework
+
+	local csv_file=bundle/manifests/kepler-operator.clusterserviceversion.yaml
+
+	if git diff --ignore-matching-lines='createdAt:' --exit-code "$csv_file" >/dev/null; then
+		info "no changes to $(basename $csv_file) detected; resetting it"
+		run git checkout -- "$csv_file"
+	fi
+
 }
 
 main "$@"

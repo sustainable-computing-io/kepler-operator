@@ -24,7 +24,7 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 GOOS="$(go env GOOS)"
 GOARCH="$(go env GOARCH)"
 
-declare -r PROJECT_ROOT
+declare -r PROJECT_ROOT GOOS GOARCH
 declare -r LOCAL_BIN="$PROJECT_ROOT/tmp/bin"
 
 # versions
@@ -44,8 +44,7 @@ declare -r OC_URL="https://mirror.openshift.com/pub/openshift-v4/clients/ocp/$OC
 source "$PROJECT_ROOT/hack/utils.bash"
 
 install_kustomize() {
-
-	[[ $(command -v kustomize) ]] &&
+	command -v kustomize >/dev/null 2>&1 &&
 		[[ $(kustomize version --short | grep -o 'v[0-9].[0-9].[0-9]') == "$KUSTOMIZE_VERSION" ]] && {
 		ok "kustomize $KUSTOMIZE_VERSION is already installed"
 		return 0
@@ -64,7 +63,7 @@ install_kustomize() {
 }
 
 install_controller-gen() {
-	[[ $(command -v controller-gen) ]] &&
+	command -v controller-gen >/dev/null 2>&1 &&
 		[[ $(controller-gen --version) == "Version: $CONTROLLER_TOOLS_VERSION" ]] && {
 		ok "controller-gen is already installed"
 		return 0
@@ -82,7 +81,7 @@ install_controller-gen() {
 install_operator-sdk() {
 	local version_regex="operator-sdk version: \"$OPERATOR_SDK_VERSION\""
 
-	[[ $(command -v operator-sdk) ]] &&
+	command -v operator-sdk >/dev/null 2>&1 &&
 		[[ $(operator-sdk version) =~ $version_regex ]] && {
 		ok "operator-sdk is already installed"
 		return 0
@@ -98,7 +97,7 @@ install_operator-sdk() {
 }
 
 install_govulncheck() {
-	[[ $(command -v govulncheck) ]] && {
+	command -v govulncheck >/dev/null 2>&1 && {
 		ok "govulncheck is already installed"
 		return 0
 	}
@@ -109,7 +108,7 @@ install_govulncheck() {
 install_yq() {
 	local version_regex="version $YQ_VERSION"
 
-	[[ $(command -v yq) ]] &&
+	command -v yq >/dev/null 2>&1 &&
 		[[ $(yq --version) =~ $version_regex ]] && {
 		ok "yq is already installed"
 		return 0
@@ -127,11 +126,12 @@ install_yq() {
 install_crdoc() {
 	local version_regex="version $CRDOC_VERSION"
 
-	[[ $(command -v crdoc) ]] &&
+	command -v crdoc >/dev/null 2>&1 &&
 		[[ $(crdoc --version) =~ $version_regex ]] && {
 		ok "crdoc is already installed"
 		return 0
 	}
+
 	info "installing crdoc with version: $CRDOC_VERSION"
 	GOBIN=$LOCAL_BIN \
 		go install "fybrik.io/crdoc@$CRDOC_VERSION" || {
@@ -144,17 +144,17 @@ install_crdoc() {
 install_oc() {
 	local version=" $OC_VERSION"
 
-	[[ $(command -v oc) ]] &&
+	command -v oc >/dev/null 2>&1 &&
 		[[ $(oc version --client -oyaml | grep releaseClientVersion | cut -f2 -d:) == "$version" ]] && {
 		ok "oc is already installed"
 		return 0
 	}
 
-	info "installing oc with version: $OC_VERSION"
+	info "installing oc version: $OC_VERSION"
 	local os="$GOOS"
 	[[ $os == "darwin" ]] && os="mac"
-	local install="$OC_URL/openshift-client-$os.tar.gz"
 
+	local install="$OC_URL/openshift-client-$os.tar.gz"
 	curl -sNL "$install" | tar -xzf - -C "$LOCAL_BIN" || {
 		fail "failed to install oc"
 		return 1
@@ -163,6 +163,7 @@ install_oc() {
 	ok "oc was installed successfully"
 
 }
+
 install_all() {
 	info "installing all tools ..."
 	local ret=0

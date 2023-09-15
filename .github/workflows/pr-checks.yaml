@@ -81,7 +81,7 @@ jobs:
       - name: bundle
         run: |
           make generate manifests bundle
-          git diff --ignore-matching-lines='createdAt:' --exit-code
+          git diff --exit-code
 
   build-images:
     needs: [docs, golangci, gofmt, vulnerability_detect, escapes_detect]
