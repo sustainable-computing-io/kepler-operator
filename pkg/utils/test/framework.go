@@ -17,8 +17,10 @@ limitations under the License.
 package test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -26,6 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/test/oc"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -189,4 +192,44 @@ func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionTyp
 			return condition.Status == v1alpha1.ConditionTrue, nil
 		})
 	return &k
+}
+
+func (f Framework) GetResourceNames(kind string) ([]string, error) {
+	res, err := oc.Get().Resource(kind, "").OutputJsonpath("{.items[*].metadata.name}").Run()
+	if err != nil {
+		return []string{}, err
+	}
+	nodes := strings.Split(res, " ")
+	return nodes, nil
+}
+
+func (f Framework) AddResourceLabels(kind, name string, l map[string]string) error {
+	b := new(bytes.Buffer)
+	for label, value := range l {
+		fmt.Fprintf(b, "%s=%s ", label, value)
+	}
+	return f.AddResourceLabelsStr(kind, name, b.String())
+}
+
+func (f Framework) AddResourceLabelsStr(kind, name, l string) error {
+	_, err := oc.Literal().From("oc label %s %s %s", kind, name, l).Run()
+	return err
+}
+
+func (f Framework) RemoveResourceLabels(kind, name string, l []string) error {
+	b := new(bytes.Buffer)
+	for _, label := range l {
+		fmt.Fprintf(b, "%s- ", label)
+	}
+	_, err := oc.Literal().From("oc label %s %s %s", kind, name, b.String()).Run()
+	return err
+}
+
+func (f Framework) GetTaints(node string) (string, error) {
+	return oc.Get().Resource("node", node).OutputJsonpath("{.spec.taints}").Run()
+}
+
+func (f Framework) TaintNode(node, taintStr string) error {
+	_, err := oc.Literal().From("oc adm taint node %s %s", node, taintStr).Run()
+	return err
 }

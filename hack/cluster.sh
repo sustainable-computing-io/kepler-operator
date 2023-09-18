@@ -71,7 +71,7 @@ cluster_prereqs() {
 		return 0
 	}
 	info "setup OLM"
-	operator-sdk olm install --verbose
+	operator-sdk olm install --verbose --timeout 5m
 
 }
 
