@@ -1,0 +1,11 @@
+apiVersion: kepler.system.sustainable.computing.io/v1alpha1
+kind: KeplerExperiment
+metadata:
+  labels:
+    app.kubernetes.io/name: kepler
+    app.kubernetes.io/instance: kepler
+  name: kepler
+spec:
+  exporter:
+    deployment:
+      port: 9103

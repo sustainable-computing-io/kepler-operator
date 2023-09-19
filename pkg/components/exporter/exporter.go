@@ -84,7 +84,7 @@ var (
 	}}
 )
 
-func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSet {
+func NewDaemonSet(detail components.Detail, deployment v1alpha1.ExporterDeploymentSpec) *appsv1.DaemonSet {
 	if detail == components.Metadata {
 		return &appsv1.DaemonSet{
 			TypeMeta: metav1.TypeMeta{APIVersion: appsv1.SchemeGroupVersion.String(), Kind: "DaemonSet"},
@@ -96,7 +96,7 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 		}
 	}
 
-	deployment := k.Spec.Exporter.Deployment
+	// deployment := k.Spec.Exporter.Deployment
 	nodeSelector := deployment.NodeSelector
 
 	tolerations := deployment.Tolerations
@@ -189,7 +189,7 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 
 }
 
-func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
+func NewConfigMap(d components.Detail, deployment v1alpha1.ExporterDeploymentSpec) *corev1.ConfigMap {
 	if d == components.Metadata {
 		return &corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
@@ -204,7 +204,7 @@ func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
 		}
 	}
 
-	deployment := k.Spec.Exporter.Deployment
+	// deployment := k.Spec.Exporter.Deployment
 	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
 
 	return &corev1.ConfigMap{
@@ -306,7 +306,7 @@ func NewClusterRoleBinding(c components.Detail) *rbacv1.ClusterRoleBinding {
 	}
 }
 
-func NewSCC(d components.Detail, k *v1alpha1.Kepler) *secv1.SecurityContextConstraints {
+func NewSCC(d components.Detail) *secv1.SecurityContextConstraints {
 	if d == components.Metadata {
 		return &secv1.SecurityContextConstraints{
 			TypeMeta: metav1.TypeMeta{
@@ -374,9 +374,7 @@ func NewServiceAccount() *corev1.ServiceAccount {
 	}
 }
 
-func NewService(k *v1alpha1.Kepler) *corev1.Service {
-	deployment := k.Spec.Exporter.Deployment
-
+func NewService(deployment v1alpha1.ExporterDeploymentSpec) *corev1.Service {
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),

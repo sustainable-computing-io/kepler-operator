@@ -1,0 +1,11 @@
+# This kustomization.yaml is only intented to be used for enabling experimental API
+# and is copy config/crd
+
+resources:
+- ../crd/bases/kepler.system.sustainable.computing.io_keplers.yaml
+- ../crd/bases/kepler.system.sustainable.computing.io_keplerexperiments.yaml
+#+kubebuilder:scaffold:crdkustomizeresource
+
+# the following config is for teaching kustomize how to do kustomization for CRDs.
+configurations:
+- kustomizeconfig.yaml

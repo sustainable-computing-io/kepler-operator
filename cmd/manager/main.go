@@ -41,6 +41,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/controllers"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/controllers/experiment"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	//+kubebuilder:scaffold:imports
 )
@@ -138,6 +139,15 @@ func main() {
 		Cluster: cluster,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Kepler")
+		os.Exit(1)
+	}
+
+	if err = (&experiment.KeplerReconciler{
+		Client:  mgr.GetClient(),
+		Scheme:  mgr.GetScheme(),
+		Cluster: cluster,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Kepler-experimental")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

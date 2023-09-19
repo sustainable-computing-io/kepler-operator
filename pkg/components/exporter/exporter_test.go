@@ -42,7 +42,7 @@ func TestNodeSelection(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := k8s.NodeSelectorFromDS(NewDaemonSet(components.Full, &k))
+			actual := k8s.NodeSelectorFromDS(NewDaemonSet(components.Full, k.Spec.Exporter.Deployment))
 			assert.Equal(t, actual, tc.selector)
 		})
 	}
@@ -83,7 +83,7 @@ func TestTolerations(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := k8s.TolerationsFromDS(NewDaemonSet(components.Full, &k))
+			actual := k8s.TolerationsFromDS(NewDaemonSet(components.Full, k.Spec.Exporter.Deployment))
 			assert.Equal(t, actual, tc.tolerations)
 		})
 	}
@@ -111,11 +111,12 @@ func TestHostPID(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := k8s.HostPIDFromDS(NewDaemonSet(components.Full, &k))
+			actual := k8s.HostPIDFromDS(NewDaemonSet(components.Full, k.Spec.Exporter.Deployment))
 			assert.Equal(t, actual, tc.hostPID)
 		})
 	}
 }
+
 func TestVolumeMounts(t *testing.T) {
 	tt := []struct {
 		spec         v1alpha1.ExporterSpec
@@ -145,11 +146,12 @@ func TestVolumeMounts(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := k8s.VolumeMountsFromDS(NewDaemonSet(components.Full, &k))
+			actual := k8s.VolumeMountsFromDS(NewDaemonSet(components.Full, k.Spec.Exporter.Deployment))
 			assert.Equal(t, actual, tc.volumeMounts)
 		})
 	}
 }
+
 func TestVolumes(t *testing.T) {
 	tt := []struct {
 		spec     v1alpha1.ExporterSpec
@@ -179,7 +181,7 @@ func TestVolumes(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := k8s.VolumesFromDS(NewDaemonSet(components.Full, &k))
+			actual := k8s.VolumesFromDS(NewDaemonSet(components.Full, k.Spec.Exporter.Deployment))
 			assert.Equal(t, actual, tc.volumes)
 		})
 	}
@@ -209,12 +211,7 @@ func TestSCCAllows(t *testing.T) {
 		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {
 			t.Parallel()
-			k := v1alpha1.Kepler{
-				Spec: v1alpha1.KeplerSpec{
-					Exporter: tc.spec,
-				},
-			}
-			actual := k8s.AllowsFromSCC(NewSCC(components.Full, &k))
+			actual := k8s.AllowsFromSCC(NewSCC(components.Full))
 			assert.Equal(t, actual, tc.sccAllows)
 		})
 	}

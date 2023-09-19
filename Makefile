@@ -12,6 +12,16 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+OPENSHIFT ?= true
+EXPERIMENT ?= false
+
+ifeq (true,$(EXPERIMENT))
+  CRD_DIR=config/experiment/crd
+	GO_BUILD_TAGS="experiment"
+else 
+  CRD_DIR=config/crd
+endif
+
 # Setting GOENV
 GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
@@ -81,7 +91,9 @@ help: ## Display this help.
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./pkg/..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook \
+		paths="./pkg/..." \
+		output:crd:artifacts:config=config/crd/bases
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -139,15 +151,13 @@ cluster-down: ## delete the local development cluster
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager cmd/manager/...
+	go build -tags=$(GO_BUILD_TAGS) -o bin/manager cmd/manager/...
 
 .PHONY: run
 run: install fmt vet ## Run a controller from your host against openshift cluster
-	go run ./cmd/manager/... --zap-devel --zap-log-level=8 --openshift 2>&1 | tee tmp/operator.log
-
-.PHONY: run-k8s
-run-k8s: install fmt vet ## Run a controller from your host against vanilla k8s cluster
-	go run ./cmd/manager/... --zap-devel --zap-log-level=8  2>&1 | tee tmp/operator.log
+	go run -tags=$(GO_BUILD_TAGS) ./cmd/manager/... \
+		--zap-devel --zap-log-level=8 --openshift=$(OPENSHIFT) 2>&1 \
+	| tee tmp/operator.log
 
 # docker_tag accepts an image:tag and a list of additional tags comma-separated
 # it tags the image with the additional tags
@@ -210,14 +220,15 @@ ifndef ignore-not-found
   ignore-not-found = false
 endif
 
+
 .PHONY: install
 install: kustomize generate manifests ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | \
+	$(KUSTOMIZE) build $(CRD_DIR) | \
 		kubectl apply --server-side --force-conflicts -f -
 
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/crd | \
+	$(KUSTOMIZE) build $(CRD_DIR) | \
 		kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: deploy
@@ -275,7 +286,6 @@ install-govulncheck: ## Download govulncheck locally if necessary
 
 mod-tidy:
 	@go mod tidy
-
 
 govulncheck: install-govulncheck mod-tidy
 	@govulncheck ./... || true

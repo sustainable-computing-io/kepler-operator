@@ -1,4 +1,7 @@
-package controllers
+//go:build experiment
+// +build experiment
+
+package experiment
 
 import (
 	"context"
@@ -32,7 +35,7 @@ import (
 )
 
 const (
-	KeplerFinalizer = "kepler.system.sustainable.computing.io/finalizer"
+	KeplerFinalizer = "keplerexperiment.system.sustainable.computing.io/finalizer"
 )
 
 // KeplerReconciler reconciles a Kepler object
@@ -45,7 +48,7 @@ type KeplerReconciler struct {
 }
 
 // Owned resource
-//+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=*,verbs=*
+//+kubebuilder:rbac:groups=kepler-experimental.system.sustainable.computing.io,resources=*,verbs=*
 
 // common to all components deployed by operator
 //+kubebuilder:rbac:groups=core,resources=namespaces,verbs=list;watch;create;update;patch;delete
@@ -70,10 +73,11 @@ func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	//
 	// TODO: consider using ResourceVersionChanged predicate for resources that support it
 
+	mgr.GetLogger().Info("Experimental API is enabled")
 	genChanged := builder.WithPredicates(predicate.GenerationChangedPredicate{})
 
 	c := ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.Kepler{}).
+		For(&v1alpha1.KeplerExperiment{}).
 		Owns(&corev1.ConfigMap{}, genChanged).
 		Owns(&corev1.ServiceAccount{}, genChanged).
 		Owns(&corev1.Service{}, genChanged).
@@ -136,7 +140,7 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	return result, updateErr
 }
 
-func (r KeplerReconciler) runKeplerReconcilers(ctx context.Context, kepler *v1alpha1.Kepler) (ctrl.Result, error) {
+func (r KeplerReconciler) runKeplerReconcilers(ctx context.Context, kepler *v1alpha1.KeplerExperiment) (ctrl.Result, error) {
 
 	reconcilers := r.reconcilersForKepler(kepler)
 	r.logger.V(6).Info("renconcilers ...", "count", len(reconcilers))
@@ -149,10 +153,10 @@ func (r KeplerReconciler) runKeplerReconcilers(ctx context.Context, kepler *v1al
 	}.Run(ctx)
 }
 
-func (r KeplerReconciler) getKepler(ctx context.Context, req ctrl.Request) (*v1alpha1.Kepler, error) {
+func (r KeplerReconciler) getKepler(ctx context.Context, req ctrl.Request) (*v1alpha1.KeplerExperiment, error) {
 	logger := r.logger
 
-	kepler := v1alpha1.Kepler{}
+	kepler := v1alpha1.KeplerExperiment{}
 
 	if err := r.Client.Get(ctx, req.NamespacedName, &kepler); err != nil {
 		if errors.IsNotFound(err) {
@@ -177,7 +181,7 @@ func (r KeplerReconciler) updateStatus(ctx context.Context, req ctrl.Request, re
 			return nil
 		}
 
-		kepler.Status = v1alpha1.KeplerStatus{
+		kepler.Status = v1alpha1.KeplerExperimentStatus{
 			Conditions: []v1alpha1.Condition{},
 		}
 		r.updateReconciledStatus(ctx, kepler, recErr)
@@ -193,7 +197,7 @@ func (r KeplerReconciler) updateStatus(ctx context.Context, req ctrl.Request, re
 	})
 }
 
-func (r KeplerReconciler) updateReconciledStatus(ctx context.Context, k *v1alpha1.Kepler, recErr error) {
+func (r KeplerReconciler) updateReconciledStatus(ctx context.Context, k *v1alpha1.KeplerExperiment, recErr error) {
 
 	reconciled := v1alpha1.Condition{
 		Type:               v1alpha1.Reconciled,
@@ -212,7 +216,7 @@ func (r KeplerReconciler) updateReconciledStatus(ctx context.Context, k *v1alpha
 	k.Status.Conditions = append(k.Status.Conditions, reconciled)
 }
 
-func (r KeplerReconciler) updateAvailableStatus(ctx context.Context, k *v1alpha1.Kepler, recErr error) {
+func (r KeplerReconciler) updateAvailableStatus(ctx context.Context, k *v1alpha1.KeplerExperiment, recErr error) {
 	// get daemonset owned by kepler
 	dset := appsv1.DaemonSet{}
 	key := types.NamespacedName{Name: exporter.DaemonSetName, Namespace: components.Namespace}
@@ -328,7 +332,7 @@ func availableCondition(dset *appsv1.DaemonSet) v1alpha1.Condition {
 	return c
 }
 
-func (r KeplerReconciler) reconcilersForKepler(k *v1alpha1.Kepler) []reconciler.Reconciler {
+func (r KeplerReconciler) reconcilersForKepler(k *v1alpha1.KeplerExperiment) []reconciler.Reconciler {
 	rs := []reconciler.Reconciler{}
 
 	cleanup := !k.DeletionTimestamp.IsZero()
@@ -391,7 +395,7 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, err
 }
 
-func exporterReconcilers(k *v1alpha1.Kepler, cluster k8s.Cluster) []reconciler.Reconciler {
+func exporterReconcilers(k *v1alpha1.KeplerExperiment, cluster k8s.Cluster) []reconciler.Reconciler {
 
 	if cleanup := !k.DeletionTimestamp.IsZero(); cleanup {
 		rs := deletersForResources(
@@ -409,7 +413,6 @@ func exporterReconcilers(k *v1alpha1.Kepler, cluster k8s.Cluster) []reconciler.R
 	}
 
 	deployment := k.Spec.Exporter.Deployment
-
 	rs := updatersForResources(k,
 		// cluster-scoped resources first
 		exporter.NewClusterRole(components.Full),
@@ -427,10 +430,11 @@ func exporterReconcilers(k *v1alpha1.Kepler, cluster k8s.Cluster) []reconciler.R
 		updater := newUpdaterForKepler(k)
 		rs = append(rs, updater(exporter.NewSCC(components.Full)))
 	}
+
 	return rs
 }
 
-func updatersForResources(k *v1alpha1.Kepler, resources ...client.Object) []reconciler.Reconciler {
+func updatersForResources(k *v1alpha1.KeplerExperiment, resources ...client.Object) []reconciler.Reconciler {
 	rs := []reconciler.Reconciler{}
 	resourceUpdater := newUpdaterForKepler(k)
 	for _, res := range resources {
@@ -455,7 +459,7 @@ func resourceDeleter(obj client.Object) *reconciler.Deleter {
 // TODO: decide if this this should move to reconciler
 type newUpdaterFn func(client.Object) *reconciler.Updater
 
-func newUpdaterForKepler(k *v1alpha1.Kepler) newUpdaterFn {
+func newUpdaterForKepler(k *v1alpha1.KeplerExperiment) newUpdaterFn {
 	return func(obj client.Object) *reconciler.Updater {
 		// NOTE: Owner: k.GetObjectMeta() also works
 		return &reconciler.Updater{Owner: k, Resource: obj}
