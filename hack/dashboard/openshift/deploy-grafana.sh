@@ -11,6 +11,8 @@ declare -r MON_NS=openshift-monitoring
 declare -r UWM_NS=openshift-user-workload-monitoring
 declare -r CMO_CM=cluster-monitoring-config
 declare -r BACKUP_CMO_CFG="$BACKUP_DIR/cmo-cm.yaml"
+declare -r UWM_URL="https://docs.openshift.com/container-platform/latest/monitoring/enabling-monitoring-for-user-defined-projects.html"
+declare -r UWM_CONFIG_URL="https://docs.openshift.com/container-platform/latest/monitoring/configuring-the-monitoring-stack.html#configuring-the-monitoring-stack_configuring-the-monitoring-stack"
 
 declare -r GRAFANA_NS=kepler-grafana
 declare -r GRAFANA_SA=grafana
@@ -183,12 +185,25 @@ show_restore_info() {
 
 		  * Restore the configuration $BACKUP_CMO_CFG 
 		  * Manually enable User Project Monitoring 
-			  💡 see: https://docs.openshift.com/container-platform/latest/monitoring/enabling-monitoring-for-user-defined-projects.html
+			  💡 see: $UWM_URL
 		  * Rerun this script
 
 	EOF
 	line 60 heavy
 	sleep 10
+}
+
+show_uwm_info() {
+	info "Kepler use prometheus deployed in $UWM_NS to store metrics. To configure Prometheus to cater to needs of the cluster such as:"
+	cat <<-EOF
+
+		    * Increase data retention for in-depth analysis
+		    * Allocate more resources based on requirements
+
+		💡 see: $UWM_CONFIG_URL
+
+	EOF
+	line 55 heavy
 }
 
 backup_monitoring_config() {
@@ -329,6 +344,7 @@ main() {
 	[[ -z "$(ls -A "$BACKUP_DIR")" ]] && rm -rf "$BACKUP_DIR"
 
 	show_key_info
+	show_uwm_info
 
 }
 
