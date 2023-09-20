@@ -59,14 +59,6 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
-func env(name, defaultValue string) string {
-	value := os.Getenv(name)
-	if len(value) == 0 {
-		return defaultValue
-	}
-	return value
-}
-
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
@@ -82,8 +74,8 @@ func main() {
 	flag.BoolVar(&openshift, "openshift", false,
 		"Indicate if the operator is running on an OpenShift cluster.")
 
-	// NOTE: KEPLER_IMAGE can be set as env or flag, flag takes precedence over env
-	keplerImage := env("KEPLER_IMAGE", exporter.StableImage)
+	// NOTE: RELATED_IMAGE_KEPLER can be set as env or flag, flag takes precedence over env
+	keplerImage := os.Getenv("RELATED_IMAGE_KEPLER")
 	flag.StringVar(&exporter.Config.Image, "kepler.image", keplerImage, "kepler image")
 
 	opts := zap.Options{

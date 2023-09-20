@@ -23,6 +23,7 @@ GOARCH := $(shell go env GOARCH)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= $(shell cat VERSION)
 
+KEPLER_VERSION ?=release-0.5.5
 
 # IMG_BASE defines the docker.io namespace and part of the image name for remote images.
 # This variable is used to construct full image tags for bundle and catalog images.
@@ -36,6 +37,9 @@ IMG_BASE ?= quay.io/sustainable_computing_io
 # You can use it as an arg. (E.g make operator-build OPERATOR_IMG=<some-registry>:<version>)
 OPERATOR_IMG ?= $(IMG_BASE)/kepler-operator:$(VERSION)
 ADDITIONAL_TAGS ?=
+
+KEPLER_IMG ?= $(IMG_BASE)/kepler:$(KEPLER_VERSION)
+
 
 .PHONY: fresh
 fresh: ## default target - sets up a k8s cluster with images ready for deployment
@@ -139,15 +143,15 @@ cluster-down: ## delete the local development cluster
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager cmd/manager/...
+	go build -o bin/manager ./cmd/manager/...
 
 .PHONY: run
 run: install fmt vet ## Run a controller from your host against openshift cluster
-	go run ./cmd/manager/... --zap-devel --zap-log-level=8 --openshift 2>&1 | tee tmp/operator.log
+	go run ./cmd/manager/... --kepler.image=$(KEPLER_IMG) --zap-devel --zap-log-level=8 --openshift 2>&1 | tee tmp/operator.log
 
 .PHONY: run-k8s
 run-k8s: install fmt vet ## Run a controller from your host against vanilla k8s cluster
-	go run ./cmd/manager/... --zap-devel --zap-log-level=8  2>&1 | tee tmp/operator.log
+	go run ./cmd/manager/... --kepler.image=$(KEPLER_IMG) --zap-devel --zap-log-level=8  2>&1 | tee tmp/operator.log
 
 # docker_tag accepts an image:tag and a list of additional tags comma-separated
 # it tags the image with the additional tags
@@ -329,6 +333,7 @@ VERSION_REPLACED ?=
 .PHONY: bundle
 bundle: generate manifests kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
 	OPERATOR_IMG=$(OPERATOR_IMG) \
+	KEPLER_IMG=$(KEPLER_IMG) \
 	VERSION=$(VERSION) \
 	VERSION_REPLACED=$(VERSION_REPLACED) \
 	BUNDLE_GEN_FLAGS='$(BUNDLE_GEN_FLAGS)' \
