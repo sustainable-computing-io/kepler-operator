@@ -17,6 +17,7 @@ limitations under the License.
 package exporter
 
 import (
+	_ "embed"
 	"strconv"
 
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
@@ -51,6 +52,9 @@ const (
 	ServiceName        = prefix + "svc"
 	ServicePortName    = "http"
 	ServiceMonitorName = prefix + "smon"
+
+	DashboardName = "kepler-dashboard"
+	DashboardNs   = "openshift-config-managed"
 )
 
 // Config that will be set from outside
@@ -78,6 +82,9 @@ var (
 	defaultTolerations = []corev1.Toleration{{
 		Operator: corev1.TolerationOpExists,
 	}}
+
+	//go:embed assets/kepler-dashboard.json
+	dashboardJson string
 )
 
 func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSet {
@@ -183,6 +190,40 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 		}, // Spec
 	}
 
+}
+
+func NewDashboard(d components.Detail) *corev1.ConfigMap {
+	objMeta := metav1.ObjectMeta{
+		Name:      DashboardName,
+		Namespace: DashboardNs,
+		Labels: labels.Merge(k8s.StringMap{
+			"console.openshift.io/dashboard": "true",
+		}),
+		Annotations: k8s.StringMap{
+			"include.release.openshift.io/self-managed-high-availability": "true",
+			"include.release.openshift.io/single-node-developer":          "true",
+		},
+	}
+	if d == components.Metadata {
+		return &corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: corev1.SchemeGroupVersion.String(),
+				Kind:       "ConfigMap",
+			},
+			ObjectMeta: objMeta,
+		}
+	}
+
+	return &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: objMeta,
+		Data: map[string]string{
+			"kepler-dashboard.json": dashboardJson,
+		},
+	}
 }
 
 func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
