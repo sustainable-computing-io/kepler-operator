@@ -73,6 +73,8 @@ cluster_prereqs() {
 	info "setup OLM"
 	operator-sdk olm install --verbose --timeout 5m
 
+	info "Ensure openshift namespace for dashboard exists"
+	run kubectl create namespace openshift-config-managed
 }
 
 ensure_all_tools() {

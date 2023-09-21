@@ -394,21 +394,25 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 func exporterReconcilers(k *v1alpha1.Kepler, cluster k8s.Cluster) []reconciler.Reconciler {
 
 	if cleanup := !k.DeletionTimestamp.IsZero(); cleanup {
-		rs := deletersForResources(
+		rs := resourceReconcilers(
+			deleteResource,
 			// cluster-scoped
 			exporter.NewClusterRoleBinding(components.Metadata),
 			exporter.NewClusterRole(components.Metadata),
 		)
-
 		if cluster == k8s.OpenShift {
 			rs = append(rs,
-				resourceDeleter(exporter.NewSCC(components.Metadata, k)),
+				resourceReconcilers(deleteResource,
+					exporter.NewSCC(components.Metadata, k),
+					exporter.NewDashboard(components.Metadata),
+				)...,
 			)
 		}
 		return rs
 	}
 
-	rs := updatersForResources(k,
+	updater := newUpdaterForKepler(k)
+	rs := resourceReconcilers(updater,
 		// cluster-scoped resources first
 		exporter.NewClusterRole(components.Full),
 		exporter.NewClusterRoleBinding(components.Full),
@@ -422,39 +426,37 @@ func exporterReconcilers(k *v1alpha1.Kepler, cluster k8s.Cluster) []reconciler.R
 	)
 
 	if cluster == k8s.OpenShift {
-		updater := newUpdaterForKepler(k)
-		rs = append(rs, updater(exporter.NewSCC(components.Full, k)))
+		rs = append(rs,
+			resourceReconcilers(
+				updater,
+				exporter.NewSCC(components.Full, k),
+				exporter.NewDashboard(components.Full),
+			)...,
+		)
 	}
 	return rs
 }
 
-func updatersForResources(k *v1alpha1.Kepler, resources ...client.Object) []reconciler.Reconciler {
-	rs := []reconciler.Reconciler{}
-	resourceUpdater := newUpdaterForKepler(k)
-	for _, res := range resources {
-		rs = append(rs, resourceUpdater(res))
-	}
-	return rs
-
-}
-
-func deletersForResources(resources ...client.Object) []reconciler.Reconciler {
+func resourceReconcilers(fn reconcileFn, resources ...client.Object) []reconciler.Reconciler {
 	rs := []reconciler.Reconciler{}
 	for _, res := range resources {
-		rs = append(rs, resourceDeleter(res))
+		rs = append(rs, fn(res))
 	}
 	return rs
-}
-
-func resourceDeleter(obj client.Object) *reconciler.Deleter {
-	return &reconciler.Deleter{Resource: obj}
 }
 
 // TODO: decide if this this should move to reconciler
-type newUpdaterFn func(client.Object) *reconciler.Updater
+type reconcileFn func(client.Object) reconciler.Reconciler
 
-func newUpdaterForKepler(k *v1alpha1.Kepler) newUpdaterFn {
-	return func(obj client.Object) *reconciler.Updater {
+// deleteResource is a resourceFn that deletes resources
+func deleteResource(obj client.Object) reconciler.Reconciler {
+	return &reconciler.Deleter{Resource: obj}
+}
+
+// newUpdaterForKepler returns a reconcileFn that update the resource and
+// sets the owner reference to kepler
+func newUpdaterForKepler(k *v1alpha1.Kepler) reconcileFn {
+	return func(obj client.Object) reconciler.Reconciler {
 		// NOTE: Owner: k.GetObjectMeta() also works
 		return &reconciler.Updater{Owner: k, Resource: obj}
 	}
