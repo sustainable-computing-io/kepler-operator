@@ -51,17 +51,13 @@ const (
 	ServiceName        = prefix + "svc"
 	ServicePortName    = "http"
 	ServiceMonitorName = prefix + "smon"
-
-	StableImage = "quay.io/sustainable_computing_io/kepler:release-0.5.5"
 )
 
 // Config that will be set from outside
 var (
 	Config = struct {
 		Image string
-	}{
-		Image: StableImage,
-	}
+	}{}
 )
 
 var (
