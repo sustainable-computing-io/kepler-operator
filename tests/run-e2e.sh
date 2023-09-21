@@ -8,6 +8,7 @@ declare -r PROJECT_ROOT
 
 source "$PROJECT_ROOT/hack/utils.bash"
 
+declare -r LOCAL_BIN="$PROJECT_ROOT/tmp/bin"
 declare -r OPERATOR="kepler-operator"
 declare -r OLM_CATALOG="kepler-operator-catalog"
 declare -r VERSION="0.0.0-e2e"
@@ -260,7 +261,7 @@ kind_load_images() {
 	while read -r img; do
 		run docker pull "$img"
 		run kind load docker-image "$img"
-	done < <(grep -e '=\s\+"quay.io' -r pkg/components/exporter | cut -f2 -d'"')
+  done < <(yq -r .spec.relatedImages[].image bundle/manifests//kepler-operator.clusterserviceversion.yaml)
 }
 
 deploy_operator() {
@@ -346,6 +347,7 @@ print_config() {
 }
 
 main() {
+	export PATH="$LOCAL_BIN:$PATH"
 	parse_args "$@" || die "parse args failed"
 	$SHOW_USAGE && {
 		print_usage
