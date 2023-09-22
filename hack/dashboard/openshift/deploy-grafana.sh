@@ -277,12 +277,18 @@ setup_grafana_dashboard() {
 	ok "created grafana datasource \n"
 
 	info "Creating dashboard config map"
-	oc_delete_grafana_ns configmap grafana-dashboard-cm
-	oc_create_grafana_ns configmap grafana-dashboard-cm --from-file=hack/dashboard/assets/dashboard.json
+	oc_delete_grafana_ns configmap kepler-dashboard-cm
+	oc_create_grafana_ns configmap kepler-dashboard-cm --from-file=hack/dashboard/assets/kepler/dashboard.json
+
+	oc_delete_grafana_ns configmap prometheus-dashboard-cm
+	oc_create_grafana_ns configmap prometheus-dashboard-cm --from-file=hack/dashboard/assets/prometheus/dashboard.json
 
 	info "Creating Dashboard"
-	oc_delete_grafana_ns -f hack/dashboard/openshift/grafana-config/04-grafana-dashboard.yaml
-	oc_create_grafana_ns -f hack/dashboard/openshift/grafana-config/04-grafana-dashboard.yaml
+	oc_delete_grafana_ns -f hack/dashboard/openshift/grafana-config/04-kepler-dashboard.yaml
+	oc_create_grafana_ns -f hack/dashboard/openshift/grafana-config/04-kepler-dashboard.yaml
+
+	oc_delete_grafana_ns -f hack/dashboard/openshift/grafana-config/05-prometheus-dashboard.yaml
+	oc_create_grafana_ns -f hack/dashboard/openshift/grafana-config/05-prometheus-dashboard.yaml
 
 	# NOTE: route name is dependent on the grafana instance
 	wait_until 20 2 "Grafana dashboard" \
