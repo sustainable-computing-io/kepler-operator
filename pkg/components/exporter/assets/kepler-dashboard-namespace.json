@@ -18,29 +18,15 @@
       }
     ]
   },
-  "description": "Power monitoring",
+  "description": "Power Monitoring / Namespace",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 5,
-  "iteration": 1695135410938,
+  "id": 8,
+  "iteration": 1695643949328,
   "links": [],
   "liveNow": false,
   "panels": [
-    {
-      "collapsed": false,
-      "datasource": "prometheus",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "id": 8,
-      "panels": [],
-      "title": "Power monitoring",
-      "type": "row"
-    },
     {
       "aliasColors": {},
       "bars": false,
@@ -51,13 +37,19 @@
         "uid": "${datasource}"
       },
       "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 1
+        "y": 16
       },
       "hiddenSeries": false,
       "id": 16,
@@ -95,7 +87,89 @@
           "legendFormat": "{{pod_name}} / {{container_namespace}} / PKG",
           "range": true,
           "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "Pod/Process (PKG) Power Consumption (W)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "mode": "time",
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "W",
+          "logBase": 1,
+          "show": true
         },
+        {
+          "format": "short",
+          "logBase": 1,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "hiddenSeries": false,
+      "id": 24,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.5.1",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
         {
           "datasource": "prometheus",
           "editorMode": "code",
@@ -104,37 +178,190 @@
           "interval": "",
           "legendFormat": "{{pod_name}} / {{container_namespace}} / DRAM",
           "range": true,
-          "refId": "B"
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "Pod/Process (DRAM) Power Consumption (W)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "mode": "time",
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "W",
+          "logBase": 1,
+          "show": true
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
+          "format": "short",
+          "logBase": 1,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "hiddenSeries": false,
+      "id": 25,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.5.1",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": "prometheus",
+          "editorMode": "code",
+          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "{{pod_name}} / {{container_namespace}} / GPU",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "Pod/Process (GPU) Power Consumption (W)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "mode": "time",
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "W",
+          "logBase": 1,
+          "show": true
+        },
+        {
+          "format": "short",
+          "logBase": 1,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 46
+      },
+      "hiddenSeries": false,
+      "id": 26,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.5.1",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": "prometheus",
           "editorMode": "code",
           "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_other_host_components_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
           "hide": false,
           "interval": "",
           "legendFormat": "{{pod_name}} / {{container_namespace}} / OTHER",
           "range": true,
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
-          "hide": false,
-          "legendFormat": "{{pod_name}} / {{container_namespace}} / GPU",
-          "range": true,
-          "refId": "D"
+          "refId": "A"
         }
       ],
       "thresholds": [],
       "timeRegions": [],
-      "title": "Pod/Process Power Consumption (W)",
+      "title": "Pod/Process (OTHER) Power Consumption (W)",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -172,13 +399,19 @@
         "uid": "${datasource}"
       },
       "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 11
+        "y": 56
       },
       "hiddenSeries": false,
       "id": 2,
@@ -253,14 +486,14 @@
           "editorMode": "code",
           "expr": "topk(10, sum(irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\"}[1m])))",
           "hide": false,
-          "legendFormat": " GPU",
+          "legendFormat": "GPU",
           "range": true,
           "refId": "D"
         }
       ],
       "thresholds": [],
       "timeRegions": [],
-      "title": "Power Consumption (W) of Top10 processes",
+      "title": "Total Power Consumption (W) in Namespace",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -274,7 +507,7 @@
       },
       "yaxes": [
         {
-          "format": "short",
+          "format": "W",
           "logBase": 1,
           "show": true
         },
@@ -298,13 +531,19 @@
         "uid": "${datasource}"
       },
       "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 11
+        "y": 56
       },
       "hiddenSeries": false,
       "id": 17,
@@ -386,7 +625,7 @@
       ],
       "thresholds": [],
       "timeRegions": [],
-      "title": "Total Power Consumption (kWh per day) of Top10 processes",
+      "title": "Total Power Consumption (kWh per day) in Namespace",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -400,7 +639,7 @@
       },
       "yaxes": [
         {
-          "format": "short",
+          "format": "kWh",
           "logBase": 1,
           "show": true
         },
@@ -413,121 +652,19 @@
       "yaxis": {
         "align": false
       }
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "displayMode": "auto",
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 24,
-        "x": 0,
-        "y": 19
-      },
-      "id": 15,
-      "options": {
-        "footer": {
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "8.5.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "topk(10, sum by (container_namespace) (\n  (increase(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[1h])\n    *0.000000277777777777778\n  ) *\n  (count_over_time(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[24h])/\n    count_over_time(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[1h])\n  )\n)\n+\nsum by (container_namespace) (\n  (increase(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[1h])\n    *0.000000277777777777778\n  ) *\n  (count_over_time(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[24h])/\n    count_over_time(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[1h])\n  )\n))",
-          "interval": "",
-          "legendFormat": "{{container_namespace}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Total Power Consumption for Namespace: (kWh per day)",
-      "type": "table",
-      "styles": [
-        {
-          "alias": "Time",
-          "dateFormat": "YYYY-MM-DD HH:mm:ss",
-          "format": "table",
-          "pattern": "Time",
-          "type": "hidden"
-        },
-        {
-          "alias": "Namespace",
-          "colorMode": null,
-          "colors": [],
-          "dateFormat": "YYYY-MM-DD HH:mm:ss",
-          "decimals": 0,
-          "link": true,
-          "linkTargetBlank": false,
-          "pattern": "namespace",
-          "thresholds": [],
-          "type": "number",
-          "unit": "short"
-        },
-        {
-          "alias": "Total Power Consumption (kWh per day)",
-          "colorMode": null,
-          "colors": [],
-          "dateFormat": "YYYY-MM-DD HH:mm:ss",
-          "decimals": 0,
-          "link": true,
-          "linkTargetBlank": false,
-          "pattern": "Value #A",
-          "thresholds": [],
-          "type": "number",
-          "unit": "short"
-        }
-      ]
     }
   ],
   "refresh": "",
   "schemaVersion": 36,
   "style": "dark",
-  "tags": [],
+  "tags": ["kepler-mixin"],
   "templating": {
     "list": [
       {
         "current": {
           "selected": false,
-          "text": "Prometheus",
-          "value": "Prometheus"
+          "text": "prometheus",
+          "value": "prometheus"
         },
         "hide": 0,
         "includeAll": false,
@@ -552,32 +689,7 @@
           "uid": "${datasource}"
         },
         "definition": "label_values(kepler_container_package_joules_total, container_namespace)",
-        "description": "Namespace for pods to choose",
-        "error": {
-          "config": {
-            "data": {
-              "end": "1695135411",
-              "match[]": "kepler_container_package_joules_total",
-              "start": "1695134511"
-            },
-            "headers": {
-              "Content-Type": "application/x-www-form-urlencoded",
-              "X-Grafana-Org-Id": 1
-            },
-            "hideFromInspector": true,
-            "method": "POST",
-            "retry": 0,
-            "url": "api/datasources/proxy/4/api/v1/series"
-          },
-          "data": {
-            "error": "Bad Gateway",
-            "message": "Bad Gateway",
-            "response": ""
-          },
-          "message": "Bad Gateway",
-          "status": 502,
-          "statusText": "Bad Gateway"
-        },
+        "description": "Namespaces to choose",
         "hide": 0,
         "includeAll": false,
         "label": "Namespace",
@@ -606,31 +718,7 @@
           "uid": "${datasource}"
         },
         "definition": "label_values(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}, pod_name)",
-        "error": {
-          "config": {
-            "data": {
-              "end": "1695135411",
-              "match[]": "kepler_container_package_joules_total{container_namespace=~\".*\"}",
-              "start": "1695134511"
-            },
-            "headers": {
-              "Content-Type": "application/x-www-form-urlencoded",
-              "X-Grafana-Org-Id": 1
-            },
-            "hideFromInspector": true,
-            "method": "POST",
-            "retry": 0,
-            "url": "api/datasources/proxy/4/api/v1/series"
-          },
-          "data": {
-            "error": "Bad Gateway",
-            "message": "Bad Gateway",
-            "response": ""
-          },
-          "message": "Bad Gateway",
-          "status": 502,
-          "statusText": "Bad Gateway"
-        },
+        "description": "Pods to choose",
         "hide": 0,
         "includeAll": true,
         "label": "Pod",
@@ -646,15 +734,6 @@
         "tagsQuery": "",
         "type": "query",
         "useTags": false
-      },
-      {
-        "description": "1W*s = 1J and 1J = (1/3600000)kWh",
-        "hide": 2,
-        "label": "",
-        "name": "watt_per_second_to_kWh",
-        "query": "0.000000277777777777778",
-        "skipUrlSync": false,
-        "type": "constant"
       }
     ]
   },
@@ -664,8 +743,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Power monitoring",
+  "title": "Power Monitoring / Namespace",
   "uid": "125cb5f5fdbea19c3067b2b34e897ad5d2b40a52",
-  "version": 2,
+  "version": 4,
   "weekStart": ""
 }
