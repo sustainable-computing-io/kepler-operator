@@ -1,5 +1,5 @@
 name: Build and Publish Images
-description: 'Publishes operator and bundle images to an Image Registry'
+description: "Publishes operator and bundle images to an Image Registry"
 inputs:
   image_registry:
     description: "image registry"
@@ -30,14 +30,13 @@ runs:
         check-latest: true
         cache: true
 
-    - name: Login to Image Registry 
+    - name: Login to Image Registry
       uses: docker/login-action@v2
       if: "!startsWith(inputs.image_registry, 'localhost')"
       with:
         registry: ${{ inputs.image_registry }}
         username: ${{ inputs.registry_login }}
         password: ${{ inputs.registry_token }}
-      
 
     - name: Build Operator
       shell: bash
@@ -56,6 +55,14 @@ runs:
         VERSION: ${{ inputs.version }}
         IMG_BASE: ${{ inputs.image_registry }}
         ADDITIONAL_TAGS: ${{ inputs.additional_tags }}
+
+    - name: Build E2E
+      shell: bash
+      run: |
+        make e2e-test-image
+      env:
+        VERSION: ${{ inputs.version }}
+        IMG_BASE: ${{ inputs.image_registry }}
 
     - name: Push Images
       shell: bash

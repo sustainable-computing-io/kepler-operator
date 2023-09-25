@@ -40,6 +40,8 @@ ADDITIONAL_TAGS ?=
 
 KEPLER_IMG ?= $(IMG_BASE)/kepler:$(KEPLER_VERSION)
 
+# E2E_TEST_IMG defines the image:tag used for the e2e test image
+E2E_TEST_IMG ?=$(IMG_BASE)/kepler-operator-e2e:$(VERSION)
 
 .PHONY: fresh
 fresh: ## default target - sets up a k8s cluster with images ready for deployment
@@ -207,6 +209,12 @@ operator-build: manifests generate test ## Build docker image with the manager.
 operator-push: ## Push docker image with the manager.
 	$(call docker_push,$(OPERATOR_IMG),$(ADDITIONAL_TAGS))
 
+
+.PHONY: e2e-test-image
+e2e-test-image: test
+	docker build -f tests/Dockerfile \
+		--platform=linux/$(GOARCH) \
+		-t $(E2E_TEST_IMG) .
 
 ##@ Deployment
 
