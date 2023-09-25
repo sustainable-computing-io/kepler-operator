@@ -6,5 +6,5 @@ metadata:
     app: grafana
 spec:
   configMapRef:
-    name: grafana-dashboard-cm
+    name: kepler-dashboard-cm
     key: dashboard.json
