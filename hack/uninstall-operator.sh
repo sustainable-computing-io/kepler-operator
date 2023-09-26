@@ -24,6 +24,7 @@ declare -r PROJECT_ROOT
 declare DELETE_RESOURCES=false
 declare OPERATORS_NS="openshift-operators"
 declare OPERATOR_VERSION=""
+declare SHOW_HELP=false
 
 source "$PROJECT_ROOT/hack/utils.bash"
 
@@ -31,6 +32,11 @@ parse_args() {
 	### while there are args parse them
 	while [[ -n "${1+xxx}" ]]; do
 		case $1 in
+		--help | -h)
+			shift
+			SHOW_HELP=true
+			return 0
+			;;
 		--delete)
 			DELETE_RESOURCES=true
 			shift
@@ -66,11 +72,10 @@ print_usage() {
 		 ─────────────────────────────────────────────────────────────────
 
 		Options:
-		  --delete              deletes the resources listed
-		  --version | -v        version of the operator to delete
-		                        default: $OPERATOR_VERSION
-		  --ns | -n NAMESPACE   namespace where the operator is deployed
-			                      default: $OPERATORS_NS
+		  --delete                deletes the resources listed
+		  --version VERSION | -v  specify version of the operator to delete
+		  --ns | -n NAMESPACE     namespace where the operator is deployed
+			                          default: $OPERATORS_NS
 
 
 	EOF_HELP
@@ -110,6 +115,10 @@ main() {
 		print_usage
 		fail "failed to parse args"
 		return 1
+	}
+	$SHOW_HELP && {
+		print_usage
+		return 0
 	}
 
 	[[ -z "$OPERATOR_VERSION" ]] && {
