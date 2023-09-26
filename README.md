@@ -62,9 +62,16 @@ kubectl apply -k config/samples/
 
 ### Uninstall the operator
 
+List the installed version and the releated resources that will be
+deleted before uninstalling by running the uninstall script.
 ```sh
-# NOTE: default version is 0.5.0
-./hack/uninstall-operator.sh [version]
+./hack/uninstall-operator.sh
+```
+Once the above is verified, uninstall the operator and all the related
+resources by specifying the `--delete` flag.
+
+```sh
+./hack/uninstall-operator.sh  --delete
 
 ```
 
