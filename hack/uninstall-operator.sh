@@ -23,7 +23,7 @@ declare -r PROJECT_ROOT
 # config
 declare DELETE_RESOURCES=false
 declare OPERATORS_NS="openshift-operators"
-declare OPERATOR_VERSION="v0.5.0"
+declare OPERATOR_VERSION=""
 
 source "$PROJECT_ROOT/hack/utils.bash"
 
@@ -79,6 +79,30 @@ print_usage() {
 	return 0
 }
 
+find_installed_version() {
+	local operator="$1"
+	shift
+
+	local csv=""
+	csv=$(kubectl get csv -n "$OPERATORS_NS" -o name | grep -E "$operator\.v") || {
+		warn "No csv found for $operator! Is it installed?"
+		return 1
+	}
+
+	ok "found $operator csv: $csv"
+
+	local version=""
+	version=$(kubectl get -n "$OPERATORS_NS" "$csv" -o jsonpath="{.spec.version}")
+	[[ -z "$version" ]] && {
+		fail "Failed to find version of $operator - $csv"
+		return 1
+	}
+
+	OPERATOR_VERSION="v$version"
+	ok "$operator version: $OPERATOR_VERSION"
+	return 0
+}
+
 main() {
 	local operator="kepler-operator"
 
@@ -88,10 +112,16 @@ main() {
 		return 1
 	}
 
+	[[ -z "$OPERATOR_VERSION" ]] && {
+		info "No operator version specified; finding the installed version"
+		find_installed_version "$operator"
+		ok "Found - Kepler Operator version: $OPERATOR_VERSION"
+	}
+
 	header "Resources of Kepler Operator - $OPERATOR_VERSION"
 
 	kubectl get csv "${operator}.$OPERATOR_VERSION" -n "$OPERATORS_NS" || {
-		info "failed to find $OPERATOR_VERSION of $operator."
+		info "failed to find version $OPERATOR_VERSION of $operator."
 		line 50
 		kubectl get csv | grep -E "$operator|NAME"
 
