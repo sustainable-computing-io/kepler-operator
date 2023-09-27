@@ -108,6 +108,19 @@ find_installed_version() {
 	return 0
 }
 
+list_olm_resources() {
+	local operator="$1"
+	shift
+
+	header "Listing Resources of Kepler Operator"
+
+	info_run kubectl get csv -n "$OPERATORS_NS"
+	kubectl get csv -n "$OPERATORS_NS" | grep -E "$operator|NAME" || true
+
+	run kubectl get olm -n "$OPERATORS_NS" -o wide || true
+
+}
+
 main() {
 	local operator="kepler-operator"
 
@@ -116,6 +129,7 @@ main() {
 		fail "failed to parse args"
 		return 1
 	}
+
 	$SHOW_HELP && {
 		print_usage
 		return 0
@@ -123,45 +137,51 @@ main() {
 
 	[[ -z "$OPERATOR_VERSION" ]] && {
 		info "No operator version specified; finding the installed version"
-		find_installed_version "$operator"
+		find_installed_version "$operator" || {
+			fail "failed to find installed version of $operator"
+			list_olm_resources "$operator"
+			return 1
+		}
 		ok "Found - Kepler Operator version: $OPERATOR_VERSION"
 	}
 
 	header "Resources of Kepler Operator - $OPERATOR_VERSION"
 
 	kubectl get csv "${operator}.$OPERATOR_VERSION" -n "$OPERATORS_NS" || {
-		info "failed to find version $OPERATOR_VERSION of $operator."
-		line 50
-		kubectl get csv | grep -E "$operator|NAME"
-
+		kubectl get csv -n "$OPERATORS_NS" | grep -E "$operator|NAME" || true
 		line 50
 		info "$operator version found are ☝️"
+
+		fail "failed to find version $OPERATOR_VERSION of $operator."
+		list_olm_resources "$operator"
 		return 1
 	}
 
 	local label="operators.coreos.com/${operator}.$OPERATORS_NS="
 
-	info "Going to delete the following"
-	line 50 heavy
+	header "Going to delete the following"
 	run kubectl get ns kepler || true
 	run kubectl get kepler -A
 	run kubectl get -n "$OPERATORS_NS" olm -l "$label"
-	run kubectl get operator,crd,clusterrole,clusterrolebinding -l "$label" -A
+	run kubectl get crd,clusterrole,clusterrolebinding -l "$label" -A
+	run kubectl get operators "$operator.$OPERATORS_NS"
 	run kubectl get leases 0d9cbc82.sustainable.computing.io -n "$OPERATORS_NS" || true
 	run kubectl get catalogsource kepler-operator-catalog -n "$OPERATORS_NS" || true
 	line 50 heavy
 
 	! $DELETE_RESOURCES && {
-		info "Not deleting any resources, use --delete flag to force deletion"
+		info "To delete all resources listed above, rerun with --delete option added. \n"
+		info_run "   $0 $* --delete"
 		return 0
 	}
 
 	header "Deleting Kepler Operator Version $OPERATOR_VERSION"
 
-	run kubectl delete kepler -A --all
+	run kubectl delete kepler -A --all || true
 	run kubectl delete ns kepler || true
 	run kubectl delete -n "$OPERATORS_NS" olm -l "$label"
-	run kubectl delete operator,crd,clusterrole,clusterrolebinding -l "$label" -A
+	run kubectl delete operators,crd,clusterrole,clusterrolebinding -l "$label" -A || true
+	run kubectl delete operators "$operator.$OPERATORS_NS" || true
 	run kubectl delete leases 0d9cbc82.sustainable.computing.io -n "$OPERATORS_NS" || true
 	run kubectl delete catalogsource kepler-operator-catalog -n "$OPERATORS_NS" || true
 
