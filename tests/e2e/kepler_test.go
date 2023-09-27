@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 
@@ -26,7 +25,12 @@ func TestKepler_Deletion(t *testing.T) {
 
 	//
 	ds := appsv1.DaemonSet{}
-	f.AssertResourceExists(exporter.DaemonSetName, components.Namespace, &ds, test.Timeout(10*time.Second))
+	f.AssertResourceExists(
+		exporter.DaemonSetName,
+		components.Namespace,
+		&ds,
+		test.Timeout(10*time.Second),
+	)
 
 	f.DeleteKepler("kepler")
 
@@ -87,9 +91,6 @@ func TestNodeSelector(t *testing.T) {
 	var labels k8s.StringMap = map[string]string{"e2e-test": "true"}
 	err = f.AddResourceLabels("node", node, labels)
 	assert.NoError(t, err, "could not label node")
-	t.Cleanup(func() {
-		f.RemoveResourceLabels("node", node, []string{"e2e-test"})
-	})
 
 	f.CreateKepler("kepler", func(k *v1alpha1.Kepler) {
 		k.Spec.Exporter.Deployment.NodeSelector = labels
@@ -129,10 +130,6 @@ func TestTaint_WithToleration(t *testing.T) {
 
 	err = f.TaintNode(node, e2eTestTaint.ToString())
 	assert.NoError(t, err, "failed to taint node %s", node)
-	t.Cleanup(func() {
-		// remove taint
-		f.TaintNode(node, fmt.Sprintf("%s-", e2eTestTaint.Key))
-	})
 
 	f.CreateKepler("kepler", func(k *v1alpha1.Kepler) {
 		k.Spec.Exporter.Deployment.Tolerations = tolerateTaints(append(taints, e2eTestTaint))
