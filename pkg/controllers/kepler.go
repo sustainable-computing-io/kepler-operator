@@ -404,7 +404,8 @@ func exporterReconcilers(k *v1alpha1.Kepler, cluster k8s.Cluster) []reconciler.R
 			rs = append(rs,
 				resourceReconcilers(deleteResource,
 					exporter.NewSCC(components.Metadata, k),
-					exporter.NewDashboard(components.Metadata),
+					exporter.NewOverviewDashboard(components.Metadata),
+					exporter.NewNamespaceInfoDashboard(components.Metadata),
 				)...,
 			)
 		}
@@ -430,7 +431,8 @@ func exporterReconcilers(k *v1alpha1.Kepler, cluster k8s.Cluster) []reconciler.R
 			resourceReconcilers(
 				updater,
 				exporter.NewSCC(components.Full, k),
-				exporter.NewDashboard(components.Full),
+				exporter.NewOverviewDashboard(components.Full),
+				exporter.NewNamespaceInfoDashboard(components.Full),
 			)...,
 		)
 	}
