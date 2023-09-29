@@ -261,13 +261,28 @@ kind_load_images() {
 	while read -r img; do
 		run docker pull "$img"
 		run kind load docker-image "$img"
-  done < <(yq -r .spec.relatedImages[].image bundle/manifests//kepler-operator.clusterserviceversion.yaml)
+		run docker image rm "$img"
+	done < <(yq -r .spec.relatedImages[].image bundle/manifests//kepler-operator.clusterserviceversion.yaml)
+}
+
+docker_prune() {
+	header "Prune Docker"
+	run docker system prune -a -f
 }
 
 deploy_operator() {
 	header "Build and Deploy Operator"
 
+	$CI_MODE && {
+		# NOTE: ci runs out of disk space at times, hence run images
+		info "pruning docker images and volumes"
+		run docker images
+		docker_prune
+		run df -h
+	}
+
 	kind_load_images
+
 	delete_olm_subscription || true
 	ensure_imgpullpolicy_always_in_yaml
 	update_cluster_mon_crds

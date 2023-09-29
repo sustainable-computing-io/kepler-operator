@@ -53,8 +53,9 @@ const (
 	ServicePortName    = "http"
 	ServiceMonitorName = prefix + "smon"
 
-	DashboardName = "kepler-dashboard"
-	DashboardNs   = "openshift-config-managed"
+	overviewDashboardName = "power-monitoring-overview"
+	nsInfoDashboardName   = "power-monitoring-by-ns"
+	DashboardNs           = "openshift-config-managed"
 )
 
 // Config that will be set from outside
@@ -83,8 +84,11 @@ var (
 		Operator: corev1.TolerationOpExists,
 	}}
 
-	//go:embed assets/kepler-dashboard.json
-	dashboardJson string
+	//go:embed assets/dashboards/power-monitoring-overview.json
+	overviewDashboardJson string
+
+	//go:embed assets/dashboards/power-monitoring-by-ns.json
+	nsInfoDashboardJson string
 )
 
 func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSet {
@@ -192,9 +196,9 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 
 }
 
-func NewDashboard(d components.Detail) *corev1.ConfigMap {
-	objMeta := metav1.ObjectMeta{
-		Name:      DashboardName,
+func openshiftDashboardObjectMeta(name string) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:      name,
 		Namespace: DashboardNs,
 		Labels: labels.Merge(k8s.StringMap{
 			"console.openshift.io/dashboard": "true",
@@ -204,6 +208,11 @@ func NewDashboard(d components.Detail) *corev1.ConfigMap {
 			"include.release.openshift.io/single-node-developer":          "true",
 		},
 	}
+}
+
+func NewOverviewDashboard(d components.Detail) *corev1.ConfigMap {
+	objMeta := openshiftDashboardObjectMeta(overviewDashboardName)
+
 	if d == components.Metadata {
 		return &corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
@@ -221,7 +230,32 @@ func NewDashboard(d components.Detail) *corev1.ConfigMap {
 		},
 		ObjectMeta: objMeta,
 		Data: map[string]string{
-			"kepler-dashboard.json": dashboardJson,
+			"power-monitoring-overview.json": overviewDashboardJson,
+		},
+	}
+}
+
+func NewNamespaceInfoDashboard(d components.Detail) *corev1.ConfigMap {
+	objMeta := openshiftDashboardObjectMeta(nsInfoDashboardName)
+
+	if d == components.Metadata {
+		return &corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: corev1.SchemeGroupVersion.String(),
+				Kind:       "ConfigMap",
+			},
+			ObjectMeta: objMeta,
+		}
+	}
+
+	return &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: objMeta,
+		Data: map[string]string{
+			"power-monitoring-by-ns.json": nsInfoDashboardJson,
 		},
 	}
 }
