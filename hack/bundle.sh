@@ -24,6 +24,7 @@ declare -r PROJECT_ROOT
 declare -r LOCAL_BIN="$PROJECT_ROOT/tmp/bin"
 declare -r CSV_FILE=bundle/manifests/kepler-operator.clusterserviceversion.yaml
 
+# shellcheck source=hack/utils.bash
 source "$PROJECT_ROOT/hack/utils.bash"
 
 # TODO: write a git action to create bundle on every pull request merge and make a commit to new branch

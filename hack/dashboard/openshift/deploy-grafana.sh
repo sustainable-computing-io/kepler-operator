@@ -17,6 +17,7 @@ declare -r UWM_CONFIG_URL="https://docs.openshift.com/container-platform/latest/
 declare -r GRAFANA_NS=kepler-grafana
 declare -r GRAFANA_SA=grafana
 
+# shellcheck source=hack/utils.bash
 source "$PROJECT_ROOT/hack/utils.bash"
 
 oc_apply_grafana_ns() {

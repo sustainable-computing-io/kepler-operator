@@ -33,6 +33,7 @@ declare -r DEV_CLUSTER_DIR="$TMP_DIR/local-dev-cluster"
 declare -r BIN_DIR="$TMP_DIR/bin"
 declare -r OPERATOR_SDK_VERSION=${OPERATOR_SDK_VERSION:-v1.27.0}
 
+# shellcheck source=hack/utils.bash
 source "$PROJECT_ROOT/hack/utils.bash"
 
 git_checkout() {
