@@ -208,6 +208,10 @@ func (f Framework) AddResourceLabels(kind, name string, l map[string]string) err
 	for label, value := range l {
 		fmt.Fprintf(b, "%s=%s ", label, value)
 	}
+	f.T.Cleanup(func() {
+		err := f.RemoveResourceLabels(kind, name, []string{"e2e-test"})
+		assert.NoError(f.T, err, "could not remove label from node")
+	})
 	return f.AddResourceLabelsStr(kind, name, b.String())
 }
 
@@ -231,5 +235,10 @@ func (f Framework) GetTaints(node string) (string, error) {
 
 func (f Framework) TaintNode(node, taintStr string) error {
 	_, err := oc.Literal().From("oc adm taint node %s %s", node, taintStr).Run()
+	f.T.Cleanup(func() {
+		// remove taint
+		_, err := oc.Literal().From("oc adm taint node %s %s", node, fmt.Sprintf("%s-", taintStr)).Run()
+		assert.NoError(f.T, err, "could not remove taint from node")
+	})
 	return err
 }
