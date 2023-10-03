@@ -69,7 +69,9 @@
       "options": {
         "footer": {
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true,
@@ -126,7 +128,7 @@
           "refId": "A"
         }
       ],
-      "title": "CPU architecture / Monitored Nodes",
+      "title": "CPU Architecture by Nodes",
       "type": "table"
     },
     {
@@ -167,7 +169,9 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -182,12 +186,12 @@
             "type": "prometheus",
             "uid": "To6-2So4k"
           },
-          "expr": " sum(sum by (container_namespace) (\n  (increase(kepler_container_joules_total{container_namespace=~\".*\"}[1h])\n    * 0.000000277777777777778\n  ) *\n  (count_over_time(kepler_container_joules_total{container_namespace=~\".*\"}[24h])/\n    count_over_time(kepler_container_joules_total{container_namespace=~\".*\"}[1h])\n  )\n))",
+          "expr": "sum(increase(kepler_container_joules_total{}[24h:1m])) * 0.000000277777777777778",
           "refId": "A"
         }
       ],
       "postfix": " kWh",
-      "title": "Total Energy Consumption - Last 24 hours",
+      "title": "Total Energy Consumption (kWh) - Last 24 hours",
       "type": "gauge"
     },
     {
@@ -233,7 +237,9 @@
       "options": {
         "footer": {
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true,
@@ -285,7 +291,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum by (container_namespace) (\n  (increase(kepler_container_package_joules_total{container_namespace=~\".*\"}[1h])\n    *0.000000277777777777778\n  ) *\n  (count_over_time(kepler_container_package_joules_total{container_namespace=~\".*\"}[24h])/\n    count_over_time(kepler_container_package_joules_total{container_namespace=~\".*\"}[1h])\n  )\n)\n+\nsum by (container_namespace) (\n  (increase(kepler_container_dram_joules_total{container_namespace=~\".*\"}[1h])\n    *0.000000277777777777778\n  ) *\n  (count_over_time(kepler_container_dram_joules_total{container_namespace=~\".*\"}[24h])/\n    count_over_time(kepler_container_dram_joules_total{container_namespace=~\".*\"}[1h])\n  )\n))",
+          "expr": "topk(10, sum by(container_namespace) (increase(kepler_container_joules_total{}[24h:1m]))) * 0.000000277777777777778",
           "format": "table",
           "interval": "",
           "legendFormat": "{{container_namespace}}",
@@ -293,14 +299,16 @@
           "refId": "A"
         }
       ],
-      "title": "Total Power Consumption for Top 10 Namespaces (kWh per day) - Last 24 hours",
+      "title": "Top 10 Energy Consuming Namespaces (kWh) in Last 24 hours",
       "type": "table"
     }
   ],
   "refresh": "",
   "schemaVersion": 36,
   "style": "dark",
-  "tags": ["kepler-mixin"],
+  "tags": [
+    "kepler-mixin"
+  ],
   "templating": {
     "list": [
       {
@@ -328,7 +336,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Power Monitoring / Overview",
+  "title": "Power Monitoring /  Overview",
   "uid": "125cb5f5fdbea19c3067b2b34e897ad5d2b40a52",
   "version": 4,
   "weekStart": ""
