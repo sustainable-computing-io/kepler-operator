@@ -102,7 +102,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk(10, sum by (container_namespace) (\n (increase(kepler_container_package_joules_total{container_namespace=~\".*\"}[1h])\n *$watt_per_second_to_kWh\n ) *\n (count_over_time(kepler_container_package_joules_total{container_namespace=~\".*\"}[24h])/\n count_over_time(kepler_container_package_joules_total{container_namespace=~\".*\"}[1h])\n )\n)\n+\nsum by (container_namespace) (\n (increase(kepler_container_dram_joules_total{container_namespace=~\".*\"}[1h])\n *$watt_per_second_to_kWh\n ) *\n (count_over_time(kepler_container_dram_joules_total{container_namespace=~\".*\"}[24h])/\n count_over_time(kepler_container_dram_joules_total{container_namespace=~\".*\"}[1h])\n )\n))",
+          "expr": "topk(10, sum by (container_namespace) (\n  increase(\n      (kepler_container_joules_total{}[24h:1m])\n  )\n) * $watt_per_second_to_kWh)",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -111,7 +111,7 @@
           "refId": "A"
         }
       ],
-      "title": "Total Power Consumption for Top 10 Namespaces - Last 24 hours",
+      "title": "Top 10 Energy Consuming Namespaces (kWh) in Last 24 hours",
       "transformations": [
         {
           "id": "groupBy",
@@ -148,7 +148,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Power Consumption (W) of Top10 processes in Namespace or Top 10 Namespace if ALL namespaces is selected",
+      "description": "Total Power Consumption (W) in Namespace",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -265,6 +265,13 @@
         "y": 13
       },
       "id": 2,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "Kepler metrics for Container Energy Consumption",
+          "url": "https://github.com/sustainable-computing-io/kepler-doc/blob/84e3e01a0110829937cd40f9634dd8d0c92540a4/docs/design/metrics.md#kepler-metrics-for-container-energy-consumption"
+        }
+      ],
       "options": {
         "legend": {
           "calcs": ["mean", "max"],
@@ -330,7 +337,7 @@
           "refId": "D"
         }
       ],
-      "title": "Total Power Consumption (W) of processes in Namespace: $namespace",
+      "title": "Total Power Consumption (W) in $namespace",
       "type": "timeseries"
     },
     {
@@ -338,7 +345,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Total Power Consumption (kWh per day) of processes in Namespace or Top10 Namespace if All Namespaces selected",
+      "description": "Total Energy Consumption in Namespace (kWh) - Last 1 hour",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -455,6 +462,13 @@
         "y": 13
       },
       "id": 17,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "Kepler metrics for Container Energy Consumption",
+          "url": "https://github.com/sustainable-computing-io/kepler-doc/blob/84e3e01a0110829937cd40f9634dd8d0c92540a4/docs/design/metrics.md#kepler-metrics-for-container-energy-consumption"
+        }
+      ],
       "options": {
         "legend": {
           "calcs": ["mean", "max"],
@@ -475,7 +489,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(\n  (increase(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[1h])\n    *$watt_per_second_to_kWh\n  ) *\n  (count_over_time(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[24h])/\n    count_over_time(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[1h])\n  )\n)",
+          "expr": "sum (\n  increase(\n   (kepler_container_package_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[24h:1m])\n  )\n) * $watt_per_second_to_kWh",
           "hide": false,
           "interval": "5m",
           "legendFormat": "PKG (CORE+UNCORE)",
@@ -488,7 +502,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(\n  (increase(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[1h])\n    *$watt_per_second_to_kWh\n  ) *\n  (count_over_time(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[24h])/\n    count_over_time(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[1h])\n  )\n)",
+          "expr": "sum (\n  increase(\n   (kepler_container_dram_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[24h:1m])\n  )\n) * $watt_per_second_to_kWh",
           "hide": false,
           "interval": "5m",
           "legendFormat": "DRAM",
@@ -501,7 +515,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(\n  (increase(\n    kepler_container_other_joules_total{container_namespace=~\"$namespace\"}[1h])\n    *$watt_per_second_to_kWh\n  ) *\n  (count_over_time(\n    kepler_container_other_joules_total{container_namespace=~\"$namespace\"}[24h])/\n    count_over_time(\n      kepler_container_other_joules_total{container_namespace=~\"$namespace\"}[1h])\n  )\n)",
+          "expr": "sum (\n  increase(\n   (kepler_container_other_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[24h:1m])\n  )\n) * $watt_per_second_to_kWh",
           "hide": false,
           "interval": "5m",
           "legendFormat": "OTHER",
@@ -514,7 +528,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(\n  (increase(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\"}[1h])\n    *$watt_per_second_to_kWh\n  ) *\n  (count_over_time(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\"}[24h])/\n    count_over_time(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\"}[1h])\n  )\n)",
+          "expr": "sum (\n  increase(\n   (kepler_container_gpu_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[24h:1m])\n  )\n) * $watt_per_second_to_kWh",
           "hide": false,
           "interval": "5m",
           "legendFormat": " GPU",
@@ -522,7 +536,7 @@
           "refId": "D"
         }
       ],
-      "title": "Total Power Consumption (kWh per day) of processes in Namespace: $namespace",
+      "title": "Total Energy Consumption in $namespace (kWh) - Last 1 hour",
       "type": "timeseries"
     },
     {
@@ -610,15 +624,15 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_package_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "sum by (pod_name)(irate(kepler_container_package_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
           "hide": false,
           "interval": "5m",
-          "legendFormat": "{{pod_name}} / {{container_namespace}}",
+          "legendFormat": "{{pod_name}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Pod/Process (PKG) Power Consumption (W) in Namespace: $namespace",
+      "title": "PKG Power Consumption (W) by Pods in $namespace",
       "type": "timeseries"
     },
     {
@@ -706,15 +720,15 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_dram_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "sum by (pod_name) (irate(kepler_container_dram_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
           "hide": false,
           "interval": "5m",
-          "legendFormat": "{{pod_name}} / {{container_namespace}}",
+          "legendFormat": "{{pod_name}}",
           "range": true,
           "refId": "B"
         }
       ],
-      "title": "Pod/Process (DRAM) Power Consumption (W) in Namespace: $namespace",
+      "title": "DRAM Power Consumption (W) by Pods in $namespace",
       "type": "timeseries"
     },
     {
@@ -802,15 +816,15 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_other_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "sum by (pod_name) (irate(kepler_container_other_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
           "hide": false,
           "interval": "5m",
-          "legendFormat": "{{pod_name}} / {{container_namespace}}",
+          "legendFormat": "{{pod_name}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Pod/Process (OTHER) Power Consumption (W) in Namespace: $namespace",
+      "title": "OTHER Power Consumption (W) by Pods in $namespace",
       "type": "timeseries"
     },
     {
@@ -898,15 +912,15 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name, container_namespace) (irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "sum by (pod_name) (irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
           "hide": false,
           "interval": "5m",
-          "legendFormat": "{{pod_name}} / {{container_namespace}}",
+          "legendFormat": "{{pod_name}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Pod/Process (GPU) Power Consumption (W) in Namespace: $namespace",
+      "title": "GPU Power Consumption (W) by Pods in $namespace",
       "type": "timeseries"
     }
   ],
