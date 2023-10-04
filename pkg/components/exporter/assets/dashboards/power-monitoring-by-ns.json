@@ -81,7 +81,7 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name) (irate(kepler_container_package_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "kepler:container_package_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "{{pod_name}}",
@@ -173,7 +173,7 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name) (irate(kepler_container_dram_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "kepler:container_dram_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "{{pod_name}}",
@@ -265,7 +265,7 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name) (irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "sum by (pod_name) (kepler:container_gpu_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"})",
           "hide": false,
           "interval": "",
           "legendFormat": "{{pod_name}}",
@@ -351,7 +351,7 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name) (irate(kepler_other_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "sum by (pod_name) (kepler:other_joules_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"})",
           "hide": false,
           "interval": "",
           "legendFormat": "{{pod_name}} }}",
@@ -446,7 +446,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum(irate(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[1m])))",
+          "expr": "sum(kepler:container_package_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
           "hide": false,
           "interval": "",
           "legendFormat": "PKG",
@@ -459,7 +459,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(irate(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[1m]))",
+          "expr": "sum(kepler:container_dram_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
           "hide": false,
           "interval": "",
           "legendFormat": "DRAM",
@@ -472,7 +472,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(irate(kepler_container_other_joules_total{container_namespace=~\"$namespace\"}[1m]))",
+          "expr": "sum(kepler:container_other_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
           "hide": false,
           "legendFormat": "OTHER",
           "range": true,
@@ -484,7 +484,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\"}[1m]))",
+          "expr": "sum(kepler:container_gpu_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
           "hide": false,
           "legendFormat": "GPU",
           "range": true,
@@ -578,7 +578,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(increase(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[1h:15s])) * 0.000000277777777777778",
+          "expr": "kepler:container_package_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * 0.000000277777777777778",
           "hide": false,
           "interval": "",
           "legendFormat": "PKG (CORE + UNCORE)",
@@ -591,7 +591,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(increase(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[1h:15s])) * 0.000000277777777777778",
+          "expr": "kepler:container_dram_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * 0.000000277777777777778",
           "hide": false,
           "interval": "",
           "legendFormat": "DRAM",
@@ -604,7 +604,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(increase(kepler_container_other_joules_total{container_namespace=~\"$namespace\"}[1h:15s])) * 0.000000277777777777778",
+          "expr": "kepler:container_other_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * 0.000000277777777777778",
           "hide": false,
           "legendFormat": "OTHER",
           "range": true,
@@ -616,7 +616,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(increase(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\"}[1h:15s])) * 0.000000277777777777778",
+          "expr": "kepler:container_gpu_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * 0.000000277777777777778",
           "hide": false,
           "legendFormat": " GPU",
           "range": true,
