@@ -130,10 +130,10 @@ jobs:
       - name: Install all tools
         run: make tools
       - name: use kepler action for kind cluster build
-        uses: sustainable-computing-io/kepler-action@v0.0.1
+        uses: sustainable-computing-io/kepler-action@v0.0.2
         with:
+          ebpfprovider: bcc
           cluster_provider: kind
-          runningBranch: kind
         env:
           PROMETHEUS_ENABLE: "true"
 
