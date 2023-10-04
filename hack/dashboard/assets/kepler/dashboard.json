@@ -102,7 +102,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk(10, sum by (container_namespace) (\n  increase(\n      (kepler_container_joules_total{}[24h:1m])\n  )\n) * $watt_per_second_to_kWh)",
+          "expr": "topk(10, kepler:container_joules_total:consumed:24h:by_ns) * $watt_per_second_to_kWh",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -290,7 +290,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(irate(kepler_container_package_joules_total{container_namespace=~\"$namespace\"}[1m]))",
+          "expr": "sum(kepler:container_package_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
           "hide": false,
           "interval": "5m",
           "legendFormat": "PKG",
@@ -303,7 +303,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(irate(kepler_container_dram_joules_total{container_namespace=~\"$namespace\"}[1m]))",
+          "expr": "sum(kepler:container_dram_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
           "hide": false,
           "interval": "5m",
           "legendFormat": "DRAM",
@@ -316,7 +316,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(irate(kepler_container_other_joules_total{container_namespace=~\"$namespace\"}[1m]))",
+          "expr": "sum(kepler:container_other_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
           "hide": false,
           "interval": "5m",
           "legendFormat": "OTHER",
@@ -329,7 +329,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\"}[1m]))",
+          "expr": "sum(kepler:container_gpu_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
           "hide": false,
           "interval": "5m",
           "legendFormat": " GPU",
@@ -489,10 +489,10 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum (\n  increase(\n   (kepler_container_package_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[24h:1m])\n  )\n) * $watt_per_second_to_kWh",
+          "expr": "kepler:container_package_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * $watt_per_second_to_kWh",
           "hide": false,
           "interval": "5m",
-          "legendFormat": "PKG (CORE+UNCORE)",
+          "legendFormat": "PKG (CORE + UNCORE)",
           "range": true,
           "refId": "A"
         },
@@ -502,7 +502,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum (\n  increase(\n   (kepler_container_dram_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[24h:1m])\n  )\n) * $watt_per_second_to_kWh",
+          "expr": "kepler:container_dram_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * $watt_per_second_to_kWh",
           "hide": false,
           "interval": "5m",
           "legendFormat": "DRAM",
@@ -515,7 +515,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum (\n  increase(\n   (kepler_container_other_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[24h:1m])\n  )\n) * $watt_per_second_to_kWh",
+          "expr": "kepler:container_other_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * $watt_per_second_to_kWh",
           "hide": false,
           "interval": "5m",
           "legendFormat": "OTHER",
@@ -528,7 +528,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum (\n  increase(\n   (kepler_container_gpu_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[24h:1m])\n  )\n) * $watt_per_second_to_kWh",
+          "expr": "kepler:container_gpu_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * $watt_per_second_to_kWh",
           "hide": false,
           "interval": "5m",
           "legendFormat": " GPU",
@@ -624,7 +624,7 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name)(irate(kepler_container_package_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "kepler:container_package_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}",
           "hide": false,
           "interval": "5m",
           "legendFormat": "{{pod_name}}",
@@ -720,7 +720,7 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name) (irate(kepler_container_dram_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "kepler:container_dram_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}",
           "hide": false,
           "interval": "5m",
           "legendFormat": "{{pod_name}}",
@@ -816,7 +816,7 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name) (irate(kepler_container_other_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "sum by (pod_name) (kepler:other_joules_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"})",
           "hide": false,
           "interval": "5m",
           "legendFormat": "{{pod_name}}",
@@ -912,7 +912,7 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name) (irate(kepler_container_gpu_joules_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[1m]))",
+          "expr": "sum by (pod_name) (kepler:container_gpu_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"})",
           "hide": false,
           "interval": "5m",
           "legendFormat": "{{pod_name}}",
