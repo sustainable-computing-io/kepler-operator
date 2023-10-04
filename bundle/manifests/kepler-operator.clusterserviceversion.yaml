@@ -27,7 +27,7 @@ metadata:
     capabilities: Basic Install
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.8.0
-    createdAt: "2023-09-20T10:50:40Z"
+    createdAt: "2023-10-04T05:20:33Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.27.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -136,6 +136,7 @@ spec:
         - apiGroups:
           - monitoring.coreos.com
           resources:
+          - prometheusrules
           - servicemonitors
           verbs:
           - create

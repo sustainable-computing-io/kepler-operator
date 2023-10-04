@@ -56,6 +56,8 @@ const (
 	overviewDashboardName = "power-monitoring-overview"
 	nsInfoDashboardName   = "power-monitoring-by-ns"
 	DashboardNs           = "openshift-config-managed"
+
+	PrometheusRuleName = prefix + "prom-rules"
 )
 
 // Config that will be set from outside
@@ -507,5 +509,95 @@ func NewServiceMonitor() *monv1.ServiceMonitor {
 				MatchLabels: labels,
 			},
 		},
+	}
+}
+
+func NewPrometheusRule() *monv1.PrometheusRule {
+	interval := monv1.Duration("15s")
+
+	return &monv1.PrometheusRule{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: monv1.SchemeGroupVersion.String(),
+			Kind:       "PrometheusRule",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      PrometheusRuleName,
+			Namespace: components.Namespace,
+			Labels:    labels,
+		},
+		Spec: monv1.PrometheusRuleSpec{
+			Groups: []monv1.RuleGroup{{
+				Name:     "kepler.rules",
+				Interval: &interval,
+				Rules: []monv1.Rule{
+					record("kepler:container_joules_total:consumed:24h:all",
+						`sum(
+							increase(kepler_container_joules_total[24h:1m])
+						)`,
+					),
+					record("kepler:container_joules_total:consumed:24h:by_ns",
+						`sum by (container_namespace) (
+								increase(kepler_container_joules_total[24h:1m])
+						 )`,
+					),
+
+					record("kepler:container_gpu_joules_total:consumed:1h:by_ns",
+						`sum by (container_namespace) (
+								increase(kepler_container_gpu_joules_total[1h:15s])
+						 )`,
+					),
+
+					record("kepler:container_dram_joules_total:consumed:1h:by_ns",
+						`sum by (container_namespace) (
+								increase(kepler_container_dram_joules_total[1h:15s])
+						 )`,
+					),
+
+					record("kepler:container_package_joules_total:consumed:1h:by_ns",
+						`sum by (container_namespace) (
+								increase(kepler_container_package_joules_total[1h:15s])
+						 )`,
+					),
+
+					record("kepler:container_other_joules_total:consumed:1h:by_ns",
+						`sum by (container_namespace) (
+								increase(kepler_container_other_joules_total[1h:15s])
+						 )`,
+					),
+
+					// irate of joules = joules per second -> watts
+					record("kepler:container_gpu_watts:1m:by_ns_pod",
+						`sum by (container_namespace, pod_name) (
+								irate(kepler_container_gpu_joules_total[1m])
+						)`,
+					),
+
+					record("kepler:container_package_watts:1m:by_ns_pod",
+						`sum by (container_namespace, pod_name) (
+								irate(kepler_container_package_joules_total[1m])
+						)`,
+					),
+
+					record("kepler:container_other_watts:1m:by_ns_pod",
+						`sum by (container_namespace, pod_name) (
+								irate(kepler_container_other_joules_total[1m])
+						)`,
+					),
+
+					record("kepler:container_dram_watts:1m:by_ns_pod",
+						`sum by (container_namespace, pod_name) (
+								irate(kepler_container_dram_joules_total[1m])
+						)`,
+					),
+				},
+			}},
+		},
+	}
+}
+
+func record(name, expr string) monv1.Rule {
+	return monv1.Rule{
+		Expr:   intstr.IntOrString{Type: intstr.String, StrVal: expr},
+		Record: name,
 	}
 }
