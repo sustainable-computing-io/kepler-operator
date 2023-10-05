@@ -29,17 +29,168 @@
   "panels": [
     {
       "collapsed": false,
-      "datasource": "prometheus",
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 0
       },
-      "id": 8,
+      "id": 33,
       "panels": [],
-      "title": "Power Consumption",
+      "title": "Power Consumption Overview",
       "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "CPU architecture determined by Kepler",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      },
+      "id": 29,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "Kepler metrics for Container Energy Consumption",
+          "url": "https://github.com/sustainable-computing-io/kepler-doc/blob/84e3e01a0110829937cd40f9634dd8d0c92540a4/docs/design/metrics.md#kepler-metrics-for-container-energy-consumption"
+        }
+      ],
+      "options": {
+        "footer": {
+          "enablePagination": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count by (cpu_architecture)(kepler_node_info)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{cpu_architecture}}",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "CPU Architecture by Nodes",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {},
+            "renameByName": {
+              "Value": "Number of nodes",
+              "cpu_architecture": "CPU architecture"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Total Energy Consumption (kWh) - Last 24 hours",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "kwatth"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "id": 31,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "Kepler metrics for Container Energy Consumption",
+          "url": "https://github.com/sustainable-computing-io/kepler-doc/blob/84e3e01a0110829937cd40f9634dd8d0c92540a4/docs/design/metrics.md#kepler-metrics-for-container-energy-consumption"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "kepler:container_joules_total:consumed:24h:all * $watt_per_second_to_kWh",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Energy Consumption (kWh) - Last 24 hours",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -70,7 +221,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 1
+        "y": 8
       },
       "id": 18,
       "links": [
@@ -142,6 +293,20 @@
         }
       ],
       "type": "bargauge"
+    },
+    {
+      "collapsed": false,
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "id": 8,
+      "panels": [],
+      "title": "Power Consumption",
+      "type": "row"
     },
     {
       "datasource": {
@@ -262,7 +427,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 13
+        "y": 21
       },
       "id": 2,
       "links": [
@@ -459,7 +624,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 13
+        "y": 21
       },
       "id": 17,
       "links": [
@@ -544,7 +709,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Cumulative energy consumed by the CPU socket, including all cores and uncore components (e.g. last-level cache, integrated GPU and memory controller).\n",
+      "description": "The total energy spent in PKG by a container.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -597,7 +762,7 @@
         "h": 10,
         "w": 12,
         "x": 0,
-        "y": 21
+        "y": 29
       },
       "id": 16,
       "links": [
@@ -693,7 +858,7 @@
         "h": 10,
         "w": 12,
         "x": 12,
-        "y": 21
+        "y": 29
       },
       "id": 23,
       "links": [
@@ -736,7 +901,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Cumulative energy consumption on other host components besides the CPU and DRAM",
+      "description": "The total energy spent in OTHER by a container.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -789,7 +954,7 @@
         "h": 10,
         "w": 12,
         "x": 0,
-        "y": 31
+        "y": 39
       },
       "id": 26,
       "links": [
@@ -832,7 +997,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Total energy consumption on the GPU that a certain container has used.",
+      "description": "The total energy spent in GPU by a container.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -885,7 +1050,7 @@
         "h": 10,
         "w": 12,
         "x": 12,
-        "y": 31
+        "y": 39
       },
       "id": 27,
       "links": [
