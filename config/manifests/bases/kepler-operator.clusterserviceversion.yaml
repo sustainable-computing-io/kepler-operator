@@ -26,17 +26,21 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:conditions
       version: v1alpha1
-  description: |
+  description: |-
     ### Introduction
     Kepler (Kubernetes Efficient Power Level Exporter) uses eBPF to probe
     energy-related system stats and exports them as Prometheus metrics.
 
     ### API Breakage
-    **NOTE:** `0.6.z` is **NOT** backward compatible with `0.5.0`. Before
-    installing `0.6.z`, you must uninstall `0.5.0` or (earlier) completely
+    **NOTE:** `0.8.z` is **NOT** backward compatible with `0.7.0` or lower. Before
+    installing `0.8.z`, you must uninstall `0.7.0` or (earlier) completely
     (including CRDs) by following the steps in the
     [uninstall operator section](https://github.com/sustainable-computing-io/kepler-operator#uninstall-the-operator)
 
+    ### NOTE
+    To view the metrics exposed by kepler, ensure that
+    [User Project Monitoring](https://docs.openshift.com/container-platform/latest/monitoring/enabling-monitoring-for-user-defined-projects.html)
+    is enabled in your cluster.
 
     ### Documentation
     Documentation and installation guide can be found below:
