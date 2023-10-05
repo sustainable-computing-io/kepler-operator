@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+
+# copyright 2023.
+#
+# licensed under the apache license, version 2.0 (the "license");
+# you may not use this file except in compliance with the license.
+# you may obtain a copy of the license at
+#
+#     http://www.apache.org/licenses/license-2.0
+#
+# unless required by applicable law or agreed to in writing, software
+# distributed under the license is distributed on an "as is" basis,
+# without warranties or conditions of any kind, either express or implied.
+# see the license for the specific language governing permissions and
+# limitations under the license.
+#
+
+set -eu -o pipefail
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source "${SCRIPT_DIR}/common"
+
+BASE_COLLECTION_PATH=$1
+KEPLER_POD=$2
+
+get_kepler_pod(){
+  log "getting pod yaml for kepler pod: $KEPLER_POD"
+  run oc -n  "$KEPLER_NS" get pod "$KEPLER_POD" -oyaml "$KEPLER_POD_INFO_DIR/kepler-pod.yaml"
+}
+
+get_kepler_cpuid(){
+  log "getting information from \"cpuid\" from kepler pod: $KEPLER_POD"
+  run oc -n "$KEPLER_NS" exec "$KEPLER_POD" -c kepler-exporter -- cpuid -1 "$KEPLER_POD_INFO_DIR/node-cpuid-info"
+}
+
+get_kepler_env_var() {
+  log "getting environment variables from kepler pod: $KEPLER_POD"
+  run oc -n "$KEPLER_NS" exec "$KEPLER_POD" -c kepler-exporter -- env "$KEPLER_POD_INFO_DIR/env-variables"
+}
+
+get_kepler_kernel_info() {
+  log "getting kernel version from kepler pod: $KEPLER_POD"
+  echo "kernel version:" >> "$KEPLER_POD_INFO_DIR/kernel-info"
+  run oc -n "$KEPLER_NS" exec "$KEPLER_POD" -c kepler-exporter -- uname -a "$KEPLER_POD_INFO_DIR/kernel-info"
+}
+
+get_kepler_ebpf_info(){
+  log "getting ebpf information from kepler pod: $KEPLER_POD"
+  echo "## kprobes list only applicable for bcc" >> "$KEPLER_POD_INFO_DIR/ebpf-info"
+  echo "kprobes list:" >> "$KEPLER_POD_INFO_DIR/ebpf-info"
+  run oc -n "$KEPLER_NS" exec "$KEPLER_POD" -c kepler-exporter -- cat /sys/kernel/debug/kprobes/list "$KEPLER_POD_INFO_DIR/ebpf-info"
+}
+
+get_kepler_logs() {
+  log "getting logs from kepler pod: $KEPLER_POD"
+  run oc -n "$KEPLER_NS" logs "$KEPLER_POD" -c kepler-exporter "$KEPLER_POD_INFO_DIR/kepler.log"
+}
+
+main() {
+
+  KEPLER_POD_INFO_DIR="$BASE_COLLECTION_PATH/kepler-exporter-info/$KEPLER_POD"
+  mkdir -p "$KEPLER_POD_INFO_DIR"
+
+  get_kepler_pod
+  get_kepler_cpuid
+  get_kepler_env_var
+  get_kepler_kernel_info
+  get_kepler_ebpf_info
+  get_kepler_logs
+}
+
+main "$@"

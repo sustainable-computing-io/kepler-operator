@@ -12,6 +12,7 @@ COPY go.sum go.sum
 RUN go mod download
 
 # Copy the go source
+COPY must-gather/ must-gather/
 COPY cmd/ cmd/
 COPY pkg/ pkg/
 
@@ -24,11 +25,19 @@ COPY pkg/ pkg/
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} \
   go build -a -o manager ./cmd/manager/...
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+FROM quay.io/openshift/origin-cli:4.13 AS origincli
+
+FROM registry.access.redhat.com/ubi9-minimal:9.2-750
+RUN INSTALL_PKGS=" \
+    rsync \
+	tar \
+    " && \
+	microdnf install -y $INSTALL_PKGS && \
+	microdnf clean all
 WORKDIR /
 COPY --from=builder /workspace/manager .
+COPY --from=builder /workspace/must-gather/* /usr/bin/
+COPY --from=origincli /usr/bin/oc /usr/bin
 USER 65532:65532
 
 ENTRYPOINT ["/manager"]

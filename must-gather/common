@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+# copyright 2023.
+#
+# licensed under the apache license, version 2.0 (the "license");
+# you may not use this file except in compliance with the license.
+# you may obtain a copy of the license at
+#
+#     http://www.apache.org/licenses/license-2.0
+#
+# unless required by applicable law or agreed to in writing, software
+# distributed under the license is distributed on an "as is" basis,
+# without warranties or conditions of any kind, either express or implied.
+# see the license for the specific language governing permissions and
+# limitations under the license.
+#
+
+set -eu -o pipefail
+
+export KEPLER_NS="openshift-kepler-operator"
+export LOGFILE_NAME="gather-debug.log"
+
+get_timestamp(){
+  date -u +"%Y-%m-%d %H:%M:%SZ"
+}
+
+log_stdout() {
+  echo "$(get_timestamp) $*"
+}
+
+log_file() {
+  echo "$(get_timestamp) $*" >> "$LOGFILE_PATH"
+}
+
+log_stdout_and_file() {
+  echo "$(get_timestamp) $*" | tee -a "$LOGFILE_PATH"
+}
+
+log(){
+  log_stdout_and_file "$@"
+}
+
+run() {
+  length=$(($#-1))
+  cmd=${@:1:$length}
+  gather_file="${@: -1}"
+
+  log_file "$cmd"
+  $cmd >> "$gather_file"  2>> "$LOGFILE_PATH" || true
+}
