@@ -20,16 +20,14 @@
 set -e
 
 echo "Checking go format"
-sources="./cmd/ ./pkg/"
-unformatted=$(gofmt -e -d -s -l $sources)
-if [ ! -z "$unformatted" ]; then
-	# Some files are not gofmt.
-	echo >&2 "The following Go files must be formatted with gofmt:"
-	for fn in $unformatted; do
-		echo >&2 "  $fn"
-	done
-	echo >&2 "Please run 'make format'."
-	exit 1
-fi
+unformatted="$(gofmt -e -d -s -l "./cmd" "./pkg")"
+[[ -z "$unformatted" ]] && exit 0
 
-exit 0
+# Some files are not gofmt.
+echo "The following Go files must be formatted with gofmt:" >&2
+for fn in $unformatted; do
+	echo "  $fn" >&2
+done
+
+echo "Please run 'make format'." >&2
+exit 1
