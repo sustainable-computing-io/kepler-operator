@@ -23,7 +23,7 @@ GOARCH := $(shell go env GOARCH)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= $(shell cat VERSION)
 
-KEPLER_VERSION ?=release-0.5.5
+KEPLER_VERSION ?=release-0.6.1
 
 # IMG_BASE defines the docker.io namespace and part of the image name for remote images.
 # This variable is used to construct full image tags for bundle and catalog images.
