@@ -92,9 +92,13 @@ func main() {
 			BindAddress: metricsAddr,
 		},
 		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-			opts.DefaultNamespaces = map[string]cache.Config{
+			cacheNs := map[string]cache.Config{
 				components.Namespace: {},
 			}
+			if openshift {
+				cacheNs[exporter.DashboardNs] = cache.Config{}
+			}
+			opts.DefaultNamespaces = cacheNs
 			return cache.New(config, opts)
 		},
 
