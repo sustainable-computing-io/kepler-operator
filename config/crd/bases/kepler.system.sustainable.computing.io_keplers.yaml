@@ -82,6 +82,11 @@ spec:
                         minimum: 1
                         type: integer
                       tolerations:
+                        default:
+                        - effect: ""
+                          key: ""
+                          operator: Exists
+                          value: ""
                         description: If specified, define Pod's tolerations
                         items:
                           description: The pod this Toleration is attached to tolerates

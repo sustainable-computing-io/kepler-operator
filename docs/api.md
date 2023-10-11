@@ -163,6 +163,8 @@ KeplerSpec defines the desired state of Kepler
         <td>[]object</td>
         <td>
           If specified, define Pod's tolerations<br/>
+          <br/>
+            <i>Default</i>: [map[effect: key: operator:Exists value:]]<br/>
         </td>
         <td>false</td>
       </tr></tbody>

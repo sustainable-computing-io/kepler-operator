@@ -81,11 +81,6 @@ var (
 		"kubernetes.io/os": "linux",
 	}
 
-	// Default Toleration is allow all nodes
-	defaultTolerations = []corev1.Toleration{{
-		Operator: corev1.TolerationOpExists,
-	}}
-
 	//go:embed assets/dashboards/power-monitoring-overview.json
 	overviewDashboardJson string
 
@@ -107,11 +102,7 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 
 	deployment := k.Spec.Exporter.Deployment
 	nodeSelector := deployment.NodeSelector
-
 	tolerations := deployment.Tolerations
-	if len(tolerations) == 0 {
-		tolerations = defaultTolerations
-	}
 
 	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
 
