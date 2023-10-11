@@ -75,6 +75,9 @@ cluster_prereqs() {
 
 	info "Ensure openshift namespace for dashboard exists"
 	run kubectl create namespace openshift-config-managed
+
+	info "Ensure prometheus can monitor all namespaces"
+	run kubectl create -f hack/monitoring/rbac
 }
 
 ensure_all_tools() {

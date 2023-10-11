@@ -1,0 +1,15 @@
+# NOTE: prometheus itself requires these rbac for service discovery
+# ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/rbac.md#prometheus-rbac
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-k8s-full
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-discovery
+subjects:
+- kind: ServiceAccount
+  name: prometheus-k8s
+  namespace: monitoring
