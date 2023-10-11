@@ -105,6 +105,7 @@ type ExporterDeploymentSpec struct {
 
 	// If specified, define Pod's tolerations
 	// +optional
+	// +kubebuilder:default={{"key": "", "operator": "Exists", "value": "", "effect": ""}}
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 

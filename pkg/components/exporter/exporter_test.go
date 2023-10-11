@@ -54,26 +54,25 @@ func TestTolerations(t *testing.T) {
 		spec        v1alpha1.ExporterSpec
 		tolerations []corev1.Toleration
 		scenario    string
-	}{
-		{
-			spec: v1alpha1.ExporterSpec{},
-			tolerations: []corev1.Toleration{{
-				Operator: corev1.TolerationOpExists}},
-			scenario: "default case",
-		},
-		{
-			spec: v1alpha1.ExporterSpec{
-				Deployment: v1alpha1.ExporterDeploymentSpec{
-					Tolerations: []corev1.Toleration{{
-						Effect: corev1.TaintEffectNoSchedule, Key: "key1"}},
-				},
+	}{{
+		spec: v1alpha1.ExporterSpec{},
+		// NOTE: default toleration { "operator": "Exists" } is set by k8s API server (CRD default)
+		// see: Kepler_Reconciliation e2e test
+		tolerations: nil,
+		scenario:    "default case",
+	}, {
+		spec: v1alpha1.ExporterSpec{
+			Deployment: v1alpha1.ExporterDeploymentSpec{
+				Tolerations: []corev1.Toleration{{
+					Effect: corev1.TaintEffectNoSchedule, Key: "key1"}},
 			},
-			tolerations: []corev1.Toleration{{
-				Effect: corev1.TaintEffectNoSchedule, Key: "key1",
-			}},
-			scenario: "user defined toleration",
 		},
-	}
+		tolerations: []corev1.Toleration{{
+			Effect: corev1.TaintEffectNoSchedule, Key: "key1",
+		}},
+		scenario: "user defined toleration",
+	}}
+
 	for _, tc := range tt {
 		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {

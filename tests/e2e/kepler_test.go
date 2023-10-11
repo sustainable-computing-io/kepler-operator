@@ -54,6 +54,9 @@ func TestKepler_Reconciliation(t *testing.T) {
 	f.AssertResourceExists(exporter.DaemonSetName, components.Namespace, &ds)
 
 	kepler := f.WaitUntilKeplerCondition("kepler", v1alpha1.Reconciled)
+	// ensure the default toleration is set
+	assert.Equal(t, []corev1.Toleration{{Operator: "Exists"}}, kepler.Spec.Exporter.Deployment.Tolerations)
+
 	reconciled, err := k8s.FindCondition(kepler.Status.Conditions, v1alpha1.Reconciled)
 	assert.NoError(t, err, "unable to get reconciled condition")
 	assert.Equal(t, reconciled.ObservedGeneration, kepler.Generation)
