@@ -138,7 +138,6 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 							"/usr/bin/kepler",
 							"-address", bindAddress,
 							"-enable-cgroup-id=true",
-							"-expose-estimated-idle-power=true",
 							"-enable-gpu=$(ENABLE_GPU)",
 							"-v=$(KEPLER_LOG_LEVEL)",
 							"-kernel-source-dir=/usr/share/kepler/kernel_sources",
