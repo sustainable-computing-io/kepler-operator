@@ -78,6 +78,10 @@ jobs:
       - uses: actions/setup-go@main
         with:
           go-version-file: go.mod
+
+      - name: Install all tools
+        uses: ./.github/tools-cache
+
       - name: bundle
         run: |
           make generate manifests bundle
@@ -100,6 +104,9 @@ jobs:
         shell: bash
         run: |
           echo "result=$(git rev-parse --short HEAD),v1alpha1" >> $GITHUB_OUTPUT
+
+      - name: Install all tools
+        uses: ./.github/tools-cache
 
       - name: build images for PR checks
         uses: ./.github/publish-images
@@ -128,7 +135,8 @@ jobs:
           go-version-file: go.mod
 
       - name: Install all tools
-        run: make tools
+        uses: ./.github/tools-cache
+
       - name: use kepler action for kind cluster build
         uses: sustainable-computing-io/kepler-action@v0.0.2
         with:
