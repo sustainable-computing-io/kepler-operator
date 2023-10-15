@@ -38,6 +38,9 @@ runs:
         username: ${{ inputs.registry_login }}
         password: ${{ inputs.registry_token }}
 
+    - name: Install all tools
+      uses: ./.github/tools-cache
+
     - name: Build Operator
       shell: bash
       run: |
