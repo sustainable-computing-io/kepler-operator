@@ -8,7 +8,6 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: servicemonitor
     app.kubernetes.io/part-of: kepler-operator
-    control-plane: controller-manager
   name: kepler-operator-controller-manager-metrics-monitor
 spec:
   endpoints:
@@ -17,4 +16,3 @@ spec:
     matchLabels:
       app.kubernetes.io/name: service
       app.kubernetes.io/part-of: kepler-operator
-      control-plane: controller-manager
