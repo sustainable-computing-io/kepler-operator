@@ -79,7 +79,11 @@ func (r *runner) runCmd(timeoutCh <-chan time.Time) (string, error) {
 		r.Cmd.Stdout = &outbuf
 		r.Cmd.Stderr = &errbuf
 	}
-	r.Cmd.Env = []string{fmt.Sprintf("%s=%s", "KUBECONFIG", os.Getenv("KUBECONFIG"))}
+
+	if kc := os.Getenv("KUBECONFIG"); kc != "" {
+		r.Cmd.Env = append(r.Cmd.Env, fmt.Sprintf("%s=%s", "KUBECONFIG", kc))
+	}
+
 	cmdargs := strings.Join(r.args, " ")
 	err := r.Cmd.Start()
 	if err != nil {
