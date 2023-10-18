@@ -19,6 +19,7 @@ package test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -195,6 +196,7 @@ func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionTyp
 }
 
 func (f Framework) GetResourceNames(kind string) ([]string, error) {
+	f.T.Helper()
 	res, err := oc.Get().Resource(kind, "").OutputJsonpath("{.items[*].metadata.name}").Run()
 	if err != nil {
 		return []string{}, err
@@ -204,6 +206,7 @@ func (f Framework) GetResourceNames(kind string) ([]string, error) {
 }
 
 func (f Framework) AddResourceLabels(kind, name string, l map[string]string) error {
+	f.T.Helper()
 	b := new(bytes.Buffer)
 	for label, value := range l {
 		fmt.Fprintf(b, "%s=%s ", label, value)
@@ -216,11 +219,13 @@ func (f Framework) AddResourceLabels(kind, name string, l map[string]string) err
 }
 
 func (f Framework) AddResourceLabelsStr(kind, name, l string) error {
+	f.T.Helper()
 	_, err := oc.Literal().From("oc label %s %s %s", kind, name, l).Run()
 	return err
 }
 
 func (f Framework) RemoveResourceLabels(kind, name string, l []string) error {
+	f.T.Helper()
 	b := new(bytes.Buffer)
 	for _, label := range l {
 		fmt.Fprintf(b, "%s- ", label)
@@ -230,10 +235,12 @@ func (f Framework) RemoveResourceLabels(kind, name string, l []string) error {
 }
 
 func (f Framework) GetTaints(node string) (string, error) {
+	f.T.Helper()
 	return oc.Get().Resource("node", node).OutputJsonpath("{.spec.taints}").Run()
 }
 
 func (f Framework) TaintNode(node, taintStr string) error {
+	f.T.Helper()
 	_, err := oc.Literal().From("oc adm taint node %s %s", node, taintStr).Run()
 	f.T.Cleanup(func() {
 		// remove taint
@@ -241,4 +248,39 @@ func (f Framework) TaintNode(node, taintStr string) error {
 		assert.NoError(f.T, err, "could not remove taint from node")
 	})
 	return err
+}
+func (f Framework) GetNodes() []string {
+	f.T.Helper()
+	f.T.Logf("%s: getting nodes", time.Now().UTC().Format(time.RFC3339))
+	nodes, err := f.GetResourceNames("node")
+	assert.NoError(f.T, err, "failed to get node names")
+	assert.NotZero(f.T, len(nodes), "got zero nodes")
+	return nodes
+}
+
+func (f Framework) GetTaintsForNode(node string) []corev1.Taint {
+	f.T.Helper()
+	f.T.Logf("%s: getting taints for node: %s", time.Now().UTC().Format(time.RFC3339), node)
+	taintsStr, err := f.GetTaints(node)
+	assert.NoError(f.T, err, "failed to get taint for node %s", node)
+	var taints []corev1.Taint
+	if taintsStr != "" {
+		err = json.Unmarshal([]byte(taintsStr), &taints)
+		assert.NoError(f.T, err, "failed to unmarshal taints %s", taintsStr)
+	}
+	return taints
+}
+
+func (f Framework) TolerateTaints(taints []corev1.Taint) []corev1.Toleration {
+	f.T.Helper()
+	var to []corev1.Toleration
+	for _, ta := range taints {
+		to = append(to, corev1.Toleration{
+			Key:      ta.Key,
+			Value:    ta.Value,
+			Operator: corev1.TolerationOpEqual,
+			Effect:   ta.Effect,
+		})
+	}
+	return to
 }
