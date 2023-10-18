@@ -47,6 +47,9 @@ jobs:
         env:
           VERSION: ${{ github.event.inputs.tag }}
 
+      - name: Install all tools
+        uses: ./.github/tools-cache
+
       - name: Build Operator
         run: |
           make operator-build
