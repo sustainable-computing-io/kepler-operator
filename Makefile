@@ -281,6 +281,10 @@ yq: ## Download yq locally if necessary
 oc: ## Download oc locally if necessary
 	@./hack/tools.sh oc
 
+.PHONY: shfmt
+shfmt: ## Download shmft locally if necessary
+	@./hack/tools.sh shfmt
+
 .PHONY: install-govulncheck
 install-govulncheck: ## Download govulncheck locally if necessary
 	@./hack/tools.sh govulncheck

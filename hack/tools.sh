@@ -34,6 +34,7 @@ declare -r OPERATOR_SDK_VERSION=${OPERATOR_SDK_VERSION:-v1.27.0}
 declare -r YQ_VERSION=${YQ_VERSION:-v4.34.2}
 declare -r CRDOC_VERSION=${CRDOC_VERSION:-v0.6.2}
 declare -r OC_VERSION=${OC_VERSION:-4.13.0}
+declare -r SHFMT_VERSION=${SHFMT_VERSION:-v3.7.0}
 
 # install
 declare -r KUSTOMIZE_INSTALL_SCRIPT="https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
@@ -121,6 +122,42 @@ install_yq() {
 	}
 	chmod +x "$LOCAL_BIN/yq"
 	ok "yq was installed successfully"
+}
+
+go_install() {
+	local pkg="$1"
+	local version="$2"
+	shift 2
+
+	info "installing $pkg version: $version"
+
+	GOBIN=$LOCAL_BIN \
+		go install "$pkg@$version" || {
+		fail "failed to install $pkg - $version"
+		return 1
+	}
+	ok "$pkg - $version was installed successfully"
+
+}
+
+validate_verison() {
+	local cmd="$1"
+	local version_arg="$2"
+	local version_regex="$3"
+	shift 3
+
+	command -v "$cmd" >/dev/null 2>&1 || return 1
+	[[ $(eval "$cmd $version_arg" | grep -o "$version_regex") =~ $version_regex ]] || {
+		return 1
+	}
+
+	ok "$cmd installed successfully"
+}
+install_shfmt() {
+	validate_verison shfmt --version "$SHFMT_VERSION" && {
+		return 0
+	}
+	go_install mvdan.cc/sh/v3/cmd/shfmt "$SHFMT_VERSION"
 }
 
 install_crdoc() {
