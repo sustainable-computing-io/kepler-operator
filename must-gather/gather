@@ -17,103 +17,102 @@
 
 set -eu -o pipefail
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 source "${SCRIPT_DIR}"/common
 
 print_usage() {
-    echo -e "Usage: /usr/bin/gather <gather-collection-path>"
+	echo -e "Usage: /usr/bin/gather <gather-collection-path>"
 }
 
 get_kepler_instance() {
-  log "getting kepler instance(s)"
-  KEPLERS=$(oc get keplers.kepler.system.sustainable.computing.io -oname)
-  if [ ! -z "$KEPLERS" ]
-  then
-    run oc get $KEPLERS -oyaml "$BASE_COLLECTION_PATH/keplers.yaml"
-  else
-    echo "no keplers found" >> "$BASE_COLLECTION_PATH/keplers.yaml"
-  fi
+	log "getting kepler instance(s)"
+	KEPLERS=$(oc get keplers.kepler.system.sustainable.computing.io -oname)
+	if [ ! -z "$KEPLERS" ]; then
+		run oc get $KEPLERS -oyaml "$BASE_COLLECTION_PATH/keplers.yaml"
+	else
+		echo "no keplers found" >>"$BASE_COLLECTION_PATH/keplers.yaml"
+	fi
 }
 
 get_kepler_events() {
-  log "getting $KEPLER_NS events"
-  run oc -n "$KEPLER_NS" get events "$BASE_COLLECTION_PATH/$KEPLER_NS""_events"
+	log "getting $KEPLER_NS events"
+	run oc -n "$KEPLER_NS" get events "$BASE_COLLECTION_PATH/$KEPLER_NS""_events"
 }
 
 get_kepler_daemon_set() {
-  KEPLER_EXPORTER_DS="kepler-exporter-ds"
-  log "getting kepler exporter daemonset"
-  run oc -n "$KEPLER_NS" get ds $KEPLER_EXPORTER_DS -oyaml "$BASE_COLLECTION_PATH/$KEPLER_EXPORTER_DS"".yaml"
+	KEPLER_EXPORTER_DS="kepler-exporter-ds"
+	log "getting kepler exporter daemonset"
+	run oc -n "$KEPLER_NS" get ds $KEPLER_EXPORTER_DS -oyaml "$BASE_COLLECTION_PATH/$KEPLER_EXPORTER_DS"".yaml"
 }
 
 get_kepler_config_map() {
-  KEPLER_EXPORTER_CM="kepler-exporter-cm"
-  log "getting kepler exporter config map"
-  run oc -n "$KEPLER_NS" get cm $KEPLER_EXPORTER_CM -oyaml "$BASE_COLLECTION_PATH/$KEPLER_EXPORTER_CM"".yaml"
+	KEPLER_EXPORTER_CM="kepler-exporter-cm"
+	log "getting kepler exporter config map"
+	run oc -n "$KEPLER_NS" get cm $KEPLER_EXPORTER_CM -oyaml "$BASE_COLLECTION_PATH/$KEPLER_EXPORTER_CM"".yaml"
 }
 
 get_kepler_sa() {
-  KEPLER_EXPORTER_SA="kepler-exporter-sa"
-  log "getting kepler exporter service account"
-  run oc -n "$KEPLER_NS" get serviceaccount $KEPLER_EXPORTER_SA -oyaml "$BASE_COLLECTION_PATH/$KEPLER_EXPORTER_SA"".yaml"
+	KEPLER_EXPORTER_SA="kepler-exporter-sa"
+	log "getting kepler exporter service account"
+	run oc -n "$KEPLER_NS" get serviceaccount $KEPLER_EXPORTER_SA -oyaml "$BASE_COLLECTION_PATH/$KEPLER_EXPORTER_SA"".yaml"
 }
 
 get_kepler_scc() {
-  KEPLER_EXPORTER_SCC="kepler-exporter-scc"
-  log "getting kepler exporter scc"
-  run oc get scc "$KEPLER_EXPORTER_SCC" -oyaml "$BASE_COLLECTION_PATH/$KEPLER_EXPORTER_SCC"".yaml"
+	KEPLER_EXPORTER_SCC="kepler-exporter-scc"
+	log "getting kepler exporter scc"
+	run oc get scc "$KEPLER_EXPORTER_SCC" -oyaml "$BASE_COLLECTION_PATH/$KEPLER_EXPORTER_SCC"".yaml"
 }
 
 gather_kepler_exporter_info() {
-  KEPLER_PODS=$(oc -n "$KEPLER_NS" get pods -oname 2>/dev/null || echo "")
-  for pod in $KEPLER_PODS
-  do
-	pod=$(echo "$pod" | awk -F '/' '{print $2}')
-	log "running gather script for kepler pod: $pod"
-	"$SCRIPT_DIR"/gather-kepler-exporter-info "$BASE_COLLECTION_PATH" "$pod"
-  done
+	KEPLER_PODS=$(oc -n "$KEPLER_NS" get pods -oname 2>/dev/null || echo "")
+	for pod in $KEPLER_PODS; do
+		pod=$(echo "$pod" | awk -F '/' '{print $2}')
+		log "running gather script for kepler pod: $pod"
+		"$SCRIPT_DIR"/gather-kepler-exporter-info "$BASE_COLLECTION_PATH" "$pod"
+	done
 }
 
-gather_olm_info(){
-  log "running gather script for olm"
-  "$SCRIPT_DIR"/gather-olm-info "$BASE_COLLECTION_PATH"
+gather_olm_info() {
+	log "running gather script for olm"
+	"$SCRIPT_DIR"/gather-olm-info "$BASE_COLLECTION_PATH"
 }
 
 gather_kepler_operator_info() {
-  log "getting kepler-operator info"
-  "$SCRIPT_DIR"/gather-kepler-operator-info "$BASE_COLLECTION_PATH"
+	log "getting kepler-operator info"
+	"$SCRIPT_DIR"/gather-kepler-operator-info "$BASE_COLLECTION_PATH"
 }
 
-main(){
-  case ${1-} in
-	--help | -h )
-	  print_usage
-	  exit 0
-  esac
+main() {
+	case ${1-} in
+	--help | -h)
+		print_usage
+		exit 0
+		;;
+	esac
 
-  BASE_COLLECTION_PATH="${1:-/must-gather}"
-  export LOGFILE_PATH="${BASE_COLLECTION_PATH}/${LOGFILE_NAME}"
+	BASE_COLLECTION_PATH="${1:-/must-gather}"
+	export LOGFILE_PATH="${BASE_COLLECTION_PATH}/${LOGFILE_NAME}"
 
-  mkdir -p "${BASE_COLLECTION_PATH}"
-  cd "${BASE_COLLECTION_PATH}"
-  echo -e "must-gather logs are located at: '${LOGFILE_PATH}'"
+	mkdir -p "${BASE_COLLECTION_PATH}"
+	cd "${BASE_COLLECTION_PATH}"
+	echo -e "must-gather logs are located at: '${LOGFILE_PATH}'"
 
-  mkdir -p "/tmp/cache-dir"
-  export KUBECACHEDIR=/tmp/cache-dir
+	mkdir -p "/tmp/cache-dir"
+	export KUBECACHEDIR=/tmp/cache-dir
 
-  echo "powermon must-gather started..."
-  get_kepler_instance
-  get_kepler_events
-  get_kepler_daemon_set
-  get_kepler_config_map
-  get_kepler_sa
-  get_kepler_scc
-  gather_kepler_exporter_info
-  gather_olm_info
-  gather_kepler_operator_info
+	echo "powermon must-gather started..."
+	get_kepler_instance
+	get_kepler_events
+	get_kepler_daemon_set
+	get_kepler_config_map
+	get_kepler_sa
+	get_kepler_scc
+	gather_kepler_exporter_info
+	gather_olm_info
+	gather_kepler_operator_info
 
-  echo "powermon must-gather completed"
+	echo "powermon must-gather completed"
 }
 
 main "$@"

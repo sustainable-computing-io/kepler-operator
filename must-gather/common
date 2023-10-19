@@ -20,31 +20,31 @@ set -eu -o pipefail
 export KEPLER_NS="openshift-kepler-operator"
 export LOGFILE_NAME="gather-debug.log"
 
-get_timestamp(){
-  date -u +"%Y-%m-%d %H:%M:%SZ"
+get_timestamp() {
+	date -u +"%Y-%m-%d %H:%M:%SZ"
 }
 
 log_stdout() {
-  echo "$(get_timestamp) $*"
+	echo "$(get_timestamp) $*"
 }
 
 log_file() {
-  echo "$(get_timestamp) $*" >> "$LOGFILE_PATH"
+	echo "$(get_timestamp) $*" >>"$LOGFILE_PATH"
 }
 
 log_stdout_and_file() {
-  echo "$(get_timestamp) $*" | tee -a "$LOGFILE_PATH"
+	echo "$(get_timestamp) $*" | tee -a "$LOGFILE_PATH"
 }
 
-log(){
-  log_stdout_and_file "$@"
+log() {
+	log_stdout_and_file "$@"
 }
 
 run() {
-  length=$(($#-1))
-  cmd=${@:1:$length}
-  gather_file="${@: -1}"
+	length=$(($# - 1))
+	cmd=${@:1:$length}
+	gather_file="${@: -1}"
 
-  log_file "$cmd"
-  $cmd >> "$gather_file"  2>> "$LOGFILE_PATH" || true
+	log_file "$cmd"
+	$cmd >>"$gather_file" 2>>"$LOGFILE_PATH" || true
 }
