@@ -19,7 +19,6 @@
 
 set -e
 
-
 _registry_port="5001"
 _registry_name="kind-registry"
 
@@ -42,21 +41,21 @@ IMAGE_TAG=${IMAGE_TAG:-devel}
 PLATFORM=$(uname -m)
 case ${PLATFORM} in
 x86_64* | i?86_64* | amd64*)
-    ARCH="amd64"
-    ;;
+	ARCH="amd64"
+	;;
 ppc64le)
-    ARCH="ppc64le"
-    ;;
+	ARCH="ppc64le"
+	;;
 aarch64* | arm64*)
-    ARCH="arm64"
-    ;;
+	ARCH="arm64"
+	;;
 *)
-    echo "invalid Arch, only support x86_64, ppc64le, aarch64"
-    exit 1
-    ;;
+	echo "invalid Arch, only support x86_64, ppc64le, aarch64"
+	exit 1
+	;;
 esac
 
 # the cluster kind is a kubernetes cluster
 if [ ${CLUSTER_PROVIDER} = "kind" ]; then
-    CLUSTER_PROVIDER="kubernetes"
+	CLUSTER_PROVIDER="kubernetes"
 fi

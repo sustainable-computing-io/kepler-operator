@@ -94,8 +94,11 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./pkg/..."
 
 .PHONY: fmt
-fmt: ## Run go fmt against code.
+fmt: shfmt ## Run go fmt against code.
 	go fmt ./...
+	PATH=./tmp/bin:$$PATH \
+		shfmt -l -w ./**/*.sh \
+			./must-gather/gather* ./must-gather/common
 
 .PHONY: vet
 vet: ## Run go vet against code.
@@ -280,6 +283,10 @@ yq: ## Download yq locally if necessary
 .PHONY: oc
 oc: ## Download oc locally if necessary
 	@./hack/tools.sh oc
+
+.PHONY: shfmt
+shfmt: ## Download shmft locally if necessary
+	@./hack/tools.sh shfmt
 
 .PHONY: install-govulncheck
 install-govulncheck: ## Download govulncheck locally if necessary

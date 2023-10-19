@@ -17,7 +17,7 @@
 
 set -eu -o pipefail
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 source "${SCRIPT_DIR}/common"
 
 BASE_COLLECTION_PATH=$1
@@ -26,23 +26,22 @@ KEPLER_OPERATOR_NS="openshift-operators"
 KEPLER_OPERATOR_LABELS="operators.coreos.com/kepler-operator.openshift-operators"
 
 get_olm() {
-  log "collecting olm info for kepler-operator"
-  run oc -n "$KEPLER_OPERATOR_NS" get olm -l "${KEPLER_OPERATOR_LABELS}"= -oyaml "$OLM_INFO_DIR/olm-reources.yaml"
+	log "collecting olm info for kepler-operator"
+	run oc -n "$KEPLER_OPERATOR_NS" get olm -l "${KEPLER_OPERATOR_LABELS}"= -oyaml "$OLM_INFO_DIR/olm-reources.yaml"
 }
 
 get_summary() {
-  log "collecting olm summary"
-  run oc -n "$KEPLER_OPERATOR_NS" get olm -owide "$OLM_INFO_DIR/summary.txt"
+	log "collecting olm summary"
+	run oc -n "$KEPLER_OPERATOR_NS" get olm -owide "$OLM_INFO_DIR/summary.txt"
 }
-
 
 main() {
 
-  OLM_INFO_DIR=$BASE_COLLECTION_PATH/olm-info
-  mkdir -p "$OLM_INFO_DIR"
+	OLM_INFO_DIR=$BASE_COLLECTION_PATH/olm-info
+	mkdir -p "$OLM_INFO_DIR"
 
-  get_olm
-  get_summary
+	get_olm
+	get_summary
 }
 
 main "$@"

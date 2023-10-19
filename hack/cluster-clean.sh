@@ -24,19 +24,19 @@ source ./hack/common.sh
 MANIFESTS_OUT_DIR=${MANIFESTS_OUT_DIR:-"_output/generated-manifest"}
 
 function main() {
-    echo "Cleaning up ..."
+	echo "Cleaning up ..."
 
-    if [ ! -d "${MANIFESTS_OUT_DIR}" ]; then
-        echo "Directory ${MANIFESTS_OUT_DIR} DOES NOT exists. Run make generate first."
-        exit
-    fi
+	if [ ! -d "${MANIFESTS_OUT_DIR}" ]; then
+		echo "Directory ${MANIFESTS_OUT_DIR} DOES NOT exists. Run make generate first."
+		exit
+	fi
 
-    # Ignore errors because some clusters might not have prometheus operator
-    kubectl delete --ignore-not-found=true -f ${MANIFESTS_OUT_DIR}/*.yaml || true
+	# Ignore errors because some clusters might not have prometheus operator
+	kubectl delete --ignore-not-found=true -f ${MANIFESTS_OUT_DIR}/*.yaml || true
 
-    sleep 2
+	sleep 2
 
-    echo "Done $0"
+	echo "Done $0"
 }
 
 main "$@"
