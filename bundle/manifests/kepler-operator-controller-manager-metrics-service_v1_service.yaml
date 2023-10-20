@@ -9,7 +9,6 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: service
     app.kubernetes.io/part-of: kepler-operator
-    control-plane: controller-manager
   name: kepler-operator-controller-manager-metrics-service
 spec:
   ports:
@@ -18,6 +17,7 @@ spec:
     protocol: TCP
     targetPort: metrics
   selector:
-    control-plane: controller-manager
+    app.kubernetes.io/component: manager
+    app.kubernetes.io/instance: controller-manager
 status:
   loadBalancer: {}

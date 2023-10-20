@@ -92,6 +92,8 @@ main() {
 	esac
 
 	BASE_COLLECTION_PATH="${1:-/must-gather}"
+	# NOTE: convert relative to absolute path
+	BASE_COLLECTION_PATH="$(readlink -f "$BASE_COLLECTION_PATH")"
 	export LOGFILE_PATH="${BASE_COLLECTION_PATH}/${LOGFILE_NAME}"
 
 	mkdir -p "${BASE_COLLECTION_PATH}"

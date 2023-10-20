@@ -52,7 +52,10 @@ get_kepler_operator_deployment_info() {
 
 get_kepler_operator_pod_info() {
 	log "getting pod info for kepler-operator"
-	run oc -n "$KEPLER_OPERATOR_NS" get pod -l control-plane=controller-manager -oyaml "$KEPLER_OPERATOR_INFO_DIR/kepler-operator.yaml"
+	run oc -n "$KEPLER_OPERATOR_NS" get pod \
+		-l app.kubernetes.io/component=manager \
+		-l app.kubernetes.io/part-of=kepler-operator \
+		-oyaml "$KEPLER_OPERATOR_INFO_DIR/kepler-operator.yaml"
 }
 
 get_summary() {
@@ -72,7 +75,10 @@ get_summary() {
 	run oc -n "$KEPLER_OPERATOR_NS" get deployment "$KEPLER_OPERATOR_DEPLOY" -owide "$KEPLER_OPERATOR_INFO_DIR/summary.txt"
 	echo -e "\n" >>"$KEPLER_OPERATOR_INFO_DIR/summary.txt"
 
-	run oc -n "$KEPLER_OPERATOR_NS" get pod -l control-plane=controller-manager -owide "$KEPLER_OPERATOR_INFO_DIR/summary.txt"
+	run oc -n "$KEPLER_OPERATOR_NS" get pod \
+		-l app.kubernetes.io/component=manager \
+		-l app.kubernetes.io/part-of=kepler-operator \
+		-owide "$KEPLER_OPERATOR_INFO_DIR/summary.txt"
 }
 
 main() {
