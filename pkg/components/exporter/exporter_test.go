@@ -218,3 +218,40 @@ func TestSCCAllows(t *testing.T) {
 		})
 	}
 }
+
+func TestSpecMethod(t *testing.T) {
+
+	tt := []struct {
+		deploymentSpec v1alpha1.ExporterDeploymentSpec
+		method         string
+		image          string
+		scenario       string
+	}{{
+		deploymentSpec: v1alpha1.ExporterDeploymentSpec{},
+		method:         "libbpf",
+		scenario:       "libbpf",
+		image:          "quay.io/sustainable_computing_io/kepler:release-0.6.1" + "-libbpf",
+	}, {
+		deploymentSpec: v1alpha1.ExporterDeploymentSpec{},
+		method:         "bcc",
+		scenario:       "bcc",
+		image:          "quay.io/sustainable_computing_io/kepler:release-0.6.1",
+	}}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			k := v1alpha1.Kepler{
+				Spec: v1alpha1.KeplerSpec{
+					Exporter: v1alpha1.ExporterSpec{
+						Deployment: tc.deploymentSpec,
+						Method:     tc.method,
+					},
+				},
+			}
+			actual := k8s.ContainerImageFromDS(NewDaemonSet(components.Full, &k))
+			assert.Equal(t, actual, tc.image)
+		})
+	}
+}

@@ -159,3 +159,7 @@ func AllowsFromSCC(SCC *secv1.SecurityContextConstraints) SCCAllows {
 		AllowHostPorts:           SCC.AllowHostPorts,
 	}
 }
+
+func ContainerImageFromDS(ds *appsv1.DaemonSet) string {
+	return ds.Spec.Template.Spec.Containers[0].Image
+}
