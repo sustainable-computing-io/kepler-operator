@@ -19,12 +19,12 @@ package test
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"golang.org/x/exp/slices"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
@@ -195,16 +195,6 @@ func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionTyp
 	return &k
 }
 
-func (f Framework) GetResourceNames(kind string) ([]string, error) {
-	f.T.Helper()
-	res, err := oc.Get().Resource(kind, "").OutputJsonpath("{.items[*].metadata.name}").Run()
-	if err != nil {
-		return []string{}, err
-	}
-	nodes := strings.Split(res, " ")
-	return nodes, nil
-}
-
 func (f Framework) AddResourceLabels(kind, name string, l map[string]string) error {
 	f.T.Helper()
 	b := new(bytes.Buffer)
@@ -234,11 +224,6 @@ func (f Framework) RemoveResourceLabels(kind, name string, l []string) error {
 	return err
 }
 
-func (f Framework) GetTaints(node string) (string, error) {
-	f.T.Helper()
-	return oc.Get().Resource("node", node).OutputJsonpath("{.spec.taints}").Run()
-}
-
 func (f Framework) TaintNode(node, taintStr string) error {
 	f.T.Helper()
 	_, err := oc.Literal().From("oc adm taint node %s %s", node, taintStr).Run()
@@ -249,26 +234,20 @@ func (f Framework) TaintNode(node, taintStr string) error {
 	})
 	return err
 }
-func (f Framework) GetNodes() []string {
-	f.T.Helper()
-	f.T.Logf("%s: getting nodes", time.Now().UTC().Format(time.RFC3339))
-	nodes, err := f.GetResourceNames("node")
-	assert.NoError(f.T, err, "failed to get node names")
-	assert.NotZero(f.T, len(nodes), "got zero nodes")
-	return nodes
-}
 
-func (f Framework) GetTaintsForNode(node string) []corev1.Taint {
+func (f Framework) GetSchedulableNodes() []corev1.Node {
 	f.T.Helper()
-	f.T.Logf("%s: getting taints for node: %s", time.Now().UTC().Format(time.RFC3339), node)
-	taintsStr, err := f.GetTaints(node)
-	assert.NoError(f.T, err, "failed to get taint for node %s", node)
-	var taints []corev1.Taint
-	if taintsStr != "" {
-		err = json.Unmarshal([]byte(taintsStr), &taints)
-		assert.NoError(f.T, err, "failed to unmarshal taints %s", taintsStr)
+	var nodes corev1.NodeList
+	err := f.client.List(context.TODO(), &nodes)
+	assert.NoError(f.T, err, "failed to get nodes")
+
+	var ret []corev1.Node
+	for _, n := range nodes.Items {
+		if isSchedulableNode(n) {
+			ret = append(ret, n)
+		}
 	}
-	return taints
+	return ret
 }
 
 func (f Framework) TolerateTaints(taints []corev1.Taint) []corev1.Toleration {
@@ -283,4 +262,11 @@ func (f Framework) TolerateTaints(taints []corev1.Taint) []corev1.Toleration {
 		})
 	}
 	return to
+}
+
+func isSchedulableNode(n corev1.Node) bool {
+	return slices.IndexFunc(n.Spec.Taints, func(t corev1.Taint) bool {
+		return t.Effect == corev1.TaintEffectNoSchedule ||
+			t.Effect == corev1.TaintEffectNoExecute
+	}) == -1
 }

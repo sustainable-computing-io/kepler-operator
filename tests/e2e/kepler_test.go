@@ -85,13 +85,12 @@ func TestNodeSelector(t *testing.T) {
 	// Ensure Kepler is not deployed (by any chance)
 	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
 
-	nodes, err := f.GetResourceNames("node")
-	assert.NoError(t, err, "failed to get node names")
+	nodes := f.GetSchedulableNodes()
 	assert.NotZero(t, len(nodes), "got zero nodes")
 
 	node := nodes[0]
 	var labels k8s.StringMap = map[string]string{"e2e-test": "true"}
-	err = f.AddResourceLabels("node", node, labels)
+	err := f.AddResourceLabels("node", node.Name, labels)
 	assert.NoError(t, err, "could not label node")
 
 	f.CreateKepler("kepler", func(k *v1alpha1.Kepler) {
@@ -120,9 +119,8 @@ func TestTaint_WithToleration(t *testing.T) {
 
 	var err error
 	// choose one node
-	nodes := f.GetNodes()
+	nodes := f.GetSchedulableNodes()
 	node := nodes[0]
-	taints := f.GetTaintsForNode(node)
 
 	e2eTestTaint := corev1.Taint{
 		Key:    "key1",
@@ -130,11 +128,11 @@ func TestTaint_WithToleration(t *testing.T) {
 		Effect: corev1.TaintEffectNoSchedule,
 	}
 
-	err = f.TaintNode(node, e2eTestTaint.ToString())
+	err = f.TaintNode(node.Name, e2eTestTaint.ToString())
 	assert.NoError(t, err, "failed to taint node %s", node)
 
 	f.CreateKepler("kepler", func(k *v1alpha1.Kepler) {
-		k.Spec.Exporter.Deployment.Tolerations = f.TolerateTaints(append(taints, e2eTestTaint))
+		k.Spec.Exporter.Deployment.Tolerations = f.TolerateTaints(append(node.Spec.Taints, e2eTestTaint))
 	})
 
 	f.AssertResourceExists(components.Namespace, "", &corev1.Namespace{})
