@@ -117,6 +117,16 @@ KeplerSpec defines the desired state of Kepler
           <br/>
         </td>
         <td>false</td>
+      </tr><tr>
+        <td><b>method</b></td>
+        <td>enum</td>
+        <td>
+          <br/>
+          <br/>
+            <i>Enum</i>: bcc, libbpf<br/>
+            <i>Default</i>: bcc<br/>
+        </td>
+        <td>false</td>
       </tr></tbody>
 </table>
 
