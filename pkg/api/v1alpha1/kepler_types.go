@@ -111,6 +111,11 @@ type ExporterDeploymentSpec struct {
 
 type ExporterSpec struct {
 	Deployment ExporterDeploymentSpec `json:"deployment,omitempty"`
+
+	// +kubebuilder:default="bcc"
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Enum={"bcc","libbpf"}
+	Method string `json:"method,omitempty"`
 }
 
 // KeplerSpec defines the desired state of Kepler

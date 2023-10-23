@@ -106,6 +106,17 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 
 	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
 
+	configImage := Config.Image
+
+	if configImage == "" {
+		configImage = "quay.io/sustainable_computing_io/kepler:release-0.6.1"
+	}
+
+	switch k.Spec.Exporter.Method {
+	case "libbpf":
+		configImage += "-libbpf"
+	}
+
 	return &appsv1.DaemonSet{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: appsv1.SchemeGroupVersion.String(),
@@ -133,7 +144,7 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 					Containers: []corev1.Container{{
 						Name:            "kepler-exporter",
 						SecurityContext: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
-						Image:           Config.Image,
+						Image:           configImage,
 						Command: []string{
 							"/usr/bin/kepler",
 							"-address", bindAddress,

@@ -129,6 +129,12 @@ spec:
                           type: object
                         type: array
                     type: object
+                  method:
+                    default: bcc
+                    enum:
+                    - bcc
+                    - libbpf
+                    type: string
                 type: object
             type: object
           status:
