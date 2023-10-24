@@ -114,4 +114,4 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 [kepler]: https://github.com/sustainable-computing-io/kepler
-[dev-docs]: https://github.com/sustainable-computing-io/kepler-operator/tree/main/docs/developer
+[dev-docs]: https://github.com/sustainable-computing-io/kepler-operator/tree/v1alpha1/docs/developer
