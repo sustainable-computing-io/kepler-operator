@@ -179,7 +179,7 @@ func (f Framework) DeleteKepler(name string) {
 	})
 }
 
-func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionType) *v1alpha1.Kepler {
+func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus) *v1alpha1.Kepler {
 	f.T.Helper()
 	k := v1alpha1.Kepler{}
 	f.WaitUntil(fmt.Sprintf("kepler %s is %s", name, t),
@@ -190,7 +190,7 @@ func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionTyp
 			}
 
 			condition, _ := k8s.FindCondition(k.Status.Conditions, t)
-			return condition.Status == v1alpha1.ConditionTrue, nil
+			return condition.Status == s, nil
 		})
 	return &k
 }
