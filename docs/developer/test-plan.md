@@ -24,6 +24,7 @@
   > 👉 This includes the ability of the operator to provision, configure, and manage resources such as pods, services, volumes, etc.
 
 - Following resources should get deployed as part of Operator Installation:
+
   - `kepler-operator-controller-manager deployment`
     - `kube-rbac-proxy`
     - `manager`
@@ -43,9 +44,9 @@
 
 - The Operator should not enter into an infinite reconcile loop. This can be
   verified by:
-	- checking the logs of the Operator.
-	- checking if the `metadata.resourceVersion` keeps increasing / changing in a
-	  short interval say every 2-5 seconds.
+  - Checking the logs of the Operator.
+  - Checking if the `metadata.resourceVersion` keeps increasing / changing in a
+    short interval say every 2-5 seconds.
 
 #### Negative:
 
@@ -68,6 +69,7 @@
   > 👉 This is to be verified by Upstream/Downstream CI.
 
 - Following resources should get deployed as part of Kepler Instance Creation:
+
   - `openshift-kepler-operator namespace`
   - `clusterrole`
   - `scc`
@@ -75,12 +77,17 @@
   - `kepler-exporter-ds`
   - `kepler-exporter-cm`
   - `kepler-exporter-svc`
+  - `kepler-exporter-smon`
+  - `power-monitoring-by-ns` config-map in `openshift-config-managed` namespace
+  - `power-monitoring-overview` config-map in `openshift-config-managed` namespace
+  - `kepler-exporter-prom-rules` Prometheus rules in `openshift-kepler-operator` namespace
+
 - Kepler operator only exposes `exporter port` at the time of configuring the Kepler Instance.
 
   - Kepler Instance should be able to run with different port number.
     > 👉 This is to be verified from OpenShift console
 
-- Appropriate status should be reflected for creation of Instance(Reconcillation status).
+- Appropriate status should be reflected for creation of Instance(Reconciliation status).
 
   > 👉 This includes whether Kepler Instance was deployed successfully on cluster nodes and logs any error on controller manager.
 
@@ -136,7 +143,7 @@
 - Kepler exporter should be able to expose metrics at port 9103
   - Metric HTTP endpoint should be reachable either via port-forwarding or creating a route on OpenShift.
 - Following metrics should be available and updated accordingly:
-  > 👉 These metrics are used inside our grafana dashboard.
+  > 👉 These metrics are used inside OpenShift & Grafana dashboard.
   - `kepler_container_package_joules_total`
   - `kepler_container_dram_joules_total`
   - `kepler_container_other_host_components_joules_total`
@@ -161,7 +168,7 @@
   - `kepler-operator-controller-manager Service Account`
   - `kepler-operator CSV`
   - `subscription`
-  - `servicemonitor` -> **TBD**
+  - `servicemonitor`
 
 #### Negative
 
@@ -188,6 +195,9 @@
   - `kepler-exporter-ds`
   - `kepler-exporter-cm`
   - `kepler-exporter-svc`
+  - `prometheusrules`
+  - `power-monitoring-by-ns` config-map in `openshift-config-managed` namespace
+  - `power-monitoring-overview` config-map in `openshift-config-managed` namespace
 
 #### Negative
 
@@ -214,8 +224,28 @@
 
 - All the panels inside the dashboard should update accordingly.
 
+- Grafana dashboard should not crash when queried for long time ranges.
+
+- Prometheus rules should be able to pre-compute the metric's value successfully.
+
 - `deploy-grafana.sh` should be able to re-load the new dashboard json config-map when re-run.
 
 ### Negative
 
 - `deploy-grafana.sh` should log an appropriate error in case of any failure.
+
+## OpenShift console Dashboard
+
+**👉 Note: Need to enable `User-Workload-Monitoring` before visualizing dashboard on console.**
+
+### Positive
+
+- OpenShift console dashboard should be able to query data from `user-workload-monitoring` Prometheus.
+
+- OpenShift console should show title with relevant information on each panel.
+
+- All the panels inside the dashboard should update accordingly.
+
+- Prometheus rules should be able to pre-compute the metric's value successfully.
+
+- OpenShift dashboard should not become unresponsive when queried for long time ranges.
