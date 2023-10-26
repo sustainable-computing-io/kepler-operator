@@ -76,7 +76,9 @@ func main() {
 
 	// NOTE: RELATED_IMAGE_KEPLER can be set as env or flag, flag takes precedence over env
 	keplerImage := os.Getenv("RELATED_IMAGE_KEPLER")
+	keplerImageLibbpf := os.Getenv("RELATED_IMAGE_KEPLER_LIBBPF")
 	flag.StringVar(&exporter.Config.Image, "kepler.image", keplerImage, "kepler image")
+	flag.StringVar(&exporter.Config.ImageLibbpf, "kepler.image.libbpf", keplerImageLibbpf, "kepler libbpf image")
 
 	opts := zap.Options{
 		Development: true,
