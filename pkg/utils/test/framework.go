@@ -179,7 +179,7 @@ func (f Framework) DeleteKepler(name string) {
 	})
 }
 
-func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionType) *v1alpha1.Kepler {
+func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus) *v1alpha1.Kepler {
 	f.T.Helper()
 	k := v1alpha1.Kepler{}
 	f.WaitUntil(fmt.Sprintf("kepler %s is %s", name, t),
@@ -190,7 +190,7 @@ func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionTyp
 			}
 
 			condition, _ := k8s.FindCondition(k.Status.Conditions, t)
-			return condition.Status == v1alpha1.ConditionTrue, nil
+			return condition.Status == s, nil
 		})
 	return &k
 }
@@ -224,6 +224,12 @@ func (f Framework) RemoveResourceLabels(kind, name string, l []string) error {
 	return err
 }
 
+func (f Framework) WithNodeSelector(label map[string]string) func(k *v1alpha1.Kepler) {
+	return func(k *v1alpha1.Kepler) {
+		k.Spec.Exporter.Deployment.NodeSelector = label
+	}
+}
+
 func (f Framework) TaintNode(node, taintStr string) error {
 	f.T.Helper()
 	_, err := oc.Literal().From("oc adm taint node %s %s", node, taintStr).Run()
@@ -233,6 +239,12 @@ func (f Framework) TaintNode(node, taintStr string) error {
 		assert.NoError(f.T, err, "could not remove taint from node")
 	})
 	return err
+}
+
+func (f Framework) WithTolerations(taints []corev1.Taint) func(k *v1alpha1.Kepler) {
+	return func(k *v1alpha1.Kepler) {
+		k.Spec.Exporter.Deployment.Tolerations = tolerateTaints(taints)
+	}
 }
 
 func (f Framework) GetSchedulableNodes() []corev1.Node {
@@ -250,8 +262,7 @@ func (f Framework) GetSchedulableNodes() []corev1.Node {
 	return ret
 }
 
-func (f Framework) TolerateTaints(taints []corev1.Taint) []corev1.Toleration {
-	f.T.Helper()
+func tolerateTaints(taints []corev1.Taint) []corev1.Toleration {
 	var to []corev1.Toleration
 	for _, ta := range taints {
 		to = append(to, corev1.Toleration{

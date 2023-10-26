@@ -20,7 +20,7 @@ func TestKepler_Deletion(t *testing.T) {
 
 	// pre-condition: ensure kepler exists
 	f.CreateKepler("kepler")
-	f.WaitUntilKeplerCondition("kepler", v1alpha1.Available)
+	f.WaitUntilKeplerCondition("kepler", v1alpha1.Available, v1alpha1.ConditionTrue)
 
 	//
 	ds := appsv1.DaemonSet{}
@@ -52,7 +52,7 @@ func TestKepler_Reconciliation(t *testing.T) {
 	ds := appsv1.DaemonSet{}
 	f.AssertResourceExists(exporter.DaemonSetName, components.Namespace, &ds)
 
-	kepler := f.WaitUntilKeplerCondition("kepler", v1alpha1.Reconciled)
+	kepler := f.WaitUntilKeplerCondition("kepler", v1alpha1.Reconciled, v1alpha1.ConditionTrue)
 	// ensure the default toleration is set
 	assert.Equal(t, []corev1.Toleration{{Operator: "Exists"}}, kepler.Spec.Exporter.Deployment.Tolerations)
 
@@ -61,7 +61,7 @@ func TestKepler_Reconciliation(t *testing.T) {
 	assert.Equal(t, reconciled.ObservedGeneration, kepler.Generation)
 	assert.Equal(t, reconciled.Status, v1alpha1.ConditionTrue)
 
-	kepler = f.WaitUntilKeplerCondition("kepler", v1alpha1.Available)
+	kepler = f.WaitUntilKeplerCondition("kepler", v1alpha1.Available, v1alpha1.ConditionTrue)
 	available, err := k8s.FindCondition(kepler.Status.Conditions, v1alpha1.Available)
 	assert.NoError(t, err, "unable to get available condition")
 	assert.Equal(t, available.ObservedGeneration, kepler.Generation)
@@ -93,16 +93,40 @@ func TestNodeSelector(t *testing.T) {
 	err := f.AddResourceLabels("node", node.Name, labels)
 	assert.NoError(t, err, "could not label node")
 
-	f.CreateKepler("kepler", func(k *v1alpha1.Kepler) {
-		k.Spec.Exporter.Deployment.NodeSelector = labels
-	})
+	f.CreateKepler("kepler", f.WithNodeSelector(labels))
 
 	f.AssertResourceExists(components.Namespace, "", &corev1.Namespace{})
 	ds := appsv1.DaemonSet{}
 	f.AssertResourceExists(exporter.DaemonSetName, components.Namespace, &ds)
 
-	kepler := f.WaitUntilKeplerCondition("kepler", v1alpha1.Available)
+	kepler := f.WaitUntilKeplerCondition("kepler", v1alpha1.Available, v1alpha1.ConditionTrue)
 	assert.EqualValues(t, 1, kepler.Status.NumberAvailable)
+
+	f.DeleteKepler("kepler")
+
+	ns := components.NewKeplerNamespace()
+	f.AssertNoResourceExists(ns.Name, "", ns)
+	f.AssertNoResourceExists(exporter.DaemonSetName, components.Namespace, &ds)
+}
+
+func TestNodeSelectorUnavailableLabel(t *testing.T) {
+	f := test.NewFramework(t)
+	// Ensure Kepler is not deployed (by any chance)
+	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
+
+	nodes := f.GetSchedulableNodes()
+	assert.NotZero(t, len(nodes), "got zero nodes")
+
+	var unavailableLabels k8s.StringMap = map[string]string{"e2e-test": "true"}
+
+	f.CreateKepler("kepler", f.WithNodeSelector(unavailableLabels))
+
+	f.AssertResourceExists(components.Namespace, "", &corev1.Namespace{})
+	ds := appsv1.DaemonSet{}
+	f.AssertResourceExists(exporter.DaemonSetName, components.Namespace, &ds)
+
+	kepler := f.WaitUntilKeplerCondition("kepler", v1alpha1.Available, v1alpha1.ConditionFalse)
+	assert.EqualValues(t, 0, kepler.Status.NumberAvailable)
 
 	f.DeleteKepler("kepler")
 
@@ -131,16 +155,52 @@ func TestTaint_WithToleration(t *testing.T) {
 	err = f.TaintNode(node.Name, e2eTestTaint.ToString())
 	assert.NoError(t, err, "failed to taint node %s", node)
 
-	f.CreateKepler("kepler", func(k *v1alpha1.Kepler) {
-		k.Spec.Exporter.Deployment.Tolerations = f.TolerateTaints(append(node.Spec.Taints, e2eTestTaint))
-	})
+	f.CreateKepler("kepler", f.WithTolerations(append(node.Spec.Taints, e2eTestTaint)))
+	f.AssertResourceExists(components.Namespace, "", &corev1.Namespace{})
+	ds := appsv1.DaemonSet{}
+	f.AssertResourceExists(exporter.DaemonSetName, components.Namespace, &ds)
+
+	kepler := f.WaitUntilKeplerCondition("kepler", v1alpha1.Available, v1alpha1.ConditionTrue)
+	assert.EqualValues(t, len(nodes), kepler.Status.NumberAvailable)
+
+	f.DeleteKepler("kepler")
+
+	ns := components.NewKeplerNamespace()
+	f.AssertNoResourceExists(ns.Name, "", ns)
+	f.AssertNoResourceExists(exporter.DaemonSetName, components.Namespace, &ds)
+
+}
+func TestBadTaint_WithToleration(t *testing.T) {
+
+	f := test.NewFramework(t)
+	// Ensure Kepler is not deployed (by any chance)
+	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
+
+	// choose one node
+	nodes := f.GetSchedulableNodes()
+	node := nodes[0]
+	e2eTestTaint := corev1.Taint{
+		Key:    "key1",
+		Value:  "value1",
+		Effect: corev1.TaintEffectNoSchedule,
+	}
+	badTestTaint := corev1.Taint{
+		Key:    "key2",
+		Value:  "value2",
+		Effect: corev1.TaintEffectNoSchedule,
+	}
+
+	err := f.TaintNode(node.Name, e2eTestTaint.ToString())
+	assert.NoError(t, err, "failed to taint node %s", node)
+
+	f.CreateKepler("kepler", f.WithTolerations(append(node.Spec.Taints, badTestTaint)))
 
 	f.AssertResourceExists(components.Namespace, "", &corev1.Namespace{})
 	ds := appsv1.DaemonSet{}
 	f.AssertResourceExists(exporter.DaemonSetName, components.Namespace, &ds)
 
-	kepler := f.WaitUntilKeplerCondition("kepler", v1alpha1.Available)
-	assert.EqualValues(t, len(nodes), kepler.Status.NumberAvailable)
+	kepler := f.WaitUntilKeplerCondition("kepler", v1alpha1.Available, v1alpha1.ConditionTrue)
+	assert.EqualValues(t, len(nodes)-1, kepler.Status.NumberAvailable)
 
 	f.DeleteKepler("kepler")
 
