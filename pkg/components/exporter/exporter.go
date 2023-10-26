@@ -60,7 +60,7 @@ const (
 
 	PrometheusRuleName = prefix + "prom-rules"
 
-	KeplerBpfAttachMethodAnnotation = "app.kubernetes.io/kepler-bpf-attach-method"
+	KeplerBpfAttachMethodAnnotation = "kepler.sustainable.computing.io/bpf-attach-method"
 	KeplerBpfAttachMethodBCC        = "bcc"
 	KeplerBpfAttachMethodLibbpf     = "libbpf"
 )

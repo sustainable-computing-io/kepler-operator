@@ -234,21 +234,21 @@ func TestBpfAttachMethod(t *testing.T) {
 		},
 		{
 			annotations: map[string]string{
-				"app.kubernetes.io/kepler-bpf-attach-method": "junk",
+				KeplerBpfAttachMethodAnnotation: "junk",
 			},
 			IsLibbpf: false,
 			scenario: "annotation present but not libbpf",
 		},
 		{
 			annotations: map[string]string{
-				"app.kubernetes.io/kepler-bpf-attach-method": "bcc",
+				KeplerBpfAttachMethodAnnotation: "bcc",
 			},
 			IsLibbpf: false,
 			scenario: "annotation present with bcc",
 		},
 		{
 			annotations: map[string]string{
-				"app.kubernetes.io/kepler-bpf-attach-method": "libbpf",
+				KeplerBpfAttachMethodAnnotation: "libbpf",
 			},
 			IsLibbpf: true,
 			scenario: "annotation present with libbpf",
