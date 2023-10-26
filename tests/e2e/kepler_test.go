@@ -93,9 +93,7 @@ func TestNodeSelector(t *testing.T) {
 	err := f.AddResourceLabels("node", node.Name, labels)
 	assert.NoError(t, err, "could not label node")
 
-	f.CreateKepler("kepler", func(k *v1alpha1.Kepler) {
-		k.Spec.Exporter.Deployment.NodeSelector = labels
-	})
+	f.CreateKepler("kepler", f.WithNodeSelector(labels))
 
 	f.AssertResourceExists(components.Namespace, "", &corev1.Namespace{})
 	ds := appsv1.DaemonSet{}
@@ -111,7 +109,7 @@ func TestNodeSelector(t *testing.T) {
 	f.AssertNoResourceExists(exporter.DaemonSetName, components.Namespace, &ds)
 }
 
-func TestNodeSelectorUnAvailableLabel(t *testing.T) {
+func TestNodeSelectorUnavailableLabel(t *testing.T) {
 	f := test.NewFramework(t)
 	// Ensure Kepler is not deployed (by any chance)
 	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
@@ -119,11 +117,9 @@ func TestNodeSelectorUnAvailableLabel(t *testing.T) {
 	nodes := f.GetSchedulableNodes()
 	assert.NotZero(t, len(nodes), "got zero nodes")
 
-	var unavailableLabel k8s.StringMap = map[string]string{"e2e-test": "true"}
+	var unavailableLabels k8s.StringMap = map[string]string{"e2e-test": "true"}
 
-	f.CreateKepler("kepler", func(k *v1alpha1.Kepler) {
-		k.Spec.Exporter.Deployment.NodeSelector = unavailableLabel
-	})
+	f.CreateKepler("kepler", f.WithNodeSelector(unavailableLabels))
 
 	f.AssertResourceExists(components.Namespace, "", &corev1.Namespace{})
 	ds := appsv1.DaemonSet{}
@@ -159,10 +155,7 @@ func TestTaint_WithToleration(t *testing.T) {
 	err = f.TaintNode(node.Name, e2eTestTaint.ToString())
 	assert.NoError(t, err, "failed to taint node %s", node)
 
-	f.CreateKepler("kepler", func(k *v1alpha1.Kepler) {
-		k.Spec.Exporter.Deployment.Tolerations = f.TolerateTaints(append(node.Spec.Taints, e2eTestTaint))
-	})
-
+	f.CreateKepler("kepler", f.WithTolerations(append(node.Spec.Taints, e2eTestTaint)))
 	f.AssertResourceExists(components.Namespace, "", &corev1.Namespace{})
 	ds := appsv1.DaemonSet{}
 	f.AssertResourceExists(exporter.DaemonSetName, components.Namespace, &ds)
@@ -200,9 +193,7 @@ func TestBadTaint_WithToleration(t *testing.T) {
 	err := f.TaintNode(node.Name, e2eTestTaint.ToString())
 	assert.NoError(t, err, "failed to taint node %s", node)
 
-	f.CreateKepler("kepler", func(k *v1alpha1.Kepler) {
-		k.Spec.Exporter.Deployment.Tolerations = f.TolerateTaints(append(node.Spec.Taints, badTestTaint))
-	})
+	f.CreateKepler("kepler", f.WithTolerations(append(node.Spec.Taints, badTestTaint)))
 
 	f.AssertResourceExists(components.Namespace, "", &corev1.Namespace{})
 	ds := appsv1.DaemonSet{}
