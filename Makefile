@@ -24,6 +24,7 @@ GOARCH := $(shell go env GOARCH)
 VERSION ?= $(shell cat VERSION)
 
 KEPLER_VERSION ?=release-0.6.1
+KEPLER_VERSION_LIBBPF ?=release-0.6.1-libbpf
 
 # IMG_BASE defines the docker.io namespace and part of the image name for remote images.
 # This variable is used to construct full image tags for bundle and catalog images.
@@ -39,6 +40,7 @@ OPERATOR_IMG ?= $(IMG_BASE)/kepler-operator:$(VERSION)
 ADDITIONAL_TAGS ?=
 
 KEPLER_IMG ?= $(IMG_BASE)/kepler:$(KEPLER_VERSION)
+KEPLER_IMG_LIBBPF ?= $(IMG_BASE)/kepler:$(KEPLER_VERSION_LIBBPF)
 
 # E2E_TEST_IMG defines the image:tag used for the e2e test image
 E2E_TEST_IMG ?=$(IMG_BASE)/kepler-operator-e2e:$(VERSION)
@@ -152,11 +154,11 @@ build: manifests generate fmt vet ## Build manager binary.
 
 .PHONY: run
 run: install fmt vet ## Run a controller from your host against openshift cluster
-	go run ./cmd/manager/... --kepler.image=$(KEPLER_IMG) --zap-devel --zap-log-level=8 --openshift 2>&1 | tee tmp/operator.log
+	go run ./cmd/manager/... --kepler.image=$(KEPLER_IMG) --kepler.image.libbpf=$(KEPLER_IMG_LIBBPF) --zap-devel --zap-log-level=8 --openshift 2>&1 | tee tmp/operator.log
 
 .PHONY: run-k8s
 run-k8s: install fmt vet ## Run a controller from your host against vanilla k8s cluster
-	go run ./cmd/manager/... --kepler.image=$(KEPLER_IMG) --zap-devel --zap-log-level=8  2>&1 | tee tmp/operator.log
+	go run ./cmd/manager/... --kepler.image=$(KEPLER_IMG) ---kepler.image.libbpf=$(KEPLER_IMG_LIBBPF) -zap-devel --zap-log-level=8  2>&1 | tee tmp/operator.log
 
 # docker_tag accepts an image:tag and a list of additional tags comma-separated
 # it tags the image with the additional tags
@@ -349,6 +351,7 @@ VERSION_REPLACED ?=
 bundle: generate manifests kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
 	OPERATOR_IMG=$(OPERATOR_IMG) \
 	KEPLER_IMG=$(KEPLER_IMG) \
+	KEPLER_IMG_LIBBPF=$(KEPLER_IMG_LIBBPF) \
 	VERSION=$(VERSION) \
 	VERSION_REPLACED=$(VERSION_REPLACED) \
 	BUNDLE_GEN_FLAGS='$(BUNDLE_GEN_FLAGS)' \

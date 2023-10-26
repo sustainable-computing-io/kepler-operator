@@ -19,6 +19,7 @@ package exporter
 import (
 	_ "embed"
 	"strconv"
+	"strings"
 
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
@@ -58,12 +59,17 @@ const (
 	DashboardNs           = "openshift-config-managed"
 
 	PrometheusRuleName = prefix + "prom-rules"
+
+	KeplerBpfAttachMethodAnnotation = "app.kubernetes.io/kepler-bpf-attach-method"
+	KeplerBpfAttachMethodBCC        = "bcc"
+	KeplerBpfAttachMethodLibbpf     = "libbpf"
 )
 
 // Config that will be set from outside
 var (
 	Config = struct {
-		Image string
+		Image       string
+		ImageLibbpf string
 	}{}
 )
 
@@ -106,6 +112,11 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 
 	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
 
+	keplerImage := Config.Image
+	if IsLibbpfAttachType(k) {
+		keplerImage = Config.ImageLibbpf
+	}
+
 	return &appsv1.DaemonSet{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: appsv1.SchemeGroupVersion.String(),
@@ -133,7 +144,7 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 					Containers: []corev1.Container{{
 						Name:            "kepler-exporter",
 						SecurityContext: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
-						Image:           Config.Image,
+						Image:           keplerImage,
 						Command: []string{
 							"/usr/bin/kepler",
 							"-address", bindAddress,
@@ -591,4 +602,9 @@ func record(name, expr string) monv1.Rule {
 		Expr:   intstr.IntOrString{Type: intstr.String, StrVal: expr},
 		Record: name,
 	}
+}
+
+func IsLibbpfAttachType(k *v1alpha1.Kepler) bool {
+	bpftype, ok := k.Annotations[KeplerBpfAttachMethodAnnotation]
+	return ok && strings.ToLower(bpftype) == KeplerBpfAttachMethodLibbpf
 }
