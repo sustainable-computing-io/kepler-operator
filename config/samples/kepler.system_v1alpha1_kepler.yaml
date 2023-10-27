@@ -1,6 +1,9 @@
 apiVersion: kepler.system.sustainable.computing.io/v1alpha1
 kind: Kepler
 metadata:
+  # NOTE: to deploy libbpf image, you need to set the following annotation
+  # annotations:
+  #   kepler.sustainable.computing.io/bpf-attach-method: libbpf
   labels:
     app.kubernetes.io/name: kepler
     app.kubernetes.io/instance: kepler
