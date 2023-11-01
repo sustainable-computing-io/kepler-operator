@@ -45,7 +45,7 @@ get_csv() {
 }
 
 get_kepler_operator_deployment_info() {
-	KEPLER_OPERATOR_DEPLOY="kepler-operator-controller-manager"
+	KEPLER_OPERATOR_DEPLOY="kepler-operator-controller"
 	log "getting deployment info for kepler-operator"
 	run oc -n "$KEPLER_OPERATOR_NS" get deployment "$KEPLER_OPERATOR_DEPLOY" -oyaml "$KEPLER_OPERATOR_INFO_DIR/kepler-operator-deployment.yaml"
 }
@@ -71,7 +71,7 @@ get_summary() {
 	run oc -n "$KEPLER_OPERATOR_NS" get csv -owide "$KEPLER_OPERATOR_INFO_DIR/summary.txt"
 	echo -e "\n" >>"$KEPLER_OPERATOR_INFO_DIR/summary.txt"
 
-	KEPLER_OPERATOR_DEPLOY="kepler-operator-controller-manager"
+	KEPLER_OPERATOR_DEPLOY="kepler-operator-controller"
 	run oc -n "$KEPLER_OPERATOR_NS" get deployment "$KEPLER_OPERATOR_DEPLOY" -owide "$KEPLER_OPERATOR_INFO_DIR/summary.txt"
 	echo -e "\n" >>"$KEPLER_OPERATOR_INFO_DIR/summary.txt"
 

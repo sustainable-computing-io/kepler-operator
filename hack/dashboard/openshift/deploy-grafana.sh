@@ -118,7 +118,7 @@ wait_for_kepler_to_be_available() {
 	line 50
 	echo
 	info "Please check the operator logs for more details."
-	info_run "oc logs -n openshift-operators deployment/kepler-operator-controller-manager"
+	info_run "oc logs -n openshift-operators deployment/kepler-operator-controller"
 	return 1
 }
 
