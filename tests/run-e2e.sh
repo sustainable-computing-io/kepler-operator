@@ -13,11 +13,14 @@ declare -r OPERATOR="kepler-operator"
 declare -r OLM_CATALOG="kepler-operator-catalog"
 declare -r VERSION="0.0.0-e2e"
 declare -r OPERATOR_DEPLOY_YAML="config/manager/manager.yaml"
+declare -r OPERATOR_CSV="bundle/manifests/$OPERATOR.clusterserviceversion.yaml"
 declare -r OPERATOR_DEPLOY_NAME="kepler-operator-controller"
+declare -r OPERATOR_RELEASED_BUNDLE="quay.io/sustainable_computing_io/$OPERATOR-bundle"
 
 declare IMG_BASE="${IMG_BASE:-localhost:5001/$OPERATOR}"
-declare OPERATOR_IMG="$IMG_BASE/$OPERATOR:$VERSION"
-declare BUNDLE_IMG="$IMG_BASE/$OPERATOR-bundle:$VERSION"
+# NOTE: this vars are iniitialized in init_operator_img
+declare OPERATOR_IMG=""
+declare BUNDLE_IMG=""
 
 declare CI_MODE=false
 declare NO_DEPLOY=false
@@ -89,19 +92,36 @@ gather_olm() {
 	done
 }
 
-run_bundle() {
+run_bundle_upgrade() {
 	header "Running Bundle"
 	local -i ret=0
 
-	run ./tmp/bin/operator-sdk run bundle "$BUNDLE_IMG" \
-		--install-mode AllNamespaces --namespace "$OPERATORS_NS" --skip-tls || {
-		ret=$?
+	local replaced_version=""
+	replaced_version=$(yq ".spec.replaces| sub(\"$OPERATOR.v\"; \"\")" "$OPERATOR_CSV")
 
-		fail "Running Bundle failed"
+	local released_bundle="$OPERATOR_RELEASED_BUNDLE:$replaced_version"
+
+	info "Running Released Bundle - $replaced_version"
+	run ./tmp/bin/operator-sdk run bundle "$released_bundle" \
+		--install-mode AllNamespaces --namespace "$OPERATORS_NS" || {
+		ret=$?
+		line 50 heavy
 		gather_olm || true
+		fail "Running Released Bundle failed"
+		return $ret
 	}
 
-	return $ret
+	info "Running Upgrade to new bundle"
+	run ./tmp/bin/operator-sdk run bundle-upgrade "$BUNDLE_IMG" \
+		--namespace "$OPERATORS_NS" --use-http || {
+		ret=$?
+		line 50 heavy
+		gather_olm || true
+		fail "Running Bundle Upgrade failed"
+		return $ret
+
+	}
+	return 0
 }
 
 log_events() {
@@ -186,10 +206,13 @@ parse_args() {
 		esac
 	done
 
-	# NOTE: if you modify this update the declare at the top of the file
+	return 0
+}
+
+init_operator_img() {
 	OPERATOR_IMG="$IMG_BASE/$OPERATOR:$VERSION"
 	BUNDLE_IMG="$IMG_BASE/$OPERATOR-bundle:$VERSION"
-	return 0
+	declare -r OPERATOR_IMG BUNDLE_IMG
 }
 
 print_usage() {
@@ -262,7 +285,7 @@ kind_load_images() {
 		run docker pull "$img"
 		run kind load docker-image "$img"
 		run docker image rm "$img"
-	done < <(yq -r .spec.relatedImages[].image bundle/manifests//kepler-operator.clusterserviceversion.yaml)
+	done < <(yq -r .spec.relatedImages[].image "$OPERATOR_CSV")
 }
 
 docker_prune() {
@@ -288,7 +311,7 @@ deploy_operator() {
 	update_cluster_mon_crds
 	build_bundle
 	push_bundle
-	run_bundle
+	run_bundle_upgrade
 	wait_for_operator "$OPERATORS_NS"
 }
 
@@ -371,6 +394,7 @@ main() {
 
 	cd "$PROJECT_ROOT"
 
+	init_operator_img
 	init_logs_dir
 	print_config
 
