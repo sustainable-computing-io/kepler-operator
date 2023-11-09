@@ -135,7 +135,15 @@ func main() {
 		Scheme:  mgr.GetScheme(),
 		Cluster: cluster,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Kepler")
+		setupLog.Error(err, "unable to create controller", "controller", "kepler")
+		os.Exit(1)
+	}
+	if err = (&controllers.KeplerInternalReconciler{
+		Client:  mgr.GetClient(),
+		Scheme:  mgr.GetScheme(),
+		Cluster: cluster,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "kepler-internal")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

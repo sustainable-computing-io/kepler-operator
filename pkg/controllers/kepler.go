@@ -2,8 +2,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -12,27 +10,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/reconciler"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 
-	secv1 "github.com/openshift/api/security/v1"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
-	KeplerFinalizer = "kepler.system.sustainable.computing.io/finalizer"
+	Finalizer = "kepler.system.sustainable.computing.io/finalizer"
 )
 
 // KeplerReconciler reconciles a Kepler object
@@ -47,44 +38,13 @@ type KeplerReconciler struct {
 // Owned resource
 //+kubebuilder:rbac:groups=kepler.system.sustainable.computing.io,resources=*,verbs=*
 
-// common to all components deployed by operator
-//+kubebuilder:rbac:groups=core,resources=namespaces,verbs=list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=core,resources=services;configmaps;serviceaccounts,verbs=list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=*,verbs=*
-
-// RBAC for running Kepler exporter
-//+kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=list;watch;create;update;patch;delete;use
-//+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;prometheusrules,verbs=list;watch;create;update;patch;delete
-
-// RBAC required by Kepler exporter
-//+kubebuilder:rbac:groups=core,resources=nodes/metrics;nodes/proxy;nodes/stats,verbs=get;list;watch
-
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeplerReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
-	// We only want to trigger a reconciliation when the generation
-	// of a child changes. Until we need to update our the status for our own objects,
-	// we can save CPU cycles by avoiding reconciliations triggered by
-	// child status changes.
-	//
-	// TODO: consider using ResourceVersionChanged predicate for resources that support it
-
-	genChanged := builder.WithPredicates(predicate.GenerationChangedPredicate{})
-
-	c := ctrl.NewControllerManagedBy(mgr).
+	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Kepler{}).
-		Owns(&corev1.ConfigMap{}, genChanged).
-		Owns(&corev1.ServiceAccount{}, genChanged).
-		Owns(&corev1.Service{}, genChanged).
-		Owns(&appsv1.DaemonSet{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
-		Owns(&rbacv1.ClusterRoleBinding{}, genChanged).
-		Owns(&rbacv1.ClusterRole{}, genChanged)
-
-	if r.Cluster == k8s.OpenShift {
-		c = c.Owns(&secv1.SecurityContextConstraints{}, genChanged)
-	}
-	return c.Complete(r)
+		Owns(&v1alpha1.KeplerInternal{},
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Complete(r)
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -149,6 +109,51 @@ func (r KeplerReconciler) runKeplerReconcilers(ctx context.Context, kepler *v1al
 	}.Run(ctx)
 }
 
+func (r KeplerReconciler) updateStatus(ctx context.Context, req ctrl.Request, recErr error) error {
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+
+		k, _ := r.getKepler(ctx, req)
+		// may be deleted
+		if k == nil || !k.GetDeletionTimestamp().IsZero() {
+			// retry since some error has occurred
+			r.logger.V(6).Info("kepler has been deleted; skipping status update")
+			return nil
+		}
+
+		internal, _ := r.getInternalForKepler(ctx, k)
+		// may be deleted
+		if internal == nil || !internal.GetDeletionTimestamp().IsZero() {
+			// retry since some error has occurred
+			r.logger.V(6).Info("keplerinternal has deleted; skipping status update")
+			return nil
+		}
+		if !hasInternalStatusChanged(internal) {
+			r.logger.V(6).Info("keplerinternal has not changed; skipping status update")
+			return nil
+		}
+
+		// NOTE: although, this copies the internal status, the observed generation
+		// should be set to kepler's current generation to indicate that the
+		// current generation has been "observed"
+		k.Status = internal.Status
+		for i := range k.Status.Conditions {
+			k.Status.Conditions[i].ObservedGeneration = k.Generation
+		}
+		return r.Client.Status().Update(ctx, k)
+	})
+}
+
+// returns true (i.e. status has changed ) if any of the Conditions'
+// ObservedGeneration is equal to the current generation
+func hasInternalStatusChanged(internal *v1alpha1.KeplerInternal) bool {
+	for i := range internal.Status.Conditions {
+		if internal.Status.Conditions[i].ObservedGeneration == internal.Generation {
+			return true
+		}
+	}
+	return false
+}
+
 func (r KeplerReconciler) getKepler(ctx context.Context, req ctrl.Request) (*v1alpha1.Kepler, error) {
 	logger := r.logger
 
@@ -166,197 +171,33 @@ func (r KeplerReconciler) getKepler(ctx context.Context, req ctrl.Request) (*v1a
 	return &kepler, nil
 }
 
-func (r KeplerReconciler) updateStatus(ctx context.Context, req ctrl.Request, recErr error) error {
-	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+func (r KeplerReconciler) getInternalForKepler(ctx context.Context, k *v1alpha1.Kepler) (*v1alpha1.KeplerInternal, error) {
+	logger := r.logger.WithValues("kepler-internal", k.Name)
 
-		kepler, _ := r.getKepler(ctx, req)
-		// may be deleted
-		if kepler == nil || !kepler.GetDeletionTimestamp().IsZero() {
-			// retry since some error has occurred
-			r.logger.V(6).Info("Reconcile has deleted kepler; skipping update")
-			return nil
+	internal := v1alpha1.KeplerInternal{}
+	if err := r.Client.Get(ctx, client.ObjectKey{Name: k.Name}, &internal); err != nil {
+		if errors.IsNotFound(err) {
+			logger.V(3).Info("kepler-internal could not be found; may be marked for deletion")
+			return nil, nil
 		}
-
-		kepler.Status = v1alpha1.KeplerStatus{
-			Conditions: []v1alpha1.Condition{},
-		}
-		r.updateReconciledStatus(ctx, kepler, recErr)
-		r.updateAvailableStatus(ctx, kepler, recErr)
-
-		now := metav1.Now()
-		for i := range kepler.Status.Conditions {
-			kepler.Status.Conditions[i].LastTransitionTime = now
-		}
-
-		return r.Client.Status().Update(ctx, kepler)
-
-	})
-}
-
-func (r KeplerReconciler) updateReconciledStatus(ctx context.Context, k *v1alpha1.Kepler, recErr error) {
-
-	reconciled := v1alpha1.Condition{
-		Type:               v1alpha1.Reconciled,
-		ObservedGeneration: k.Generation,
-		Status:             v1alpha1.ConditionTrue,
-		Reason:             v1alpha1.ReconcileComplete,
-		Message:            "Reconcile succeeded",
+		logger.Error(err, "failed to get kepler-internal")
+		return nil, err
 	}
-
-	if recErr != nil {
-		reconciled.Status = v1alpha1.ConditionFalse
-		reconciled.Reason = v1alpha1.ReconcileError
-		reconciled.Message = recErr.Error()
-	}
-
-	k.Status.Conditions = append(k.Status.Conditions, reconciled)
-}
-
-func (r KeplerReconciler) updateAvailableStatus(ctx context.Context, k *v1alpha1.Kepler, recErr error) {
-	// get daemonset owned by kepler
-	dset := appsv1.DaemonSet{}
-	key := types.NamespacedName{Name: exporter.DaemonSetName, Namespace: components.Namespace}
-	if err := r.Client.Get(ctx, key, &dset); err != nil {
-		k.Status.Conditions = append(k.Status.Conditions, availableConditionForGetError(err))
-		return
-	}
-
-	ds := dset.Status
-	k.Status.NumberMisscheduled = ds.NumberMisscheduled
-	k.Status.CurrentNumberScheduled = ds.CurrentNumberScheduled
-	k.Status.DesiredNumberScheduled = ds.DesiredNumberScheduled
-	k.Status.NumberReady = ds.NumberReady
-	k.Status.UpdatedNumberScheduled = ds.UpdatedNumberScheduled
-	k.Status.NumberAvailable = ds.NumberAvailable
-	k.Status.NumberUnavailable = ds.NumberUnavailable
-
-	c := availableCondition(&dset)
-	if recErr == nil {
-		c.ObservedGeneration = k.Generation
-	}
-	k.Status.Conditions = append(k.Status.Conditions, c)
-}
-
-func availableConditionForGetError(err error) v1alpha1.Condition {
-	if errors.IsNotFound(err) {
-		return v1alpha1.Condition{
-			Type:    v1alpha1.Available,
-			Status:  v1alpha1.ConditionFalse,
-			Reason:  v1alpha1.DaemonSetNotFound,
-			Message: err.Error(),
-		}
-	}
-
-	return v1alpha1.Condition{
-		Type:    v1alpha1.Available,
-		Status:  v1alpha1.ConditionUnknown,
-		Reason:  v1alpha1.DaemonSetError,
-		Message: err.Error(),
-	}
-
-}
-
-func availableCondition(dset *appsv1.DaemonSet) v1alpha1.Condition {
-	ds := dset.Status
-	dsName := dset.Namespace + "/" + dset.Name
-
-	if gen, ogen := dset.Generation, ds.ObservedGeneration; gen > ogen {
-		return v1alpha1.Condition{
-			Type:   v1alpha1.Available,
-			Status: v1alpha1.ConditionUnknown,
-			Reason: v1alpha1.DaemonSetOutOfSync,
-			Message: fmt.Sprintf(
-				"Generation %d of kepler daemonset %q is out of sync with the observed generation: %d",
-				gen, dsName, ogen),
-		}
-	}
-
-	c := v1alpha1.Condition{Type: v1alpha1.Available}
-
-	// NumberReady: The number of nodes that should be running the daemon pod and
-	// have one or more of the daemon pod running with a Ready Condition.
-	//
-	// DesiredNumberScheduled: The total number of nodes that should be running
-	// the daemon pod (including nodes correctly running the daemon pod).
-	if ds.NumberReady == 0 || ds.DesiredNumberScheduled == 0 {
-		c.Status = v1alpha1.ConditionFalse
-		c.Reason = v1alpha1.DaemonSetPodsNotRunning
-		c.Message = fmt.Sprintf("Kepler daemonset %q is not rolled out to any node; check nodeSelector and tolerations", dsName)
-		return c
-	}
-
-	// UpdatedNumberScheduled: The total number of nodes that are running updated daemon pod
-	//
-	// DesiredNumberScheduled: The total number of nodes that should be running
-	// the daemon pod (including nodes correctly running the daemon pod).
-
-	if ds.UpdatedNumberScheduled < ds.DesiredNumberScheduled {
-		c.Status = v1alpha1.ConditionUnknown
-		c.Reason = v1alpha1.DaemonSetRolloutInProgress
-		c.Message = fmt.Sprintf(
-			"Waiting for kepler daemonset %q rollout to finish: %d out of %d new pods have been updated",
-			dsName, ds.UpdatedNumberScheduled, ds.DesiredNumberScheduled)
-		return c
-	}
-
-	// NumberAvailable: The number of nodes that should be running the daemon pod
-	// and have one or more of the daemon pod running and available (ready for at
-	// least spec.minReadySeconds)
-
-	if ds.NumberAvailable < ds.DesiredNumberScheduled {
-		c.Status = v1alpha1.ConditionUnknown
-		c.Reason = v1alpha1.DaemonSetPartiallyAvailable
-		c.Message = fmt.Sprintf("Rollout of kepler daemonset %q is in progress: %d of %d updated pods are available",
-			dsName, ds.NumberAvailable, ds.DesiredNumberScheduled)
-		return c
-	}
-
-	// NumberUnavailable:  The number of nodes that should be running the daemon
-	// pod and have none of the daemon pod running and available (ready for at
-	// least spec.minReadySeconds)
-	if ds.NumberUnavailable > 0 {
-		c.Status = v1alpha1.ConditionFalse
-		c.Reason = v1alpha1.DaemonSetPartiallyAvailable
-		c.Message = fmt.Sprintf("Waiting for kepler daemonset %q to rollout on %d nodes", dsName, ds.NumberUnavailable)
-		return c
-	}
-
-	c.Status = v1alpha1.ConditionTrue
-	c.Reason = v1alpha1.DaemonSetReady
-	c.Message = fmt.Sprintf("Kepler daemonset %q is deployed to all nodes and available; ready %d/%d",
-		dsName, ds.NumberReady, ds.DesiredNumberScheduled)
-	return c
+	return &internal, nil
 }
 
 func (r KeplerReconciler) reconcilersForKepler(k *v1alpha1.Kepler) []reconciler.Reconciler {
-	rs := []reconciler.Reconciler{}
-
-	cleanup := !k.DeletionTimestamp.IsZero()
-	if !cleanup {
-		// NOTE: create namespace first and for deletion, reverse the order
-		rs = append(rs, reconciler.Updater{
-			Owner:    k,
-			Resource: components.NewKeplerNamespace(),
-			OnError:  reconciler.Requeue,
-			Logger:   r.logger,
-		})
+	op := deleteResource
+	if update := k.DeletionTimestamp.IsZero(); update {
+		op = newUpdaterWithOwner(k)
 	}
 
-	rs = append(rs, exporterReconcilers(k, r.Cluster)...)
-
-	// TODO: add this when modelServer is supported by Kepler Spec
-	// rs = append(rs, modelServerReconcilers(k)...)
-
-	if cleanup {
-		rs = append(rs, reconciler.Deleter{
-			OnError:     reconciler.Requeue,
-			Resource:    components.NewKeplerNamespace(),
-			WaitTimeout: 2 * time.Minute,
-		})
+	rs := []reconciler.Reconciler{
+		op(newKeplerInternal(k)),
+		reconciler.Finalizer{
+			Resource: k, Finalizer: Finalizer, Logger: r.logger,
+		},
 	}
-
-	// Add/Remove finalizer at the end
-	rs = append(rs, reconciler.Finalizer{Resource: k, Finalizer: KeplerFinalizer, Logger: r.logger})
 	return rs
 }
 
@@ -391,76 +232,18 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, err
 }
 
-func exporterReconcilers(k *v1alpha1.Kepler, cluster k8s.Cluster) []reconciler.Reconciler {
-
-	if cleanup := !k.DeletionTimestamp.IsZero(); cleanup {
-		rs := resourceReconcilers(
-			deleteResource,
-			// cluster-scoped
-			exporter.NewClusterRoleBinding(components.Metadata),
-			exporter.NewClusterRole(components.Metadata),
-		)
-		if cluster == k8s.OpenShift {
-			rs = append(rs,
-				resourceReconcilers(deleteResource,
-					exporter.NewSCC(components.Metadata, k),
-					exporter.NewOverviewDashboard(components.Metadata),
-					exporter.NewNamespaceInfoDashboard(components.Metadata),
-				)...,
-			)
-		}
-		return rs
-	}
-
-	updater := newUpdaterForKepler(k)
-	rs := resourceReconcilers(updater,
-		// cluster-scoped resources first
-		exporter.NewClusterRole(components.Full),
-		exporter.NewClusterRoleBinding(components.Full),
-
-		// namespace scoped
-		exporter.NewServiceAccount(),
-		exporter.NewConfigMap(components.Full, k),
-		exporter.NewDaemonSet(components.Full, k),
-		exporter.NewService(k),
-		exporter.NewServiceMonitor(),
-		exporter.NewPrometheusRule(),
-	)
-
-	if cluster == k8s.OpenShift {
-		rs = append(rs,
-			resourceReconcilers(
-				updater,
-				exporter.NewSCC(components.Full, k),
-				exporter.NewOverviewDashboard(components.Full),
-				exporter.NewNamespaceInfoDashboard(components.Full),
-			)...,
-		)
-	}
-	return rs
-}
-
-func resourceReconcilers(fn reconcileFn, resources ...client.Object) []reconciler.Reconciler {
-	rs := []reconciler.Reconciler{}
-	for _, res := range resources {
-		rs = append(rs, fn(res))
-	}
-	return rs
-}
-
-// TODO: decide if this this should move to reconciler
-type reconcileFn func(client.Object) reconciler.Reconciler
-
-// deleteResource is a resourceFn that deletes resources
-func deleteResource(obj client.Object) reconciler.Reconciler {
-	return &reconciler.Deleter{Resource: obj}
-}
-
-// newUpdaterForKepler returns a reconcileFn that update the resource and
-// sets the owner reference to kepler
-func newUpdaterForKepler(k *v1alpha1.Kepler) reconcileFn {
-	return func(obj client.Object) reconciler.Reconciler {
-		// NOTE: Owner: k.GetObjectMeta() also works
-		return &reconciler.Updater{Owner: k, Resource: obj}
+func newKeplerInternal(k *v1alpha1.Kepler) *v1alpha1.KeplerInternal {
+	return &v1alpha1.KeplerInternal{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "KeplerInternal",
+			APIVersion: v1alpha1.GroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        k.Name,
+			Annotations: k.Annotations,
+		},
+		Spec: v1alpha1.KeplerInternalSpec{
+			Exporter: k.Spec.Exporter,
+		},
 	}
 }
