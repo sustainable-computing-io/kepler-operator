@@ -26,21 +26,20 @@ VERSION ?= $(shell cat VERSION)
 KEPLER_VERSION ?=release-0.6.1
 KEPLER_VERSION_LIBBPF ?=release-0.6.1-libbpf
 
-# IMG_BASE defines the docker.io namespace and part of the image name for remote images.
-# This variable is used to construct full image tags for bundle and catalog images.
-#
-# For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
-# sustainable_computing_io/kepler-operator-bundle:v$VERSION and sustainable_computing_io/kepler-operator-catalog:$VERSION
+# IMG_BASE and KEPLER_IMG_BASE are set to distinguish between Operator-specific images and Kepler-Specific images.
+# IMG_BASE is used for building and pushing operator related images.
+# KEPLER_IMG_BASE is exclusively used for Kepler related images.
+# This separation ensures that local development and deployment of operator images do not interfere with Kepler images.
 IMG_BASE ?= quay.io/sustainable_computing_io
-
+KEPLER_IMG_BASE ?= quay.io/sustainable_computing_io/kepler
 
 # OPERATOR_IMG define the image:tag used for the operator
 # You can use it as an arg. (E.g make operator-build OPERATOR_IMG=<some-registry>:<version>)
 OPERATOR_IMG ?= $(IMG_BASE)/kepler-operator:$(VERSION)
 ADDITIONAL_TAGS ?=
 
-KEPLER_IMG ?= $(IMG_BASE)/kepler:$(KEPLER_VERSION)
-KEPLER_IMG_LIBBPF ?= $(IMG_BASE)/kepler:$(KEPLER_VERSION_LIBBPF)
+KEPLER_IMG ?= $(KEPLER_IMG_BASE):$(KEPLER_VERSION)
+KEPLER_IMG_LIBBPF ?= $(KEPLER_IMG_BASE):$(KEPLER_VERSION_LIBBPF)
 
 # E2E_TEST_IMG defines the image:tag used for the e2e test image
 E2E_TEST_IMG ?=$(IMG_BASE)/kepler-operator-e2e:$(VERSION)
