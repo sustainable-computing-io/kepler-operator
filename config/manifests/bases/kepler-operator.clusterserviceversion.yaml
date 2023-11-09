@@ -8,6 +8,10 @@ metadata:
     createdAt: "2023-01-31 16:20:00"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.27.0
+    operators.operatorframework.io/internal-objects: |-
+      [
+        "keplerinternals.kepler.system.sustainable.computing.io",
+      ]
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/sustainable-computing-io/kepler-operator
   name: kepler-operator.v0.0.0
@@ -16,6 +20,11 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - description: KeplerInternal is the Schema for internal/unsupported API
+      displayName: KeplerInternal
+      kind: KeplerInternal
+      name: keplerinternals.kepler.system.sustainable.computing.io
+      version: v1alpha1
     - description: Kepler is the Schema for the keplers API
       displayName: Kepler
       kind: Kepler

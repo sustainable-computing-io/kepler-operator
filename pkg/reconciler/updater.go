@@ -50,6 +50,8 @@ func (r Updater) Reconcile(ctx context.Context, c client.Client, scheme *runtime
 		}
 	}
 
+	r.Logger.V(8).Info("updating resource", "resource", k8s.GVKName(r.Resource))
+
 	if err := c.Patch(ctx, r.Resource, client.Apply, client.ForceOwnership, client.FieldOwner("kepler-operator")); err != nil {
 		if errors.IsConflict(err) || errors.IsAlreadyExists(err) {
 			// the cache may be stale; requests a Reconcile

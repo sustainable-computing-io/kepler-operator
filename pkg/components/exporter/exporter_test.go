@@ -38,8 +38,8 @@ func TestNodeSelection(t *testing.T) {
 		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {
 			t.Parallel()
-			k := v1alpha1.Kepler{
-				Spec: v1alpha1.KeplerSpec{
+			k := v1alpha1.KeplerInternal{
+				Spec: v1alpha1.KeplerInternalSpec{
 					Exporter: tc.spec,
 				},
 			}
@@ -78,8 +78,8 @@ func TestTolerations(t *testing.T) {
 		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {
 			t.Parallel()
-			k := v1alpha1.Kepler{
-				Spec: v1alpha1.KeplerSpec{
+			k := v1alpha1.KeplerInternal{
+				Spec: v1alpha1.KeplerInternalSpec{
 					Exporter: tc.spec,
 				},
 			}
@@ -106,8 +106,8 @@ func TestHostPID(t *testing.T) {
 		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {
 			t.Parallel()
-			k := v1alpha1.Kepler{
-				Spec: v1alpha1.KeplerSpec{
+			k := v1alpha1.KeplerInternal{
+				Spec: v1alpha1.KeplerInternalSpec{
 					Exporter: tc.spec,
 				},
 			}
@@ -140,8 +140,8 @@ func TestVolumeMounts(t *testing.T) {
 		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {
 			t.Parallel()
-			k := v1alpha1.Kepler{
-				Spec: v1alpha1.KeplerSpec{
+			k := v1alpha1.KeplerInternal{
+				Spec: v1alpha1.KeplerInternalSpec{
 					Exporter: tc.spec,
 				},
 			}
@@ -174,8 +174,8 @@ func TestVolumes(t *testing.T) {
 		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {
 			t.Parallel()
-			k := v1alpha1.Kepler{
-				Spec: v1alpha1.KeplerSpec{
+			k := v1alpha1.KeplerInternal{
+				Spec: v1alpha1.KeplerInternalSpec{
 					Exporter: tc.spec,
 				},
 			}
@@ -187,12 +187,10 @@ func TestVolumes(t *testing.T) {
 
 func TestSCCAllows(t *testing.T) {
 	tt := []struct {
-		spec      v1alpha1.ExporterSpec
 		sccAllows k8s.SCCAllows
 		scenario  string
 	}{
 		{
-			spec: v1alpha1.ExporterSpec{},
 			sccAllows: k8s.SCCAllows{
 				AllowPrivilegedContainer: true,
 				AllowHostDirVolumePlugin: true,
@@ -209,12 +207,7 @@ func TestSCCAllows(t *testing.T) {
 		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {
 			t.Parallel()
-			k := v1alpha1.Kepler{
-				Spec: v1alpha1.KeplerSpec{
-					Exporter: tc.spec,
-				},
-			}
-			actual := k8s.AllowsFromSCC(NewSCC(components.Full, &k))
+			actual := k8s.AllowsFromSCC(NewSCC(components.Full))
 			assert.Equal(t, actual, tc.sccAllows)
 		})
 	}
@@ -258,11 +251,11 @@ func TestBpfAttachMethod(t *testing.T) {
 		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {
 			t.Parallel()
-			k := v1alpha1.Kepler{
+			k := v1alpha1.KeplerInternal{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: tc.annotations,
 				},
-				Spec: v1alpha1.KeplerSpec{
+				Spec: v1alpha1.KeplerInternalSpec{
 					Exporter: v1alpha1.ExporterSpec{},
 				},
 			}

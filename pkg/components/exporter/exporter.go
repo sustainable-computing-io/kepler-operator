@@ -94,7 +94,7 @@ var (
 	nsInfoDashboardJson string
 )
 
-func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSet {
+func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.DaemonSet {
 	if detail == components.Metadata {
 		return &appsv1.DaemonSet{
 			TypeMeta: metav1.TypeMeta{APIVersion: appsv1.SchemeGroupVersion.String(), Kind: "DaemonSet"},
@@ -264,7 +264,7 @@ func NewNamespaceInfoDashboard(d components.Detail) *corev1.ConfigMap {
 	}
 }
 
-func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
+func NewConfigMap(d components.Detail, k *v1alpha1.KeplerInternal) *corev1.ConfigMap {
 	if d == components.Metadata {
 		return &corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
@@ -381,7 +381,7 @@ func NewClusterRoleBinding(c components.Detail) *rbacv1.ClusterRoleBinding {
 	}
 }
 
-func NewSCC(d components.Detail, k *v1alpha1.Kepler) *secv1.SecurityContextConstraints {
+func NewSCC(d components.Detail) *secv1.SecurityContextConstraints {
 	if d == components.Metadata {
 		return &secv1.SecurityContextConstraints{
 			TypeMeta: metav1.TypeMeta{
@@ -425,8 +425,7 @@ func NewSCC(d components.Detail, k *v1alpha1.Kepler) *secv1.SecurityContextConst
 		SELinuxContext: secv1.SELinuxContextStrategyOptions{
 			Type: secv1.SELinuxStrategyRunAsAny,
 		},
-		//TODO: decide if "kepler" is really needed?
-		Users: []string{"kepler", FQServiceAccountName},
+		Users: []string{FQServiceAccountName},
 		Volumes: []secv1.FSType{
 			secv1.FSType("configMap"),
 			secv1.FSType("projected"),
@@ -449,7 +448,7 @@ func NewServiceAccount() *corev1.ServiceAccount {
 	}
 }
 
-func NewService(k *v1alpha1.Kepler) *corev1.Service {
+func NewService(k *v1alpha1.KeplerInternal) *corev1.Service {
 	deployment := k.Spec.Exporter.Deployment
 
 	return &corev1.Service{
@@ -604,7 +603,7 @@ func record(name, expr string) monv1.Rule {
 	}
 }
 
-func IsLibbpfAttachType(k *v1alpha1.Kepler) bool {
+func IsLibbpfAttachType(k *v1alpha1.KeplerInternal) bool {
 	bpftype, ok := k.Annotations[KeplerBpfAttachMethodAnnotation]
 	return ok && strings.ToLower(bpftype) == KeplerBpfAttachMethodLibbpf
 }
