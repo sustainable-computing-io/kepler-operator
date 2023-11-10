@@ -28,8 +28,8 @@ print_usage() {
 get_kepler_instance() {
 	log "getting kepler instance(s)"
 	KEPLERS=$(oc get keplers.kepler.system.sustainable.computing.io -oname)
-	if [ ! -z "$KEPLERS" ]; then
-		run oc get $KEPLERS -oyaml "$BASE_COLLECTION_PATH/keplers.yaml"
+	if [ -n "$KEPLERS" ]; then
+		run oc get "$KEPLERS" -oyaml "$BASE_COLLECTION_PATH/keplers.yaml"
 	else
 		echo "no keplers found" >>"$BASE_COLLECTION_PATH/keplers.yaml"
 	fi
@@ -83,6 +83,11 @@ gather_kepler_operator_info() {
 	"$SCRIPT_DIR"/gather-kepler-operator-info "$BASE_COLLECTION_PATH"
 }
 
+gather_monitoring_info() {
+	log "getting monitoring info"
+	"$SCRIPT_DIR"/gather-monitoring-info "$BASE_COLLECTION_PATH"
+}
+
 main() {
 	case ${1-} in
 	--help | -h)
@@ -113,6 +118,7 @@ main() {
 	gather_kepler_exporter_info
 	gather_olm_info
 	gather_kepler_operator_info
+	gather_monitoring_info
 
 	echo "powermon must-gather completed"
 }
