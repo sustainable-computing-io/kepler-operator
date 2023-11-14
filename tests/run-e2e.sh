@@ -343,7 +343,7 @@ ensure_deploy_img_is_always_pulled() {
 	local pull_policy
 	pull_policy=$(kubectl get deploy/$OPERATOR_DEPLOY_NAME \
 		-n "$OPERATORS_NS" \
-		-ojsonpath='{.spec.template.spec.containers[1].imagePullPolicy}')
+		-ojsonpath='{.spec.template.spec.containers[0].imagePullPolicy}')
 
 	if [[ "$pull_policy" != "Always" ]]; then
 		info "Edit $OPERATOR_DEPLOY_YAML imagePullPolicy and redeploy"
