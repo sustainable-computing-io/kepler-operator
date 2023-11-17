@@ -489,6 +489,14 @@ func NewServiceMonitor() *monv1.ServiceMonitor {
 		TargetLabel: "instance",
 	}}
 
+	metricRelabelings := []*monv1.RelabelConfig{{
+		Action: "replace",
+		SourceLabels: []monv1.LabelName{
+			"container_namespace",
+		},
+		TargetLabel: "namespace",
+	}}
+
 	return &monv1.ServiceMonitor{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: monv1.SchemeGroupVersion.String(),
@@ -501,10 +509,11 @@ func NewServiceMonitor() *monv1.ServiceMonitor {
 		},
 		Spec: monv1.ServiceMonitorSpec{
 			Endpoints: []monv1.Endpoint{{
-				Port:           ServicePortName,
-				Interval:       "3s",
-				Scheme:         "http",
-				RelabelConfigs: relabelings,
+				Port:                 ServicePortName,
+				Interval:             "3s",
+				Scheme:               "http",
+				RelabelConfigs:       relabelings,
+				MetricRelabelConfigs: metricRelabelings,
 			}},
 			JobLabel: "app.kubernetes.io/name",
 			Selector: metav1.LabelSelector{
