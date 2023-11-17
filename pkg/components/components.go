@@ -57,6 +57,7 @@ func NewKeplerNamespace() *corev1.Namespace {
 				//   allowPrivilegeEscalation != false (container "kepler-exporter" must set
 				//   securityContext.allowPrivilegeEscalation=false),
 				"pod-security.kubernetes.io/enforce": "privileged",
+				"openshift.io/cluster-monitoring":    "true",
 			}),
 			//TODO: ensure in-cluster monitoring ignores this ns
 		},
