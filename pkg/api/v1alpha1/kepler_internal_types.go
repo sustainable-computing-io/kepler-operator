@@ -24,9 +24,18 @@ import (
 // e.g. kepler-internal.spec.exporter can reuse ExporterSpec because the API is
 // considered stable but not vice-versa.
 
+type InternalExporterDeploymentSpec struct {
+	ExporterDeploymentSpec `json:",inline"`
+	Image                  string `json:"image,omitempty"`
+}
+
+type InternalExporterSpec struct {
+	Deployment InternalExporterDeploymentSpec `json:"deployment,omitempty"`
+}
+
 // KeplerInternalSpec defines the desired state of Kepler
 type KeplerInternalSpec struct {
-	Exporter ExporterSpec `json:"exporter,omitempty"`
+	Exporter InternalExporterSpec `json:"exporter,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -40,6 +49,7 @@ type KeplerInternalSpec struct {
 // +kubebuilder:printcolumn:name="Up-to-date",type=integer,JSONPath=`.status.updatedNumberScheduled`
 // +kubebuilder:printcolumn:name="Available",type=integer,JSONPath=`.status.numberAvailable`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Image",type=string,JSONPath=`.spec.exporter.deployment.image`
 // +kubebuilder:printcolumn:name="Node-Selector",type=string,JSONPath=`.spec.exporter.deployment.nodeSelector`,priority=10
 // +kubebuilder:printcolumn:name="Tolerations",type=string,JSONPath=`.spec.exporter.deployment.tolerations`,priority=10
 //

@@ -19,7 +19,6 @@ package exporter
 import (
 	_ "embed"
 	"strconv"
-	"strings"
 
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
@@ -59,18 +58,6 @@ const (
 	DashboardNs           = "openshift-config-managed"
 
 	PrometheusRuleName = prefix + "prom-rules"
-
-	KeplerBpfAttachMethodAnnotation = "kepler.sustainable.computing.io/bpf-attach-method"
-	KeplerBpfAttachMethodBCC        = "bcc"
-	KeplerBpfAttachMethodLibbpf     = "libbpf"
-)
-
-// Config that will be set from outside
-var (
-	Config = struct {
-		Image       string
-		ImageLibbpf string
-	}{}
 )
 
 var (
@@ -106,16 +93,13 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.
 		}
 	}
 
-	deployment := k.Spec.Exporter.Deployment
+	deployment := k.Spec.Exporter.Deployment.ExporterDeploymentSpec
+	image := k.Spec.Exporter.Deployment.Image
 	nodeSelector := deployment.NodeSelector
 	tolerations := deployment.Tolerations
+	port := deployment.Port
 
-	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
-
-	keplerImage := Config.Image
-	if IsLibbpfAttachType(k) {
-		keplerImage = Config.ImageLibbpf
-	}
+	bindAddress := "0.0.0.0:" + strconv.Itoa(int(port))
 
 	return &appsv1.DaemonSet{
 		TypeMeta: metav1.TypeMeta{
@@ -144,7 +128,7 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.
 					Containers: []corev1.Container{{
 						Name:            "kepler-exporter",
 						SecurityContext: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
-						Image:           keplerImage,
+						Image:           image,
 						Command: []string{
 							"/usr/bin/kepler",
 							"-address", bindAddress,
@@ -155,14 +139,14 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.
 							"-redfish-cred-file-path=/etc/redfish/redfish.csv",
 						},
 						Ports: []corev1.ContainerPort{{
-							ContainerPort: int32(deployment.Port),
+							ContainerPort: int32(port),
 							Name:          "http",
 						}},
 						LivenessProbe: &corev1.Probe{
 							ProbeHandler: corev1.ProbeHandler{
 								HTTPGet: &corev1.HTTPGetAction{
 									Path:   "/healthz",
-									Port:   intstr.IntOrString{Type: intstr.Int, IntVal: deployment.Port},
+									Port:   intstr.IntOrString{Type: intstr.Int, IntVal: port},
 									Scheme: "HTTP",
 								},
 							},
@@ -279,7 +263,7 @@ func NewConfigMap(d components.Detail, k *v1alpha1.KeplerInternal) *corev1.Confi
 		}
 	}
 
-	deployment := k.Spec.Exporter.Deployment
+	deployment := k.Spec.Exporter.Deployment.ExporterDeploymentSpec
 	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
 
 	return &corev1.ConfigMap{
@@ -449,7 +433,7 @@ func NewServiceAccount() *corev1.ServiceAccount {
 }
 
 func NewService(k *v1alpha1.KeplerInternal) *corev1.Service {
-	deployment := k.Spec.Exporter.Deployment
+	deployment := k.Spec.Exporter.Deployment.ExporterDeploymentSpec
 
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -601,9 +585,4 @@ func record(name, expr string) monv1.Rule {
 		Expr:   intstr.IntOrString{Type: intstr.String, StrVal: expr},
 		Record: name,
 	}
-}
-
-func IsLibbpfAttachType(k *v1alpha1.KeplerInternal) bool {
-	bpftype, ok := k.Annotations[KeplerBpfAttachMethodAnnotation]
-	return ok && strings.ToLower(bpftype) == KeplerBpfAttachMethodLibbpf
 }

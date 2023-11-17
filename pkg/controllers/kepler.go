@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -23,7 +24,18 @@ import (
 )
 
 const (
-	Finalizer = "kepler.system.sustainable.computing.io/finalizer"
+	Finalizer                       = "kepler.system.sustainable.computing.io/finalizer"
+	KeplerBpfAttachMethodAnnotation = "kepler.sustainable.computing.io/bpf-attach-method"
+	KeplerBpfAttachMethodBCC        = "bcc"
+	KeplerBpfAttachMethodLibbpf     = "libbpf"
+)
+
+// Config that will be set from outside
+var (
+	Config = struct {
+		Image       string
+		ImageLibbpf string
+	}{}
 )
 
 // KeplerReconciler reconciles a Kepler object
@@ -233,6 +245,12 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 }
 
 func newKeplerInternal(k *v1alpha1.Kepler) *v1alpha1.KeplerInternal {
+
+	keplerImage := Config.Image
+	if IsLibbpfAttachType(k) {
+		keplerImage = Config.ImageLibbpf
+	}
+
 	return &v1alpha1.KeplerInternal{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "KeplerInternal",
@@ -243,7 +261,17 @@ func newKeplerInternal(k *v1alpha1.Kepler) *v1alpha1.KeplerInternal {
 			Annotations: k.Annotations,
 		},
 		Spec: v1alpha1.KeplerInternalSpec{
-			Exporter: k.Spec.Exporter,
+			Exporter: v1alpha1.InternalExporterSpec{
+				Deployment: v1alpha1.InternalExporterDeploymentSpec{
+					ExporterDeploymentSpec: k.Spec.Exporter.Deployment,
+					Image:                  keplerImage,
+				},
+			},
 		},
 	}
+}
+
+func IsLibbpfAttachType(k *v1alpha1.Kepler) bool {
+	bpftype, ok := k.Annotations[KeplerBpfAttachMethodAnnotation]
+	return ok && strings.ToLower(bpftype) == KeplerBpfAttachMethodLibbpf
 }

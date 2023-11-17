@@ -8,25 +8,26 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNodeSelection(t *testing.T) {
 
 	tt := []struct {
-		spec     v1alpha1.ExporterSpec
+		spec     v1alpha1.InternalExporterSpec
 		selector map[string]string
 		scenario string
 	}{
 		{
-			spec:     v1alpha1.ExporterSpec{},
+			spec:     v1alpha1.InternalExporterSpec{},
 			selector: map[string]string{"kubernetes.io/os": "linux"},
 			scenario: "default case",
 		},
 		{
-			spec: v1alpha1.ExporterSpec{
-				Deployment: v1alpha1.ExporterDeploymentSpec{
-					NodeSelector: map[string]string{"k1": "v1"},
+			spec: v1alpha1.InternalExporterSpec{
+				Deployment: v1alpha1.InternalExporterDeploymentSpec{
+					ExporterDeploymentSpec: v1alpha1.ExporterDeploymentSpec{
+						NodeSelector: map[string]string{"k1": "v1"},
+					},
 				},
 			},
 			selector: map[string]string{"k1": "v1", "kubernetes.io/os": "linux"},
@@ -52,20 +53,22 @@ func TestNodeSelection(t *testing.T) {
 func TestTolerations(t *testing.T) {
 
 	tt := []struct {
-		spec        v1alpha1.ExporterSpec
+		spec        v1alpha1.InternalExporterSpec
 		tolerations []corev1.Toleration
 		scenario    string
 	}{{
-		spec: v1alpha1.ExporterSpec{},
+		spec: v1alpha1.InternalExporterSpec{},
 		// NOTE: default toleration { "operator": "Exists" } is set by k8s API server (CRD default)
 		// see: Kepler_Reconciliation e2e test
 		tolerations: nil,
 		scenario:    "default case",
 	}, {
-		spec: v1alpha1.ExporterSpec{
-			Deployment: v1alpha1.ExporterDeploymentSpec{
-				Tolerations: []corev1.Toleration{{
-					Effect: corev1.TaintEffectNoSchedule, Key: "key1"}},
+		spec: v1alpha1.InternalExporterSpec{
+			Deployment: v1alpha1.InternalExporterDeploymentSpec{
+				ExporterDeploymentSpec: v1alpha1.ExporterDeploymentSpec{
+					Tolerations: []corev1.Toleration{{
+						Effect: corev1.TaintEffectNoSchedule, Key: "key1"}},
+				},
 			},
 		},
 		tolerations: []corev1.Toleration{{
@@ -91,12 +94,12 @@ func TestTolerations(t *testing.T) {
 
 func TestHostPID(t *testing.T) {
 	tt := []struct {
-		spec     v1alpha1.ExporterSpec
+		spec     v1alpha1.InternalExporterSpec
 		hostPID  bool
 		scenario string
 	}{
 		{
-			spec:     v1alpha1.ExporterSpec{},
+			spec:     v1alpha1.InternalExporterSpec{},
 			hostPID:  true,
 			scenario: "default case",
 		},
@@ -118,12 +121,12 @@ func TestHostPID(t *testing.T) {
 }
 func TestVolumeMounts(t *testing.T) {
 	tt := []struct {
-		spec         v1alpha1.ExporterSpec
+		spec         v1alpha1.InternalExporterSpec
 		volumeMounts []corev1.VolumeMount
 		scenario     string
 	}{
 		{
-			spec: v1alpha1.ExporterSpec{},
+			spec: v1alpha1.InternalExporterSpec{},
 			volumeMounts: []corev1.VolumeMount{
 				{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
 				{Name: "tracing", MountPath: "/sys", ReadOnly: true},
@@ -152,12 +155,12 @@ func TestVolumeMounts(t *testing.T) {
 }
 func TestVolumes(t *testing.T) {
 	tt := []struct {
-		spec     v1alpha1.ExporterSpec
+		spec     v1alpha1.InternalExporterSpec
 		volumes  []corev1.Volume
 		scenario string
 	}{
 		{
-			spec: v1alpha1.ExporterSpec{},
+			spec: v1alpha1.InternalExporterSpec{},
 			volumes: []corev1.Volume{
 				k8s.VolumeFromHost("lib-modules", "/lib/modules"),
 				k8s.VolumeFromHost("tracing", "/sys"),
@@ -209,58 +212,6 @@ func TestSCCAllows(t *testing.T) {
 			t.Parallel()
 			actual := k8s.AllowsFromSCC(NewSCC(components.Full))
 			assert.Equal(t, actual, tc.sccAllows)
-		})
-	}
-}
-
-func TestBpfAttachMethod(t *testing.T) {
-
-	tt := []struct {
-		annotations map[string]string
-		scenario    string
-		IsLibbpf    bool
-	}{
-		{
-			annotations: map[string]string{},
-			IsLibbpf:    false,
-			scenario:    "no annotation",
-		},
-		{
-			annotations: map[string]string{
-				KeplerBpfAttachMethodAnnotation: "junk",
-			},
-			IsLibbpf: false,
-			scenario: "annotation present but not libbpf",
-		},
-		{
-			annotations: map[string]string{
-				KeplerBpfAttachMethodAnnotation: "bcc",
-			},
-			IsLibbpf: false,
-			scenario: "annotation present with bcc",
-		},
-		{
-			annotations: map[string]string{
-				KeplerBpfAttachMethodAnnotation: "libbpf",
-			},
-			IsLibbpf: true,
-			scenario: "annotation present with libbpf",
-		},
-	}
-	for _, tc := range tt {
-		tc := tc
-		t.Run(tc.scenario, func(t *testing.T) {
-			t.Parallel()
-			k := v1alpha1.KeplerInternal{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: tc.annotations,
-				},
-				Spec: v1alpha1.KeplerInternalSpec{
-					Exporter: v1alpha1.ExporterSpec{},
-				},
-			}
-			actual := IsLibbpfAttachType(&k)
-			assert.Equal(t, actual, tc.IsLibbpf)
 		})
 	}
 }

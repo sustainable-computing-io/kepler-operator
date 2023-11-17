@@ -36,6 +36,9 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
+    - jsonPath: .spec.exporter.deployment.image
+      name: Image
+      type: string
     - jsonPath: .spec.exporter.deployment.nodeSelector
       name: Node-Selector
       priority: 10
@@ -68,6 +71,8 @@ spec:
                 properties:
                   deployment:
                     properties:
+                      image:
+                        type: string
                       nodeSelector:
                         additionalProperties:
                           type: string
