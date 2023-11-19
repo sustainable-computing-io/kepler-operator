@@ -45,11 +45,7 @@ declare -r OC_URL="https://mirror.openshift.com/pub/openshift-v4/clients/ocp/$OC
 source "$PROJECT_ROOT/hack/utils.bash"
 
 install_kustomize() {
-	command -v kustomize >/dev/null 2>&1 &&
-		[[ $(kustomize version --short | grep -o 'v[0-9].[0-9].[0-9]') == "$KUSTOMIZE_VERSION" ]] && {
-		ok "kustomize $KUSTOMIZE_VERSION is already installed"
-		return 0
-	}
+	validate_version kustomize version "$KUSTOMIZE_VERSION" && return 0
 
 	info "installing kustomize version: $KUSTOMIZE_VERSION"
 	(
@@ -64,11 +60,9 @@ install_kustomize() {
 }
 
 install_controller-gen() {
-	command -v controller-gen >/dev/null 2>&1 &&
-		[[ $(controller-gen --version) == "Version: $CONTROLLER_TOOLS_VERSION" ]] && {
-		ok "controller-gen is already installed"
-		return 0
-	}
+	local version_regex="Version: $CONTROLLER_TOOLS_VERSION"
+
+	validate_version controller-gen --version "$version_regex" && return 0
 
 	info "installing controller-gen with version: $CONTROLLER_TOOLS_VERSION"
 	GOBIN=$LOCAL_BIN \
@@ -82,11 +76,7 @@ install_controller-gen() {
 install_operator-sdk() {
 	local version_regex="operator-sdk version: \"$OPERATOR_SDK_VERSION\""
 
-	command -v operator-sdk >/dev/null 2>&1 &&
-		[[ $(operator-sdk version) =~ $version_regex ]] && {
-		ok "operator-sdk is already installed"
-		return 0
-	}
+	validate_version operator-sdk version "$version_regex" && return 0
 
 	info "installing operator-sdk with version: $OPERATOR_SDK_VERSION"
 	curl -sSLo "$LOCAL_BIN/operator-sdk" "$OPERATOR_SDK_INSTALL" || {
@@ -107,13 +97,9 @@ install_govulncheck() {
 }
 
 install_yq() {
-	local version_regex="version $YQ_VERSION"
+	local version_regex="version ${YQ_VERSION}"
 
-	command -v yq >/dev/null 2>&1 &&
-		[[ $(yq --version) =~ $version_regex ]] && {
-		ok "yq is already installed"
-		return 0
-	}
+	validate_version yq --version "$version_regex" && return 0
 
 	info "installing yq with version: $YQ_VERSION"
 	curl -sSLo "$LOCAL_BIN/yq" "$YQ_INSTALL" || {
@@ -140,7 +126,7 @@ go_install() {
 
 }
 
-validate_verison() {
+validate_version() {
 	local cmd="$1"
 	local version_arg="$2"
 	local version_regex="$3"
@@ -151,23 +137,18 @@ validate_verison() {
 		return 1
 	}
 
-	ok "$cmd installed successfully"
+	ok "$cmd already installed successfully"
 }
 install_shfmt() {
-	validate_verison shfmt --version "$SHFMT_VERSION" && {
-		return 0
-	}
+	validate_version shfmt --version "$SHFMT_VERSION" && return 0
+
 	go_install mvdan.cc/sh/v3/cmd/shfmt "$SHFMT_VERSION"
 }
 
 install_crdoc() {
 	local version_regex="version $CRDOC_VERSION"
 
-	command -v crdoc >/dev/null 2>&1 &&
-		[[ $(crdoc --version) =~ $version_regex ]] && {
-		ok "crdoc is already installed"
-		return 0
-	}
+	validate_version crdoc --version "$version_regex" && return 0
 
 	info "installing crdoc with version: $CRDOC_VERSION"
 	GOBIN=$LOCAL_BIN \
@@ -179,13 +160,9 @@ install_crdoc() {
 }
 
 install_oc() {
-	local version=" $OC_VERSION"
+	local version_regex="Client Version: $OC_VERSION"
 
-	command -v oc >/dev/null 2>&1 &&
-		[[ $(oc version --client -oyaml | grep releaseClientVersion | cut -f2 -d:) == "$version" ]] && {
-		ok "oc is already installed"
-		return 0
-	}
+	validate_version oc "version --client" "$version_regex" && return 0
 
 	info "installing oc version: $OC_VERSION"
 	local os="$GOOS"
