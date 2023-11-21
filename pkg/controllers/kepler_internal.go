@@ -36,8 +36,7 @@ type KeplerInternalReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	logger  logr.Logger
-	Cluster k8s.Cluster
+	logger logr.Logger
 }
 
 // common to all components deployed by operator
@@ -74,7 +73,7 @@ func (r *KeplerInternalReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&rbacv1.ClusterRoleBinding{}, genChanged).
 		Owns(&rbacv1.ClusterRole{}, genChanged)
 
-	if r.Cluster == k8s.OpenShift {
+	if Config.Cluster == k8s.OpenShift {
 		c = c.Owns(&secv1.SecurityContextConstraints{}, genChanged)
 	}
 	return c.Complete(r)
@@ -90,32 +89,28 @@ func (r *KeplerInternalReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *KeplerInternalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	// TODO: remove these keys from the log
-	// "controller": "kepler", "controllerGroup": "kepler.system.sustainable.computing.io",
-	// "controllerKind": "Kepler", "Kepler": {"name":"kepler"},
-
 	logger := log.FromContext(ctx)
 	r.logger = logger
 
 	logger.Info("Start of  reconcile")
 	defer logger.Info("End of reconcile")
 
-	kepler, err := r.getInternal(ctx, req)
+	ki, err := r.getInternal(ctx, req)
 	if err != nil {
 		// retry since some error has occurred
 		logger.V(6).Info("Get Error ", "error", err)
 		return ctrl.Result{}, err
 	}
 
-	if kepler == nil {
-		// no kepler found , so stop here
+	if ki == nil {
+		// no kepler-internal found , so stop here
 		logger.V(6).Info("Kepler Nil")
 		return ctrl.Result{}, nil
 	}
 
-	logger.V(6).Info("Running sub reconcilers", "kepler", kepler.Spec)
+	logger.V(6).Info("Running sub reconcilers", "kepler-internal", ki.Spec)
 
-	result, recErr := r.runReconcilers(ctx, kepler)
+	result, recErr := r.runReconcilers(ctx, ki)
 	updateErr := r.updateStatus(ctx, req, err)
 
 	if recErr != nil {
@@ -164,16 +159,17 @@ func (r KeplerInternalReconciler) updateStatus(ctx context.Context, req ctrl.Req
 			return nil
 		}
 
-		// TODO: move to using KeplerInternalStatus
-		ki.Status = v1alpha1.KeplerStatus{
-			Conditions: []v1alpha1.Condition{},
+		ki.Status = v1alpha1.KeplerInternalStatus{
+			Exporter: v1alpha1.ExporterStatus{
+				Conditions: []v1alpha1.Condition{},
+			},
 		}
 		r.updateReconciledStatus(ctx, ki, recErr)
 		r.updateAvailableStatus(ctx, ki, recErr)
 
 		now := metav1.Now()
-		for i := range ki.Status.Conditions {
-			ki.Status.Conditions[i].LastTransitionTime = now
+		for i := range ki.Status.Exporter.Conditions {
+			ki.Status.Exporter.Conditions[i].LastTransitionTime = now
 		}
 
 		return r.Client.Status().Update(ctx, ki)
@@ -197,32 +193,32 @@ func (r KeplerInternalReconciler) updateReconciledStatus(ctx context.Context, ki
 		reconciled.Message = recErr.Error()
 	}
 
-	ki.Status.Conditions = append(ki.Status.Conditions, reconciled)
+	ki.Status.Exporter.Conditions = append(ki.Status.Exporter.Conditions, reconciled)
 }
 
 func (r KeplerInternalReconciler) updateAvailableStatus(ctx context.Context, ki *v1alpha1.KeplerInternal, recErr error) {
 	// get daemonset owned by kepler
 	dset := appsv1.DaemonSet{}
-	key := types.NamespacedName{Name: exporter.DaemonSetName, Namespace: components.Namespace}
+	key := types.NamespacedName{Name: ki.DaemonsetName(), Namespace: ki.Namespace()}
 	if err := r.Client.Get(ctx, key, &dset); err != nil {
-		ki.Status.Conditions = append(ki.Status.Conditions, availableConditionForGetError(err))
+		ki.Status.Exporter.Conditions = append(ki.Status.Exporter.Conditions, availableConditionForGetError(err))
 		return
 	}
 
 	ds := dset.Status
-	ki.Status.NumberMisscheduled = ds.NumberMisscheduled
-	ki.Status.CurrentNumberScheduled = ds.CurrentNumberScheduled
-	ki.Status.DesiredNumberScheduled = ds.DesiredNumberScheduled
-	ki.Status.NumberReady = ds.NumberReady
-	ki.Status.UpdatedNumberScheduled = ds.UpdatedNumberScheduled
-	ki.Status.NumberAvailable = ds.NumberAvailable
-	ki.Status.NumberUnavailable = ds.NumberUnavailable
+	ki.Status.Exporter.NumberMisscheduled = ds.NumberMisscheduled
+	ki.Status.Exporter.CurrentNumberScheduled = ds.CurrentNumberScheduled
+	ki.Status.Exporter.DesiredNumberScheduled = ds.DesiredNumberScheduled
+	ki.Status.Exporter.NumberReady = ds.NumberReady
+	ki.Status.Exporter.UpdatedNumberScheduled = ds.UpdatedNumberScheduled
+	ki.Status.Exporter.NumberAvailable = ds.NumberAvailable
+	ki.Status.Exporter.NumberUnavailable = ds.NumberUnavailable
 
 	c := availableCondition(&dset)
 	if recErr == nil {
 		c.ObservedGeneration = ki.Generation
 	}
-	ki.Status.Conditions = append(ki.Status.Conditions, c)
+	ki.Status.Exporter.Conditions = append(ki.Status.Exporter.Conditions, c)
 }
 
 func availableConditionForGetError(err error) v1alpha1.Condition {
@@ -324,13 +320,13 @@ func (r KeplerInternalReconciler) reconcilersForInternal(k *v1alpha1.KeplerInter
 		// NOTE: create namespace first and for deletion, reverse the order
 		rs = append(rs, reconciler.Updater{
 			Owner:    k,
-			Resource: components.NewKeplerNamespace(),
+			Resource: components.NewNamespace(k.Namespace()),
 			OnError:  reconciler.Requeue,
 			Logger:   r.logger,
 		})
 	}
 
-	rs = append(rs, exporterReconcilers(k, r.Cluster)...)
+	rs = append(rs, exporterReconcilers(k, Config.Cluster)...)
 
 	// TODO: add this when modelServer is supported by Kepler Spec
 	// rs = append(rs, modelServerReconcilers(k)...)
@@ -338,7 +334,7 @@ func (r KeplerInternalReconciler) reconcilersForInternal(k *v1alpha1.KeplerInter
 	if cleanup {
 		rs = append(rs, reconciler.Deleter{
 			OnError:     reconciler.Requeue,
-			Resource:    components.NewKeplerNamespace(),
+			Resource:    components.NewNamespace(k.Namespace()),
 			WaitTimeout: 2 * time.Minute,
 		})
 	}
@@ -359,45 +355,46 @@ func exporterReconcilers(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []rec
 		rs := resourceReconcilers(
 			deleteResource,
 			// cluster-scoped
-			exporter.NewClusterRoleBinding(components.Metadata),
-			exporter.NewClusterRole(components.Metadata),
+			exporter.NewClusterRoleBinding(components.Metadata, ki),
+			exporter.NewClusterRole(components.Metadata, ki),
 		)
-		if cluster == k8s.OpenShift {
-			rs = append(rs,
-				resourceReconcilers(deleteResource,
-					exporter.NewSCC(components.Metadata),
-					exporter.NewOverviewDashboard(components.Metadata),
-					exporter.NewNamespaceInfoDashboard(components.Metadata),
-				)...,
-			)
-		}
+		rs = append(rs, resourceReconcilers(deleteResource, openshiftResources(ki, cluster)...)...)
 		return rs
 	}
 
-	updater := newUpdaterWithOwner(ki)
-	rs := resourceReconcilers(updater,
-		// cluster-scoped resources first
-		exporter.NewClusterRole(components.Full),
-		exporter.NewClusterRoleBinding(components.Full),
+	updateResource := newUpdaterWithOwner(ki)
+	// cluster-scoped resources first
+	rs := resourceReconcilers(updateResource,
+		exporter.NewClusterRole(components.Full, ki),
+		exporter.NewClusterRoleBinding(components.Full, ki),
 
 		// namespace scoped
-		exporter.NewServiceAccount(),
+		exporter.NewServiceAccount(ki),
 		exporter.NewConfigMap(components.Full, ki),
 		exporter.NewDaemonSet(components.Full, ki),
 		exporter.NewService(ki),
-		exporter.NewServiceMonitor(),
-		exporter.NewPrometheusRule(),
+		exporter.NewServiceMonitor(ki),
+		exporter.NewPrometheusRule(ki),
 	)
+	rs = append(rs, resourceReconcilers(updateResource, openshiftResources(ki, cluster)...)...)
+	return rs
+}
 
-	if cluster == k8s.OpenShift {
-		rs = append(rs,
-			resourceReconcilers(
-				updater,
-				exporter.NewSCC(components.Full),
-				exporter.NewOverviewDashboard(components.Full),
-				exporter.NewNamespaceInfoDashboard(components.Full),
-			)...,
+func openshiftResources(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []client.Object {
+	oshift := ki.Spec.OpenShift
+
+	if cluster != k8s.OpenShift || !oshift.Enabled {
+		return nil
+	}
+	// cluster-scoped resources first
+	res := []client.Object{
+		exporter.NewSCC(components.Full, ki),
+	}
+	if oshift.Dashboard.Enabled {
+		res = append(res,
+			exporter.NewOverviewDashboard(components.Full),
+			exporter.NewNamespaceInfoDashboard(components.Full),
 		)
 	}
-	return rs
+	return res
 }

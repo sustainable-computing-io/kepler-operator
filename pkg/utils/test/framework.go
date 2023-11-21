@@ -189,7 +189,7 @@ func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionTyp
 				return true, fmt.Errorf("kepler %s is not found", name)
 			}
 
-			condition, _ := k8s.FindCondition(k.Status.Conditions, t)
+			condition, _ := k8s.FindCondition(k.Status.Exporter.Conditions, t)
 			return condition.Status == s, nil
 		})
 	return &k

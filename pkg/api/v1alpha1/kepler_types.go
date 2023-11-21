@@ -121,8 +121,8 @@ type Condition struct {
 	Message string `json:"message"`
 }
 
-// KeplerStatus defines the observed state of Kepler
-type KeplerStatus struct {
+// ExporterStatus defines the observed state of Kepler Exporter
+type ExporterStatus struct {
 	// The number of nodes that are running at least 1 kepler pod and are
 	// supposed to run the kepler pod.
 	CurrentNumberScheduled int32 `json:"currentNumberScheduled"`
@@ -153,8 +153,7 @@ type KeplerStatus struct {
 	// +optional
 	NumberUnavailable int32 `json:"numberUnavailable,omitempty"`
 
-	// conditions represent the latest available observations of the kepler-system
-
+	// conditions represent the latest available observations of the kepler-exporter
 	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
 	// +listType=atomic
 	Conditions []Condition `json:"conditions"`
@@ -165,11 +164,11 @@ type KeplerStatus struct {
 //+kubebuilder:subresource:status
 
 // +kubebuilder:printcolumn:name="Port",type=integer,JSONPath=`.spec.exporter.deployment.port`
-// +kubebuilder:printcolumn:name="Desired",type=integer,JSONPath=`.status.desiredNumberScheduled`
-// +kubebuilder:printcolumn:name="Current",type=integer,JSONPath=`.status.currentNumberScheduled`
-// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.numberReady`
-// +kubebuilder:printcolumn:name="Up-to-date",type=integer,JSONPath=`.status.updatedNumberScheduled`
-// +kubebuilder:printcolumn:name="Available",type=integer,JSONPath=`.status.numberAvailable`
+// +kubebuilder:printcolumn:name="Desired",type=integer,JSONPath=`.status.exporter.desiredNumberScheduled`
+// +kubebuilder:printcolumn:name="Current",type=integer,JSONPath=`.status.exporter.currentNumberScheduled`
+// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.exporter.numberReady`
+// +kubebuilder:printcolumn:name="Up-to-date",type=integer,JSONPath=`.status.exporter.updatedNumberScheduled`
+// +kubebuilder:printcolumn:name="Available",type=integer,JSONPath=`.status.exporter.numberAvailable`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="Node-Selector",type=string,JSONPath=`.spec.exporter.deployment.nodeSelector`,priority=10
 // +kubebuilder:printcolumn:name="Tolerations",type=string,JSONPath=`.spec.exporter.deployment.tolerations`,priority=10
@@ -181,6 +180,11 @@ type Kepler struct {
 
 	Spec   KeplerSpec   `json:"spec,omitempty"`
 	Status KeplerStatus `json:"status,omitempty"`
+}
+
+// KeplerStatus defines the observed state of Kepler
+type KeplerStatus struct {
+	Exporter ExporterStatus `json:"exporter,omitempty"`
 }
 
 //+kubebuilder:object:root=true

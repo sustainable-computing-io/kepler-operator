@@ -8,6 +8,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNodeSelection(t *testing.T) {
@@ -167,7 +168,7 @@ func TestVolumes(t *testing.T) {
 				k8s.VolumeFromHost("proc", "/proc"),
 				k8s.VolumeFromHost("kernel-src", "/usr/src/kernels"),
 				k8s.VolumeFromHost("kernel-debug", "/sys/kernel/debug"),
-				k8s.VolumeFromConfigMap("cfm", ConfigmapName),
+				k8s.VolumeFromConfigMap("cfm", "kepler-internal"),
 			},
 			scenario: "default case",
 		},
@@ -178,6 +179,9 @@ func TestVolumes(t *testing.T) {
 		t.Run(tc.scenario, func(t *testing.T) {
 			t.Parallel()
 			k := v1alpha1.KeplerInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kepler-internal",
+				},
 				Spec: v1alpha1.KeplerInternalSpec{
 					Exporter: tc.spec,
 				},
@@ -210,8 +214,31 @@ func TestSCCAllows(t *testing.T) {
 		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {
 			t.Parallel()
-			actual := k8s.AllowsFromSCC(NewSCC(components.Full))
+			k := v1alpha1.KeplerInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kepler-internal",
+				},
+			}
+			actual := k8s.AllowsFromSCC(NewSCC(components.Full, &k))
 			assert.Equal(t, actual, tc.sccAllows)
+		})
+	}
+}
+
+func TestRecordingRuleName(t *testing.T) {
+	tt := []struct {
+		keplerName string
+		recRule    string
+	}{
+		{"kepler", "kepler:kepler"},
+		{"kepler-internal", "kepler:kepler_internal"},
+		{"kep-ler-inte.rnal", "kepler:kep_ler_inte_rnal"},
+	}
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.keplerName, func(t *testing.T) {
+			actual := keplerRulePrefix(tc.keplerName)
+			assert.Equal(t, tc.recRule, actual)
 		})
 	}
 }

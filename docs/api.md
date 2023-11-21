@@ -55,14 +55,14 @@ KeplerInternal is the Schema for the keplers internal API
         <td><b><a href="#keplerinternalspec">spec</a></b></td>
         <td>object</td>
         <td>
-          KeplerInternalSpec defines the desired state of Kepler<br/>
+          KeplerInternalSpec defines the desired state of KeplerInternal<br/>
         </td>
         <td>false</td>
       </tr><tr>
         <td><b><a href="#keplerinternalstatus">status</a></b></td>
         <td>object</td>
         <td>
-          KeplerStatus defines the observed state of Kepler<br/>
+          KeplerInternalStatus represents status of KeplerInternal<br/>
         </td>
         <td>false</td>
       </tr></tbody>
@@ -74,7 +74,7 @@ KeplerInternal is the Schema for the keplers internal API
 
 
 
-KeplerInternalSpec defines the desired state of Kepler
+KeplerInternalSpec defines the desired state of KeplerInternal
 
 <table>
     <thead>
@@ -87,6 +87,13 @@ KeplerInternalSpec defines the desired state of Kepler
     </thead>
     <tbody><tr>
         <td><b><a href="#keplerinternalspecexporter">exporter</a></b></td>
+        <td>object</td>
+        <td>
+          <br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b><a href="#keplerinternalspecopenshift">openshift</a></b></td>
         <td>object</td>
         <td>
           <br/>
@@ -118,7 +125,7 @@ KeplerInternalSpec defines the desired state of Kepler
         <td>
           <br/>
         </td>
-        <td>false</td>
+        <td>true</td>
       </tr></tbody>
 </table>
 
@@ -143,9 +150,16 @@ KeplerInternalSpec defines the desired state of Kepler
         <td><b>image</b></td>
         <td>string</td>
         <td>
-          <br/>
+          Image of kepler-exporter to be deployed<br/>
         </td>
-        <td>false</td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>namespace</b></td>
+        <td>string</td>
+        <td>
+          Namespace where kepler-exporter will be deployed<br/>
+        </td>
+        <td>true</td>
       </tr><tr>
         <td><b>nodeSelector</b></td>
         <td>map[string]string</td>
@@ -237,12 +251,12 @@ The pod this Toleration is attached to tolerates any taint that matches the trip
 </table>
 
 
-### KeplerInternal.status
-<sup><sup>[↩ Parent](#keplerinternal)</sup></sup>
+### KeplerInternal.spec.openshift
+<sup><sup>[↩ Parent](#keplerinternalspec)</sup></sup>
 
 
 
-KeplerStatus defines the observed state of Kepler
+
 
 <table>
     <thead>
@@ -254,10 +268,102 @@ KeplerStatus defines the observed state of Kepler
         </tr>
     </thead>
     <tbody><tr>
-        <td><b><a href="#keplerinternalstatusconditionsindex">conditions</a></b></td>
-        <td>[]object</td>
+        <td><b>enabled</b></td>
+        <td>boolean</td>
         <td>
           <br/>
+          <br/>
+            <i>Default</i>: true<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b><a href="#keplerinternalspecopenshiftdashboard">dashboard</a></b></td>
+        <td>object</td>
+        <td>
+          <br/>
+        </td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### KeplerInternal.spec.openshift.dashboard
+<sup><sup>[↩ Parent](#keplerinternalspecopenshift)</sup></sup>
+
+
+
+
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b>enabled</b></td>
+        <td>boolean</td>
+        <td>
+          <br/>
+          <br/>
+            <i>Default</i>: false<br/>
+        </td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### KeplerInternal.status
+<sup><sup>[↩ Parent](#keplerinternal)</sup></sup>
+
+
+
+KeplerInternalStatus represents status of KeplerInternal
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b><a href="#keplerinternalstatusexporter">exporter</a></b></td>
+        <td>object</td>
+        <td>
+          ExporterStatus defines the observed state of Kepler Exporter<br/>
+        </td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### KeplerInternal.status.exporter
+<sup><sup>[↩ Parent](#keplerinternalstatus)</sup></sup>
+
+
+
+ExporterStatus defines the observed state of Kepler Exporter
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b><a href="#keplerinternalstatusexporterconditionsindex">conditions</a></b></td>
+        <td>[]object</td>
+        <td>
+          conditions represent the latest available observations of the kepler-exporter<br/>
         </td>
         <td>true</td>
       </tr><tr>
@@ -327,8 +433,8 @@ KeplerStatus defines the observed state of Kepler
 </table>
 
 
-### KeplerInternal.status.conditions[index]
-<sup><sup>[↩ Parent](#keplerinternalstatus)</sup></sup>
+### KeplerInternal.status.exporter.conditions[index]
+<sup><sup>[↩ Parent](#keplerinternalstatusexporter)</sup></sup>
 
 
 
@@ -625,10 +731,37 @@ KeplerStatus defines the observed state of Kepler
         </tr>
     </thead>
     <tbody><tr>
-        <td><b><a href="#keplerstatusconditionsindex">conditions</a></b></td>
+        <td><b><a href="#keplerstatusexporter">exporter</a></b></td>
+        <td>object</td>
+        <td>
+          ExporterStatus defines the observed state of Kepler Exporter<br/>
+        </td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### Kepler.status.exporter
+<sup><sup>[↩ Parent](#keplerstatus)</sup></sup>
+
+
+
+ExporterStatus defines the observed state of Kepler Exporter
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b><a href="#keplerstatusexporterconditionsindex">conditions</a></b></td>
         <td>[]object</td>
         <td>
-          <br/>
+          conditions represent the latest available observations of the kepler-exporter<br/>
         </td>
         <td>true</td>
       </tr><tr>
@@ -698,8 +831,8 @@ KeplerStatus defines the observed state of Kepler
 </table>
 
 
-### Kepler.status.conditions[index]
-<sup><sup>[↩ Parent](#keplerstatus)</sup></sup>
+### Kepler.status.exporter.conditions[index]
+<sup><sup>[↩ Parent](#keplerstatusexporter)</sup></sup>
 
 
 

@@ -152,12 +152,16 @@ build: manifests generate fmt vet ## Build manager binary.
 	go build -o bin/manager ./cmd/manager/...
 
 OPENSHIFT ?= true
+RUN_ARGS ?=
 
 .PHONY: run
 run: install fmt vet ## Run a controller from your host against openshift cluster
 	go run ./cmd/manager/... \
-		--kepler.image=$(KEPLER_IMG) --kepler.image.libbpf=$(KEPLER_IMG_LIBBPF) \
-		--zap-devel --zap-log-level=8 --openshift=$(OPENSHIFT) 2>&1 | tee tmp/operator.log
+		--kepler.image=$(KEPLER_IMG)  --kepler.image.libbpf=$(KEPLER_IMG_LIBBPF) \
+		--zap-devel --zap-log-level=8 \
+		--openshift=$(OPENSHIFT) \
+		$(RUN_ARGS) \
+		2>&1 | tee tmp/operator.log
 
 # docker_tag accepts an image:tag and a list of additional tags comma-separated
 # it tags the image with the additional tags

@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/reconciler"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 
@@ -24,18 +25,14 @@ import (
 )
 
 const (
-	Finalizer                       = "kepler.system.sustainable.computing.io/finalizer"
-	KeplerBpfAttachMethodAnnotation = "kepler.sustainable.computing.io/bpf-attach-method"
-	KeplerBpfAttachMethodBCC        = "bcc"
-	KeplerBpfAttachMethodLibbpf     = "libbpf"
+	Finalizer                 = "kepler.system.sustainable.computing.io/finalizer"
+	BpfAttachMethodAnnotation = "kepler.sustainable.computing.io/bpf-attach-method"
+	BpfAttachMethodBCC        = "bcc"
+	BpfAttachMethodLibbpf     = "libbpf"
 )
 
-// Config that will be set from outside
 var (
-	Config = struct {
-		Image       string
-		ImageLibbpf string
-	}{}
+	KeplerDeploymentNS = "kepler-operator"
 )
 
 // KeplerReconciler reconciles a Kepler object
@@ -43,8 +40,7 @@ type KeplerReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	logger  logr.Logger
-	Cluster k8s.Cluster
+	logger logr.Logger
 }
 
 // Owned resource
@@ -147,9 +143,11 @@ func (r KeplerReconciler) updateStatus(ctx context.Context, req ctrl.Request, re
 		// NOTE: although, this copies the internal status, the observed generation
 		// should be set to kepler's current generation to indicate that the
 		// current generation has been "observed"
-		k.Status = internal.Status
-		for i := range k.Status.Conditions {
-			k.Status.Conditions[i].ObservedGeneration = k.Generation
+		k.Status = v1alpha1.KeplerStatus{
+			Exporter: internal.Status.Exporter,
+		}
+		for i := range k.Status.Exporter.Conditions {
+			k.Status.Exporter.Conditions[i].ObservedGeneration = k.Generation
 		}
 		return r.Client.Status().Update(ctx, k)
 	})
@@ -158,8 +156,8 @@ func (r KeplerReconciler) updateStatus(ctx context.Context, req ctrl.Request, re
 // returns true (i.e. status has changed ) if any of the Conditions'
 // ObservedGeneration is equal to the current generation
 func hasInternalStatusChanged(internal *v1alpha1.KeplerInternal) bool {
-	for i := range internal.Status.Conditions {
-		if internal.Status.Conditions[i].ObservedGeneration == internal.Generation {
+	for i := range internal.Status.Exporter.Conditions {
+		if internal.Status.Exporter.Conditions[i].ObservedGeneration == internal.Generation {
 			return true
 		}
 	}
@@ -200,12 +198,15 @@ func (r KeplerReconciler) getInternalForKepler(ctx context.Context, k *v1alpha1.
 
 func (r KeplerReconciler) reconcilersForKepler(k *v1alpha1.Kepler) []reconciler.Reconciler {
 	op := deleteResource
+	detail := components.Metadata
+
 	if update := k.DeletionTimestamp.IsZero(); update {
 		op = newUpdaterWithOwner(k)
+		detail = components.Full
 	}
 
 	rs := []reconciler.Reconciler{
-		op(newKeplerInternal(k)),
+		op(newKeplerInternal(detail, k)),
 		reconciler.Finalizer{
 			Resource: k, Finalizer: Finalizer, Logger: r.logger,
 		},
@@ -222,7 +223,7 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 			return nil
 		}
 
-		invalidKepler.Status.Conditions = []v1alpha1.Condition{{
+		invalidKepler.Status.Exporter.Conditions = []v1alpha1.Condition{{
 			Type:               v1alpha1.Reconciled,
 			Status:             v1alpha1.ConditionFalse,
 			ObservedGeneration: invalidKepler.Generation,
@@ -244,34 +245,37 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, err
 }
 
-func newKeplerInternal(k *v1alpha1.Kepler) *v1alpha1.KeplerInternal {
+func newKeplerInternal(d components.Detail, k *v1alpha1.Kepler) *v1alpha1.KeplerInternal {
+
+	if d == components.Metadata {
+		return &v1alpha1.KeplerInternal{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "KeplerInternal",
+				APIVersion: v1alpha1.GroupVersion.String(),
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        k.Name,
+				Annotations: k.Annotations,
+			},
+		}
+	}
 
 	keplerImage := Config.Image
-	if IsLibbpfAttachType(k) {
+	if hasLibBPFAnnotation(k) {
 		keplerImage = Config.ImageLibbpf
 	}
 
+	isOpenShift := Config.Cluster == k8s.OpenShift
+
 	return &v1alpha1.KeplerInternal{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "KeplerInternal",
-			APIVersion: v1alpha1.GroupVersion.String(),
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        k.Name,
-			Annotations: k.Annotations,
-		},
-		Spec: v1alpha1.KeplerInternalSpec{
-			Exporter: v1alpha1.InternalExporterSpec{
-				Deployment: v1alpha1.InternalExporterDeploymentSpec{
-					ExporterDeploymentSpec: k.Spec.Exporter.Deployment,
-					Image:                  keplerImage,
-				},
-			},
-		},
+		TypeMeta:   metav1.TypeMeta{Kind: "KeplerInternal", APIVersion: v1alpha1.GroupVersion.String()},
+		ObjectMeta: metav1.ObjectMeta{Name: k.Name, Annotations: k.Annotations},
+		Spec:       v1alpha1.KeplerInternalSpec{Exporter: v1alpha1.InternalExporterSpec{Deployment: v1alpha1.InternalExporterDeploymentSpec{ExporterDeploymentSpec: k.Spec.Exporter.Deployment, Image: keplerImage, Namespace: KeplerDeploymentNS}}, OpenShift: v1alpha1.OpenShiftSpec{Enabled: isOpenShift, Dashboard: v1alpha1.DashboardSpec{Enabled: isOpenShift}}},
+		Status:     v1alpha1.KeplerInternalStatus{},
 	}
 }
 
-func IsLibbpfAttachType(k *v1alpha1.Kepler) bool {
-	bpftype, ok := k.Annotations[KeplerBpfAttachMethodAnnotation]
-	return ok && strings.ToLower(bpftype) == KeplerBpfAttachMethodLibbpf
+func hasLibBPFAnnotation(k *v1alpha1.Kepler) bool {
+	bpftype, ok := k.Annotations[BpfAttachMethodAnnotation]
+	return ok && strings.ToLower(bpftype) == BpfAttachMethodLibbpf
 }

@@ -32,22 +32,17 @@ const (
 var (
 	CommonLabels = k8s.StringMap{
 		"app.kubernetes.io/managed-by": "kepler-operator",
-		"app.kubernetes.io/part-of":    "kepler",
 	}
 )
 
-const (
-	Namespace = "openshift-kepler-operator"
-)
-
-func NewKeplerNamespace() *corev1.Namespace {
+func NewNamespace(ns string) *corev1.Namespace {
 	return &corev1.Namespace{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
 			Kind:       "Namespace",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: Namespace,
+			Name: ns,
 			Labels: CommonLabels.Merge(k8s.StringMap{
 				// NOTE: Fixes the following error On Openshift 4.14
 				//   Warning  FailedCreate  daemonset-controller

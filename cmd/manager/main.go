@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"os"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -38,7 +39,6 @@ import (
 	securityv1 "github.com/openshift/api/security/v1"
 
 	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/controllers"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
@@ -59,17 +59,36 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
+type stringList []string
+
+func (f *stringList) String() string {
+	return "multiple values"
+}
+
+func (s *stringList) Set(value string) error {
+	values := strings.Split(value, ",")
+	*s = append(*s, values...)
+	return nil
+}
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var openshift bool
 	var probeAddr string
+	var additionalNamespaces stringList
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+
+	flag.StringVar(&controllers.KeplerDeploymentNS, "deployment-namespace", controllers.KeplerDeploymentNS,
+		"Namespace where kepler and its components are deployed.")
+
+	flag.CommandLine.Var(flag.Value(&additionalNamespaces), "watch-namespaces",
+		"Namespaces other than deployment-namespace where kepler-internal may be deployed.")
 
 	flag.BoolVar(&openshift, "openshift", false,
 		"Indicate if the operator is running on an OpenShift cluster.")
@@ -88,6 +107,10 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	if openshift {
+		controllers.Config.Cluster = k8s.OpenShift
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
@@ -95,10 +118,13 @@ func main() {
 		},
 		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
 			cacheNs := map[string]cache.Config{
-				components.Namespace: {},
+				controllers.KeplerDeploymentNS: {},
 			}
 			if openshift {
 				cacheNs[exporter.DashboardNs] = cache.Config{}
+			}
+			for _, ns := range additionalNamespaces {
+				cacheNs[ns] = cache.Config{}
 			}
 			opts.DefaultNamespaces = cacheNs
 			return cache.New(config, opts)
@@ -125,23 +151,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	cluster := k8s.Kubernetes
-	if openshift {
-		cluster = k8s.OpenShift
-	}
-
 	if err = (&controllers.KeplerReconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		Cluster: cluster,
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "kepler")
 		os.Exit(1)
 	}
 	if err = (&controllers.KeplerInternalReconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		Cluster: cluster,
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "kepler-internal")
 		os.Exit(1)
