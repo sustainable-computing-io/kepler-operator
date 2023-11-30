@@ -18,8 +18,9 @@ package exporter
 
 import (
 	_ "embed"
+	"fmt"
+	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
@@ -37,52 +38,14 @@ import (
 )
 
 const (
-	prefix = "kepler-exporter-"
-
-	SCCName = prefix + "scc"
-
-	ServiceAccountName   = prefix + "sa"
-	FQServiceAccountName = "system:serviceaccount:" + components.Namespace + ":" + ServiceAccountName
-
-	ClusterRoleName        = prefix + "cr"
-	ClusterRoleBindingName = prefix + "crb"
-
-	ConfigmapName = prefix + "cm"
-	DaemonSetName = prefix + "ds"
-
-	ServiceName        = prefix + "svc"
-	ServicePortName    = "http"
-	ServiceMonitorName = prefix + "smon"
+	ServicePortName = "http"
 
 	overviewDashboardName = "power-monitoring-overview"
 	nsInfoDashboardName   = "power-monitoring-by-ns"
 	DashboardNs           = "openshift-config-managed"
-
-	PrometheusRuleName = prefix + "prom-rules"
-
-	KeplerBpfAttachMethodAnnotation = "kepler.sustainable.computing.io/bpf-attach-method"
-	KeplerBpfAttachMethodBCC        = "bcc"
-	KeplerBpfAttachMethodLibbpf     = "libbpf"
-)
-
-// Config that will be set from outside
-var (
-	Config = struct {
-		Image       string
-		ImageLibbpf string
-	}{}
 )
 
 var (
-	labels = components.CommonLabels.Merge(k8s.StringMap{
-		"app.kubernetes.io/component":  "exporter",
-		"sustainable-computing.io/app": "kepler",
-	})
-
-	podSelector = labels.Merge(k8s.StringMap{
-		"app.kubernetes.io/name": "kepler-exporter",
-	})
-
 	linuxNodeSelector = k8s.StringMap{
 		"kubernetes.io/os": "linux",
 	}
@@ -94,28 +57,33 @@ var (
 	nsInfoDashboardJson string
 )
 
-func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSet {
+// TODO:
+func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.DaemonSet {
 	if detail == components.Metadata {
 		return &appsv1.DaemonSet{
-			TypeMeta: metav1.TypeMeta{APIVersion: appsv1.SchemeGroupVersion.String(), Kind: "DaemonSet"},
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: appsv1.SchemeGroupVersion.String(),
+				Kind:       "DaemonSet",
+			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      DaemonSetName,
-				Namespace: components.Namespace,
-				Labels:    labels,
+				Name:      k.DaemonsetName(),
+				Namespace: k.Namespace(),
+				Labels:    labels(k),
 			},
 		}
 	}
 
-	deployment := k.Spec.Exporter.Deployment
+	deployment := k.Spec.Exporter.Deployment.ExporterDeploymentSpec
+	image := k.Spec.Exporter.Deployment.Image
 	nodeSelector := deployment.NodeSelector
 	tolerations := deployment.Tolerations
+	port := deployment.Port
+	// NOTE: since 2 or more KeplerInternals can be deployed to the same namespace,
+	// we need to make sure that the pod selector of each of the DaemonSet
+	// create of each kepler is unique. Thus the daemonset name is added as
+	// label to the pod
 
-	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
-
-	keplerImage := Config.Image
-	if IsLibbpfAttachType(k) {
-		keplerImage = Config.ImageLibbpf
-	}
+	bindAddress := "0.0.0.0:" + strconv.Itoa(int(port))
 
 	return &appsv1.DaemonSet{
 		TypeMeta: metav1.TypeMeta{
@@ -123,28 +91,28 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 			Kind:       "DaemonSet",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      DaemonSetName,
-			Namespace: components.Namespace,
-			Labels:    labels,
+			Name:      k.Name,
+			Namespace: k.Namespace(),
+			Labels:    labels(k),
 		},
 		Spec: appsv1.DaemonSetSpec{
-			Selector: &metav1.LabelSelector{MatchLabels: podSelector},
+			Selector: &metav1.LabelSelector{MatchLabels: podSelector(k)},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      DaemonSetName,
-					Namespace: components.Namespace,
-					Labels:    podSelector,
+					Name:      k.DaemonsetName(),
+					Namespace: k.Namespace(),
+					Labels:    podSelector(k),
 				},
 				Spec: corev1.PodSpec{
 					HostPID:            true,
 					NodeSelector:       linuxNodeSelector.Merge(nodeSelector),
-					ServiceAccountName: ServiceAccountName,
+					ServiceAccountName: k.Name,
 					DNSPolicy:          corev1.DNSPolicy(corev1.DNSClusterFirstWithHostNet),
 					Tolerations:        tolerations,
 					Containers: []corev1.Container{{
-						Name:            "kepler-exporter",
+						Name:            k.DaemonsetName(),
 						SecurityContext: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
-						Image:           keplerImage,
+						Image:           image,
 						Command: []string{
 							"/usr/bin/kepler",
 							"-address", bindAddress,
@@ -155,14 +123,14 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 							"-redfish-cred-file-path=/etc/redfish/redfish.csv",
 						},
 						Ports: []corev1.ContainerPort{{
-							ContainerPort: int32(deployment.Port),
+							ContainerPort: int32(port),
 							Name:          "http",
 						}},
 						LivenessProbe: &corev1.Probe{
 							ProbeHandler: corev1.ProbeHandler{
 								HTTPGet: &corev1.HTTPGetAction{
 									Path:   "/healthz",
-									Port:   intstr.IntOrString{Type: intstr.Int, IntVal: deployment.Port},
+									Port:   intstr.IntOrString{Type: intstr.Int, IntVal: port},
 									Scheme: "HTTP",
 								},
 							},
@@ -174,8 +142,8 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 						Env: []corev1.EnvVar{
 							{Name: "NODE_IP", ValueFrom: k8s.EnvFromField("status.hostIP")},
 							{Name: "NODE_NAME", ValueFrom: k8s.EnvFromField("spec.nodeName")},
-							{Name: "KEPLER_LOG_LEVEL", ValueFrom: k8s.EnvFromConfigMap("KEPLER_LOG_LEVEL", ConfigmapName)},
-							{Name: "ENABLE_GPU", ValueFrom: k8s.EnvFromConfigMap("ENABLE_GPU", ConfigmapName)}},
+							{Name: "KEPLER_LOG_LEVEL", ValueFrom: k8s.EnvFromConfigMap("KEPLER_LOG_LEVEL", k.Name)},
+							{Name: "ENABLE_GPU", ValueFrom: k8s.EnvFromConfigMap("ENABLE_GPU", k.Name)}},
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
 							{Name: "tracing", MountPath: "/sys", ReadOnly: true},
@@ -191,20 +159,19 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.Kepler) *appsv1.DaemonSe
 						k8s.VolumeFromHost("proc", "/proc"),
 						k8s.VolumeFromHost("kernel-src", "/usr/src/kernels"),
 						k8s.VolumeFromHost("kernel-debug", "/sys/kernel/debug"),
-						k8s.VolumeFromConfigMap("cfm", ConfigmapName),
+						k8s.VolumeFromConfigMap("cfm", k.Name),
 					}, // Volumes
 				}, // PodSpec
 			}, // PodTemplateSpec
 		}, // Spec
 	}
-
 }
 
 func openshiftDashboardObjectMeta(name string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:      name,
 		Namespace: DashboardNs,
-		Labels: labels.Merge(k8s.StringMap{
+		Labels: components.CommonLabels.Merge(k8s.StringMap{
 			"console.openshift.io/dashboard": "true",
 		}),
 		Annotations: k8s.StringMap{
@@ -264,7 +231,7 @@ func NewNamespaceInfoDashboard(d components.Detail) *corev1.ConfigMap {
 	}
 }
 
-func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
+func NewConfigMap(d components.Detail, k *v1alpha1.KeplerInternal) *corev1.ConfigMap {
 	if d == components.Metadata {
 		return &corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
@@ -272,14 +239,14 @@ func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
 				Kind:       "ConfigMap",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      ConfigmapName,
-				Namespace: components.Namespace,
-				Labels:    labels,
+				Name:      k.Name,
+				Namespace: k.Namespace(),
+				Labels:    labels(k).ToMap(),
 			},
 		}
 	}
 
-	deployment := k.Spec.Exporter.Deployment
+	deployment := k.Spec.Exporter.Deployment.ExporterDeploymentSpec
 	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
 
 	return &corev1.ConfigMap{
@@ -288,12 +255,12 @@ func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
 			Kind:       "ConfigMap",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ConfigmapName,
-			Namespace: components.Namespace,
-			Labels:    labels,
+			Name:      k.Name,
+			Namespace: k.Namespace(),
+			Labels:    labels(k).ToMap(),
 		},
 		Data: map[string]string{
-			"KEPLER_NAMESPACE":                  components.Namespace,
+			"KEPLER_NAMESPACE":                  k.Namespace(),
 			"KEPLER_LOG_LEVEL":                  "1",
 			"METRIC_PATH":                       "/metrics",
 			"BIND_ADDRESS":                      bindAddress,
@@ -314,7 +281,7 @@ func NewConfigMap(d components.Detail, k *v1alpha1.Kepler) *corev1.ConfigMap {
 	}
 }
 
-func NewClusterRole(c components.Detail) *rbacv1.ClusterRole {
+func NewClusterRole(c components.Detail, k *v1alpha1.KeplerInternal) *rbacv1.ClusterRole {
 	if c == components.Metadata {
 		return &rbacv1.ClusterRole{
 			TypeMeta: metav1.TypeMeta{
@@ -322,8 +289,8 @@ func NewClusterRole(c components.Detail) *rbacv1.ClusterRole {
 				Kind:       "ClusterRole",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:   ClusterRoleName,
-				Labels: labels,
+				Name:   k.Name,
+				Labels: labels(k),
 			},
 		}
 	}
@@ -334,8 +301,8 @@ func NewClusterRole(c components.Detail) *rbacv1.ClusterRole {
 			Kind:       "ClusterRole",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   ClusterRoleName,
-			Labels: labels,
+			Name:   k.Name,
+			Labels: labels(k),
 		},
 		Rules: []rbacv1.PolicyRule{{
 			APIGroups: []string{""},
@@ -345,7 +312,7 @@ func NewClusterRole(c components.Detail) *rbacv1.ClusterRole {
 	}
 }
 
-func NewClusterRoleBinding(c components.Detail) *rbacv1.ClusterRoleBinding {
+func NewClusterRoleBinding(c components.Detail, k *v1alpha1.KeplerInternal) *rbacv1.ClusterRoleBinding {
 	if c == components.Metadata {
 		return &rbacv1.ClusterRoleBinding{
 			TypeMeta: metav1.TypeMeta{
@@ -353,8 +320,8 @@ func NewClusterRoleBinding(c components.Detail) *rbacv1.ClusterRoleBinding {
 				Kind:       "ClusterRoleBinding",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:   ClusterRoleBindingName,
-				Labels: labels,
+				Name:   k.Name,
+				Labels: labels(k),
 			},
 		}
 	}
@@ -365,23 +332,23 @@ func NewClusterRoleBinding(c components.Detail) *rbacv1.ClusterRoleBinding {
 			Kind:       "ClusterRoleBinding",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   ClusterRoleBindingName,
-			Labels: labels,
+			Name:   k.Name,
+			Labels: labels(k),
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "ClusterRole",
-			Name:     ClusterRoleName,
+			Name:     k.Name,
 		},
 		Subjects: []rbacv1.Subject{{
 			Kind:      "ServiceAccount",
-			Name:      ServiceAccountName,
-			Namespace: components.Namespace,
+			Name:      k.Name,
+			Namespace: k.Namespace(),
 		}},
 	}
 }
 
-func NewSCC(d components.Detail, k *v1alpha1.Kepler) *secv1.SecurityContextConstraints {
+func NewSCC(d components.Detail, ki *v1alpha1.KeplerInternal) *secv1.SecurityContextConstraints {
 	if d == components.Metadata {
 		return &secv1.SecurityContextConstraints{
 			TypeMeta: metav1.TypeMeta{
@@ -390,8 +357,8 @@ func NewSCC(d components.Detail, k *v1alpha1.Kepler) *secv1.SecurityContextConst
 			},
 
 			ObjectMeta: metav1.ObjectMeta{
-				Name:   SCCName,
-				Labels: labels,
+				Name:   ki.Name,
+				Labels: labels(ki),
 			},
 		}
 	}
@@ -403,8 +370,8 @@ func NewSCC(d components.Detail, k *v1alpha1.Kepler) *secv1.SecurityContextConst
 		},
 
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   SCCName,
-			Labels: labels,
+			Name:   ki.Name,
+			Labels: labels(ki),
 		},
 
 		AllowPrivilegedContainer: true,
@@ -425,8 +392,7 @@ func NewSCC(d components.Detail, k *v1alpha1.Kepler) *secv1.SecurityContextConst
 		SELinuxContext: secv1.SELinuxContextStrategyOptions{
 			Type: secv1.SELinuxStrategyRunAsAny,
 		},
-		//TODO: decide if "kepler" is really needed?
-		Users: []string{"kepler", FQServiceAccountName},
+		Users: []string{ki.FQServiceAccountName()},
 		Volumes: []secv1.FSType{
 			secv1.FSType("configMap"),
 			secv1.FSType("projected"),
@@ -435,22 +401,22 @@ func NewSCC(d components.Detail, k *v1alpha1.Kepler) *secv1.SecurityContextConst
 	}
 }
 
-func NewServiceAccount() *corev1.ServiceAccount {
+func NewServiceAccount(ki *v1alpha1.KeplerInternal) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
 			Kind:       "ServiceAccount",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ServiceAccountName,
-			Namespace: components.Namespace,
-			Labels:    labels,
+			Name:      ki.Name,
+			Namespace: ki.Namespace(),
+			Labels:    labels(ki).ToMap(),
 		},
 	}
 }
 
-func NewService(k *v1alpha1.Kepler) *corev1.Service {
-	deployment := k.Spec.Exporter.Deployment
+func NewService(k *v1alpha1.KeplerInternal) *corev1.Service {
+	deployment := k.Spec.Exporter.Deployment.ExporterDeploymentSpec
 
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -458,14 +424,14 @@ func NewService(k *v1alpha1.Kepler) *corev1.Service {
 			Kind:       "Service",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ServiceName,
-			Namespace: components.Namespace,
-			Labels:    labels,
+			Name:      k.Name,
+			Namespace: k.Namespace(),
+			Labels:    labels(k).ToMap(),
 		},
 		Spec: corev1.ServiceSpec{
 
 			ClusterIP: "None",
-			Selector:  podSelector,
+			Selector:  podSelector(k),
 			Ports: []corev1.ServicePort{{
 				Name: ServicePortName,
 				Port: int32(deployment.Port),
@@ -478,7 +444,7 @@ func NewService(k *v1alpha1.Kepler) *corev1.Service {
 	}
 }
 
-func NewServiceMonitor() *monv1.ServiceMonitor {
+func NewServiceMonitor(k *v1alpha1.KeplerInternal) *monv1.ServiceMonitor {
 	relabelings := []*monv1.RelabelConfig{{
 		Action:      "replace",
 		Regex:       "(.*)",
@@ -495,9 +461,9 @@ func NewServiceMonitor() *monv1.ServiceMonitor {
 			Kind:       "ServiceMonitor",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ServiceMonitorName,
-			Namespace: components.Namespace,
-			Labels:    labels,
+			Name:      k.Name,
+			Namespace: k.Namespace(),
+			Labels:    labels(k).ToMap(),
 		},
 		Spec: monv1.ServiceMonitorSpec{
 			Endpoints: []monv1.Endpoint{{
@@ -508,14 +474,31 @@ func NewServiceMonitor() *monv1.ServiceMonitor {
 			}},
 			JobLabel: "app.kubernetes.io/name",
 			Selector: metav1.LabelSelector{
-				MatchLabels: labels,
+				MatchLabels: labels(k),
 			},
 		},
 	}
 }
 
-func NewPrometheusRule() *monv1.PrometheusRule {
+var (
+	promRuleInvalidChars = regexp.MustCompile(`[^a-zA-Z0-9]`)
+)
+
+func keplerRulePrefix(name string) string {
+	ruleName := promRuleInvalidChars.ReplaceAllString(name, "_")
+	return fmt.Sprintf("kepler:%s", ruleName)
+}
+
+func NewPrometheusRule(k *v1alpha1.KeplerInternal) *monv1.PrometheusRule {
 	interval := monv1.Duration("15s")
+	ns := k.Namespace()
+	//
+	// NOTE: recording rules have a kepler-internal name prefixed as
+	// kepler:<kepler_internal> so that there is a unique rule created per
+	// object and dashboards can rely on kepler:kepler:<rules> for the
+	// `kepler` object.
+
+	prefix := keplerRulePrefix(k.Name)
 
 	return &monv1.PrometheusRule{
 		TypeMeta: metav1.TypeMeta{
@@ -523,73 +506,73 @@ func NewPrometheusRule() *monv1.PrometheusRule {
 			Kind:       "PrometheusRule",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      PrometheusRuleName,
-			Namespace: components.Namespace,
-			Labels:    labels,
+			Name:      k.Name,
+			Namespace: ns,
+			Labels:    labels(k).ToMap(),
 		},
 		Spec: monv1.PrometheusRuleSpec{
 			Groups: []monv1.RuleGroup{{
 				Name:     "kepler.rules",
 				Interval: &interval,
 				Rules: []monv1.Rule{
-					record("kepler:container_joules_total:consumed:24h:all",
-						`sum(
-							increase(kepler_container_joules_total[24h:1m])
-						)`,
+					record(prefix, "container_joules_total:consumed:24h:all",
+						fmt.Sprintf(`sum(
+							increase(kepler_container_joules_total{namespace=%q}[24h:1m])
+						)`, ns),
 					),
-					record("kepler:container_joules_total:consumed:24h:by_ns",
-						`sum by (container_namespace) (
-								increase(kepler_container_joules_total[24h:1m])
-						 )`,
-					),
-
-					record("kepler:container_gpu_joules_total:consumed:1h:by_ns",
-						`sum by (container_namespace) (
-								increase(kepler_container_gpu_joules_total[1h:15s])
-						 )`,
+					record(prefix, "container_joules_total:consumed:24h:by_ns",
+						fmt.Sprintf(`sum by (container_namespace) (
+								increase(kepler_container_joules_total{namespace=%q}[24h:1m])
+						)`, ns),
 					),
 
-					record("kepler:container_dram_joules_total:consumed:1h:by_ns",
-						`sum by (container_namespace) (
-								increase(kepler_container_dram_joules_total[1h:15s])
-						 )`,
+					record(prefix, "container_gpu_joules_total:consumed:1h:by_ns",
+						fmt.Sprintf(`sum by (container_namespace) (
+								increase(kepler_container_gpu_joules_total{namespace=%q}[1h:15s])
+						)`, ns),
 					),
 
-					record("kepler:container_package_joules_total:consumed:1h:by_ns",
-						`sum by (container_namespace) (
-								increase(kepler_container_package_joules_total[1h:15s])
-						 )`,
+					record(prefix, "container_dram_joules_total:consumed:1h:by_ns",
+						fmt.Sprintf(`sum by (container_namespace) (
+								increase(kepler_container_dram_joules_total{namespace=%q}[1h:15s])
+						)`, ns),
 					),
 
-					record("kepler:container_other_joules_total:consumed:1h:by_ns",
-						`sum by (container_namespace) (
-								increase(kepler_container_other_joules_total[1h:15s])
-						 )`,
+					record(prefix, "container_package_joules_total:consumed:1h:by_ns",
+						fmt.Sprintf(`sum by (container_namespace) (
+								increase(kepler_container_package_joules_total{namespace=%q}[1h:15s])
+						)`, ns),
+					),
+
+					record(prefix, "container_other_joules_total:consumed:1h:by_ns",
+						fmt.Sprintf(`sum by (container_namespace) (
+								increase(kepler_container_other_joules_total{namespace=%q}[1h:15s])
+						)`, ns),
 					),
 
 					// irate of joules = joules per second -> watts
-					record("kepler:container_gpu_watts:1m:by_ns_pod",
-						`sum by (container_namespace, pod_name) (
-								irate(kepler_container_gpu_joules_total[1m])
-						)`,
+					record(prefix, "container_gpu_watts:1m:by_ns_pod",
+						fmt.Sprintf(`sum by (container_namespace, pod_name) (
+								irate(kepler_container_gpu_joules_total{namespace=%q}[1m])
+						)`, ns),
 					),
 
-					record("kepler:container_package_watts:1m:by_ns_pod",
-						`sum by (container_namespace, pod_name) (
-								irate(kepler_container_package_joules_total[1m])
-						)`,
+					record(prefix, "container_package_watts:1m:by_ns_pod",
+						fmt.Sprintf(`sum by (container_namespace, pod_name) (
+								irate(kepler_container_package_joules_total{namespace=%q}[1m])
+						)`, ns),
 					),
 
-					record("kepler:container_other_watts:1m:by_ns_pod",
-						`sum by (container_namespace, pod_name) (
-								irate(kepler_container_other_joules_total[1m])
-						)`,
+					record(prefix, "container_other_watts:1m:by_ns_pod",
+						fmt.Sprintf(`sum by (container_namespace, pod_name) (
+								irate(kepler_container_other_joules_total{namespace=%q}[1m])
+						)`, ns),
 					),
 
-					record("kepler:container_dram_watts:1m:by_ns_pod",
-						`sum by (container_namespace, pod_name) (
-								irate(kepler_container_dram_joules_total[1m])
-						)`,
+					record(prefix, "container_dram_watts:1m:by_ns_pod",
+						fmt.Sprintf(`sum by (container_namespace, pod_name) (
+								irate(kepler_container_dram_joules_total{namespace=%q}[1m])
+						)`, ns),
 					),
 				},
 			}},
@@ -597,14 +580,23 @@ func NewPrometheusRule() *monv1.PrometheusRule {
 	}
 }
 
-func record(name, expr string) monv1.Rule {
+func record(prefix, name, expr string) monv1.Rule {
 	return monv1.Rule{
 		Expr:   intstr.IntOrString{Type: intstr.String, StrVal: expr},
-		Record: name,
+		Record: prefix + ":" + name,
 	}
 }
 
-func IsLibbpfAttachType(k *v1alpha1.Kepler) bool {
-	bpftype, ok := k.Annotations[KeplerBpfAttachMethodAnnotation]
-	return ok && strings.ToLower(bpftype) == KeplerBpfAttachMethodLibbpf
+func podSelector(ki *v1alpha1.KeplerInternal) k8s.StringMap {
+	return labels(ki).Merge(k8s.StringMap{
+		"app.kubernetes.io/name": "kepler-exporter",
+	})
+}
+
+func labels(ki *v1alpha1.KeplerInternal) k8s.StringMap {
+	return components.CommonLabels.Merge(k8s.StringMap{
+		"app.kubernetes.io/component":                "exporter",
+		"operator.sustainable-computing.io/internal": ki.Name,
+		"app.kubernetes.io/part-of":                  ki.Name,
+	})
 }

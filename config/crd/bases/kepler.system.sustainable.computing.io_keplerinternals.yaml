@@ -4,14 +4,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.12.1
-  name: keplers.kepler.system.sustainable.computing.io
+  name: keplerinternals.kepler.system.sustainable.computing.io
 spec:
   group: kepler.system.sustainable.computing.io
   names:
-    kind: Kepler
-    listKind: KeplerList
-    plural: keplers
-    singular: kepler
+    kind: KeplerInternal
+    listKind: KeplerInternalList
+    plural: keplerinternals
+    singular: keplerinternal
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -24,11 +24,11 @@ spec:
     - jsonPath: .status.exporter.currentNumberScheduled
       name: Current
       type: integer
+    - jsonPath: .status.updatedNumberScheduled
+      name: Up-to-date
+      type: integer
     - jsonPath: .status.exporter.numberReady
       name: Ready
-      type: integer
-    - jsonPath: .status.exporter.updatedNumberScheduled
-      name: Up-to-date
       type: integer
     - jsonPath: .status.exporter.numberAvailable
       name: Available
@@ -36,6 +36,9 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
+    - jsonPath: .spec.exporter.deployment.image
+      name: Image
+      type: string
     - jsonPath: .spec.exporter.deployment.nodeSelector
       name: Node-Selector
       priority: 10
@@ -47,7 +50,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Kepler is the Schema for the keplers API
+        description: KeplerInternal is the Schema for the keplers internal API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -62,12 +65,20 @@ spec:
           metadata:
             type: object
           spec:
-            description: KeplerSpec defines the desired state of Kepler
+            description: KeplerInternalSpec defines the desired state of KeplerInternal
             properties:
               exporter:
                 properties:
                   deployment:
                     properties:
+                      image:
+                        description: Image of kepler-exporter to be deployed
+                        minLength: 3
+                        type: string
+                      namespace:
+                        description: Namespace where kepler-exporter will be deployed
+                        minLength: 1
+                        type: string
                       nodeSelector:
                         additionalProperties:
                           type: string
@@ -128,11 +139,32 @@ spec:
                               type: string
                           type: object
                         type: array
+                    required:
+                    - image
+                    - namespace
                     type: object
+                required:
+                - deployment
                 type: object
+              openshift:
+                properties:
+                  dashboard:
+                    properties:
+                      enabled:
+                        default: false
+                        type: boolean
+                    type: object
+                  enabled:
+                    default: true
+                    type: boolean
+                required:
+                - enabled
+                type: object
+            required:
+            - exporter
             type: object
           status:
-            description: KeplerStatus defines the observed state of Kepler
+            description: KeplerInternalStatus represents status of KeplerInternal
             properties:
               exporter:
                 description: ExporterStatus defines the observed state of Kepler Exporter

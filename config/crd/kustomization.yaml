@@ -3,6 +3,7 @@
 # It should be run by config/default
 resources:
 - bases/kepler.system.sustainable.computing.io_keplers.yaml
+- bases/kepler.system.sustainable.computing.io_keplerinternals.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:
