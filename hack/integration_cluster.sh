@@ -25,7 +25,7 @@ main() {
 
 function kindTest() {
 	echo "install kind"
-	go install sigs.k8s.io/kind@v0.12.0
+	go install sigs.k8s.io/kind@v0.20.0
 
 	echo "Starting kind with cluster name \"${CLUSTER_NAME}\""
 
