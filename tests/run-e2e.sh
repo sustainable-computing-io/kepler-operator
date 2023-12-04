@@ -152,7 +152,6 @@ run_e2e() {
 	local ret=0
 	go test -v -failfast -timeout $TEST_TIMEOUT \
 		./tests/e2e/... \
-		-run Reconcile \
 		2>&1 | tee "$LOGS_DIR/e2e.log" || ret=1
 
 	# terminate both log_events

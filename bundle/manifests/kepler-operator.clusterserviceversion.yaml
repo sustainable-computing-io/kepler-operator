@@ -27,7 +27,7 @@ metadata:
     capabilities: Basic Install
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.9.2
-    createdAt: "2023-11-30T08:58:07Z"
+    createdAt: "2023-12-04T08:14:16Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.27.0
     operators.operatorframework.io/internal-objects: |-
@@ -258,7 +258,7 @@ spec:
                   httpGet:
                     path: /healthz
                     port: 8081
-                  initialDelaySeconds: 15
+                  initialDelaySeconds: 20
                   periodSeconds: 20
                 name: manager
                 ports:
@@ -269,8 +269,8 @@ spec:
                   httpGet:
                     path: /readyz
                     port: 8081
-                  initialDelaySeconds: 5
-                  periodSeconds: 10
+                  initialDelaySeconds: 20
+                  periodSeconds: 20
                 resources:
                   limits:
                     cpu: 500m
