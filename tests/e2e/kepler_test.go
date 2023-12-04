@@ -76,7 +76,7 @@ func TestBadKepler_Reconciliation(t *testing.T) {
 	k := f.CreateKepler("invalid-name")
 
 	ds := appsv1.DaemonSet{}
-	f.AssertNoResourceExists(k.Name, controllers.BpfAttachMethodAnnotation, &ds)
+	f.AssertNoResourceExists(k.Name, controllers.KeplerDeploymentNS, &ds)
 }
 
 func TestNodeSelector(t *testing.T) {
