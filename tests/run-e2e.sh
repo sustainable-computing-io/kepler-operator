@@ -25,6 +25,7 @@ declare BUNDLE_IMG=""
 declare CI_MODE=false
 declare NO_DEPLOY=false
 declare NO_BUILDS=false
+declare NO_UPGRADE=false
 declare SHOW_USAGE=false
 declare LOGS_DIR="tmp/e2e"
 declare OPERATORS_NS="operators"
@@ -93,7 +94,7 @@ gather_olm() {
 }
 
 run_bundle_upgrade() {
-	header "Running Bundle"
+	header "Running Bundle Upgrade"
 	local -i ret=0
 
 	local replaced_version=""
@@ -112,6 +113,22 @@ run_bundle_upgrade() {
 	}
 
 	info "Running Upgrade to new bundle"
+	run ./tmp/bin/operator-sdk run bundle-upgrade "$BUNDLE_IMG" \
+		--namespace "$OPERATORS_NS" --use-http || {
+		ret=$?
+		line 50 heavy
+		gather_olm || true
+		fail "Running Bundle Upgrade failed"
+		return $ret
+
+	}
+	return 0
+}
+
+run_bundle() {
+	header "Running Bundle"
+	local -i ret=0
+
 	run ./tmp/bin/operator-sdk run bundle-upgrade "$BUNDLE_IMG" \
 		--namespace "$OPERATORS_NS" --use-http || {
 		ret=$?
@@ -185,6 +202,10 @@ parse_args() {
 			NO_DEPLOY=true
 			shift
 			;;
+		--no-upgrade)
+			NO_UPGRADE=true
+			shift
+			;;
 		--no-builds)
 			NO_BUILDS=true
 			shift
@@ -233,6 +254,7 @@ print_usage() {
 		  --no-deploy      do not build and deploy Operator; useful for rerunning tests
 		  --no-builds      skip building operator images; useful when operator image is already
 		                   built and pushed
+		  --no-upgrade     run the operator bundle instead of performing an upgrade test
 		  --ns NAMESPACE   namespace to deploy operators (default: $OPERATORS_NS)
 		                   E.g. running against openshift use --ns openshift-operators
 
@@ -260,6 +282,8 @@ restart_operator() {
 	run kubectl wait -n "$OPERATORS_NS" --for=delete \
 		pods -l app.kubernetes.io/component=operator --timeout=60s
 
+	update_crds
+
 	info "scale up"
 	kubectl scale -n "$OPERATORS_NS" --replicas=1 "$deployment"
 	wait_for_operator "$OPERATORS_NS"
@@ -268,13 +292,11 @@ restart_operator() {
 
 }
 
-update_cluster_mon_crds() {
+update_crds() {
 	# try replacing any installed crds; failure is often because the
 	# CRDs are absent and in that case, try creating and fail if that fails
 
-	run kubectl apply --server-side --force-conflicts \
-		-k config/crd
-
+	run kubectl apply --server-side --force-conflicts -k config/crd
 	run kubectl wait --for=condition=Established crds --all --timeout=120s
 
 	return 0
@@ -285,8 +307,10 @@ kind_load_images() {
 	while read -r img; do
 		run docker pull "$img"
 		run kind load docker-image "$img"
-		run docker image rm "$img"
+		$CI_MODE && run docker image rm "$img"
 	done < <(yq -r .spec.relatedImages[].image "$OPERATOR_CSV")
+
+	return 0
 }
 
 docker_prune() {
@@ -305,14 +329,17 @@ deploy_operator() {
 		run df -h
 	}
 
-	kind_load_images
-
-	delete_olm_subscription || true
 	ensure_imgpullpolicy_always_in_yaml
-	update_cluster_mon_crds
+	kind_load_images
+	delete_olm_subscription || true
 	build_bundle
 	push_bundle
-	run_bundle_upgrade
+
+	if $NO_UPGRADE; then
+		run_bundle
+	else
+		run_bundle_upgrade
+	fi
 	wait_for_operator "$OPERATORS_NS"
 }
 
@@ -366,6 +393,21 @@ wait_for_operator() {
 	run kubectl wait -n "$OPERATORS_NS" --for=condition=Available \
 		--timeout=300s "$deployment"
 
+	# NOTE: ensure that operator is actually ready by creating an invalid kepler
+	# and wait until the operator is able to reconcile
+	info "Ensure that operator can reconcile"
+
+	local invalid_kepler='invalid-pre-test-kepler'
+	sed -e "s|name: kepler$|name: $invalid_kepler|g" \
+		config/samples/kepler.system_v1alpha1_kepler.yaml |
+		kubectl apply -f -
+
+	run kubectl wait --for=jsonpath='{.status.exporter}' \
+		--timeout=60s kepler $invalid_kepler
+	run kubectl delete kepler $invalid_kepler
+	run kubectl wait --timeout=30s \
+		--for=delete kepler $invalid_kepler
+
 	ok "Operator up and running"
 }
 
@@ -399,10 +441,10 @@ main() {
 	init_logs_dir
 	print_config
 
-	if ! $NO_DEPLOY; then
-		deploy_operator
-	else
+	if $NO_DEPLOY; then
 		restart_operator || die "restarting operator failed 🤕"
+	else
+		deploy_operator
 	fi
 
 	local -i ret=0
