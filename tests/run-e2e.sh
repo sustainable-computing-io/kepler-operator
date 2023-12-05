@@ -129,12 +129,12 @@ run_bundle() {
 	header "Running Bundle"
 	local -i ret=0
 
-	run ./tmp/bin/operator-sdk run bundle-upgrade "$BUNDLE_IMG" \
+	run ./tmp/bin/operator-sdk run bundle "$BUNDLE_IMG" \
 		--namespace "$OPERATORS_NS" --use-http || {
 		ret=$?
 		line 50 heavy
 		gather_olm || true
-		fail "Running Bundle Upgrade failed"
+		fail "Running Bundle failed"
 		return $ret
 
 	}
@@ -157,6 +157,7 @@ watch_operator_errors() {
 		grep -i error | tee "$err_log"
 }
 
+# run_e2e takes an optional set of args to be passed to go test
 run_e2e() {
 	header "Running e2e tests"
 
@@ -167,8 +168,8 @@ run_e2e() {
 	watch_operator_errors "$error_log" &
 
 	local ret=0
-	go test -v -failfast -timeout $TEST_TIMEOUT \
-		./tests/e2e/... \
+	run go test -v -failfast -timeout $TEST_TIMEOUT \
+		./tests/e2e/... "$@" \
 		2>&1 | tee "$LOGS_DIR/e2e.log" || ret=1
 
 	# terminate both log_events
@@ -190,14 +191,20 @@ run_e2e() {
 	return $ret
 }
 
+# NOTE: ARGS_PARSED will be set by parse_args to the number of args
+# it was able to parse
+declare -i ARGS_PARSED=0
+
 parse_args() {
 	### while there are args parse them
 	while [[ -n "${1+xxx}" ]]; do
+		ARGS_PARSED+=1
 		case $1 in
 		-h | --help)
 			SHOW_USAGE=true
 			break
 			;; # exit the loop
+		--) break ;;
 		--no-deploy)
 			NO_DEPLOY=true
 			shift
@@ -218,11 +225,13 @@ parse_args() {
 			shift
 			IMG_BASE="$1"
 			shift
+			ARGS_PARSED+=1
 			;;
 		--ns)
 			shift
 			OPERATORS_NS=$1
 			shift
+			ARGS_PARSED+=1
 			;;
 		*) return 1 ;; # show usage on everything else
 		esac
@@ -242,13 +251,25 @@ print_usage() {
 	scr="$(basename "$0")"
 
 	read -r -d '' help <<-EOF_HELP || true
-		Usage:
+		🔆 Usage:
 		  $scr
-		  $scr  --no-deploy
+		  $scr  [OPTIONS] -- [GO TEST ARGS]
 		  $scr  -h|--help
 
+		💡 Examples :
+		  # run all tests
+		  ❯   $scr
 
-		Options:
+		  # run only invalid test
+		  ❯   $scr -- -run TestInvalid
+
+		  # Do not run upgrade scenario
+		  ❯   $scr --no-upgrade
+
+		  # Do not redeploy operator and run only invalid test
+		  ❯   $scr --no-deploy  -- -run TestInvalid
+
+		⚙️ Options :
 		  -h|--help        show this help
 		  --ci             run in CI mode
 		  --no-deploy      do not build and deploy Operator; useful for rerunning tests
@@ -420,6 +441,7 @@ print_config() {
 		  CI Mode:         $CI_MODE
 		  Skip Builds:     $NO_BUILDS
 		  Skip Deploy:     $NO_DEPLOY
+		  Skip Upgrade:    $NO_UPGRADE
 		  Operator namespace: $OPERATORS_NS
 		  Logs directory: $LOGS_DIR
 
@@ -430,6 +452,8 @@ print_config() {
 main() {
 	export PATH="$LOCAL_BIN:$PATH"
 	parse_args "$@" || die "parse args failed"
+	# eat up all the parsed args so that the rest can be passed to go test
+	shift $ARGS_PARSED
 	$SHOW_USAGE && {
 		print_usage
 		exit 0
@@ -448,7 +472,7 @@ main() {
 	fi
 
 	local -i ret=0
-	run_e2e || ret=$?
+	run_e2e "$@" || ret=$?
 
 	info "e2e test - exit code: $ret"
 	line 50 heavy
