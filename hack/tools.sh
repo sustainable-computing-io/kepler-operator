@@ -34,6 +34,7 @@ declare -r OPERATOR_SDK_VERSION=${OPERATOR_SDK_VERSION:-v1.27.0}
 declare -r YQ_VERSION=${YQ_VERSION:-v4.34.2}
 declare -r CRDOC_VERSION=${CRDOC_VERSION:-v0.6.2}
 declare -r OC_VERSION=${OC_VERSION:-4.13.0}
+declare -r KUBECTL_VERSION=${KUBECTL_VERSION:-v1.28.4}
 declare -r SHFMT_VERSION=${SHFMT_VERSION:-v3.7.0}
 
 # install
@@ -43,6 +44,60 @@ declare -r YQ_INSTALL="https://github.com/mikefarah/yq/releases/download/$YQ_VER
 declare -r OC_URL="https://mirror.openshift.com/pub/openshift-v4/clients/ocp/$OC_VERSION"
 
 source "$PROJECT_ROOT/hack/utils.bash"
+
+go_install() {
+	local pkg="$1"
+	local version="$2"
+	shift 2
+
+	info "installing $pkg version: $version"
+
+	GOBIN=$LOCAL_BIN go install "$pkg@$version" || {
+		fail "failed to install $pkg - $version"
+		return 1
+	}
+	ok "$pkg - $version was installed successfully"
+	return 0
+}
+
+validate_version() {
+	local cmd="$1"
+	local version_arg="$2"
+	local version_regex="$3"
+	shift 3
+
+	command -v "$cmd" >/dev/null 2>&1 || return 1
+
+	[[ "$(eval "$cmd $version_arg" | grep -o "$version_regex")" =~ $version_regex ]] || {
+		return 1
+	}
+
+	ok "$cmd matching $version_regex already installed"
+}
+
+version_kubectl() {
+	kubectl version --client
+}
+
+install_kubectl() {
+	local version_regex="Client Version: $KUBECTL_VERSION"
+
+	validate_version kubectl "version --client" "$version_regex" && return 0
+
+	info "installing kubectl version: $KUBECTL_VERSION"
+	local install_url="https://dl.k8s.io/release/$KUBECTL_VERSION/bin/$GOOS/$GOARCH/kubectl"
+
+	curl -Lo "$LOCAL_BIN/kubectl" "$install_url" || {
+		fail "failed to install kubectl"
+		return 1
+	}
+	chmod +x "$LOCAL_BIN/kubectl"
+	ok "kubectl - $KUBECTL_VERSION was installed successfully"
+}
+
+version_kustomize() {
+	kustomize version
+}
 
 install_kustomize() {
 	validate_version kustomize version "$KUSTOMIZE_VERSION" && return 0
@@ -59,18 +114,18 @@ install_kustomize() {
 	ok "kustomize was installed successfully"
 }
 
+version_controller-gen() {
+	controller-gen --version
+}
+
 install_controller-gen() {
 	local version_regex="Version: $CONTROLLER_TOOLS_VERSION"
-
 	validate_version controller-gen --version "$version_regex" && return 0
+	go_install sigs.k8s.io/controller-tools/cmd/controller-gen "$CONTROLLER_TOOLS_VERSION"
+}
 
-	info "installing controller-gen with version: $CONTROLLER_TOOLS_VERSION"
-	GOBIN=$LOCAL_BIN \
-		go install sigs.k8s.io/controller-tools/cmd/controller-gen@"$CONTROLLER_TOOLS_VERSION" || {
-		fail "failed to install controller-gen"
-		return 1
-	}
-	ok "controller-gen was installed successfully"
+version_operator-sdk() {
+	operator-sdk version
 }
 
 install_operator-sdk() {
@@ -87,13 +142,23 @@ install_operator-sdk() {
 	ok "operator-sdk was installed successfully"
 }
 
+version_govulncheck() {
+	warn govulncheck - latest
+}
+
 install_govulncheck() {
+
+	# NOTE: govulncheck does not have a -version flag, so checking
+	# if it is available is "good" enough
 	command -v govulncheck >/dev/null 2>&1 && {
 		ok "govulncheck is already installed"
 		return 0
 	}
-	info "installing go-vulncheck"
-	go install golang.org/x/vuln/cmd/govulncheck@latest
+	go_install golang.org/x/vuln/cmd/govulncheck latest
+}
+
+version_yq() {
+	yq --version
 }
 
 install_yq() {
@@ -110,53 +175,28 @@ install_yq() {
 	ok "yq was installed successfully"
 }
 
-go_install() {
-	local pkg="$1"
-	local version="$2"
-	shift 2
-
-	info "installing $pkg version: $version"
-
-	GOBIN=$LOCAL_BIN \
-		go install "$pkg@$version" || {
-		fail "failed to install $pkg - $version"
-		return 1
-	}
-	ok "$pkg - $version was installed successfully"
-
+version_shfmt() {
+	shfmt --version
 }
 
-validate_version() {
-	local cmd="$1"
-	local version_arg="$2"
-	local version_regex="$3"
-	shift 3
-
-	command -v "$cmd" >/dev/null 2>&1 || return 1
-	[[ $(eval "$cmd $version_arg" | grep -o "$version_regex") =~ $version_regex ]] || {
-		return 1
-	}
-
-	ok "$cmd already installed successfully"
-}
 install_shfmt() {
 	validate_version shfmt --version "$SHFMT_VERSION" && return 0
-
 	go_install mvdan.cc/sh/v3/cmd/shfmt "$SHFMT_VERSION"
+}
+
+version_crdoc() {
+	crdoc --version
 }
 
 install_crdoc() {
 	local version_regex="version $CRDOC_VERSION"
 
 	validate_version crdoc --version "$version_regex" && return 0
+	go_install fybrik.io/crdoc "$CRDOC_VERSION"
+}
 
-	info "installing crdoc with version: $CRDOC_VERSION"
-	GOBIN=$LOCAL_BIN \
-		go install "fybrik.io/crdoc@$CRDOC_VERSION" || {
-		fail "failed to install crdoc"
-		return 1
-	}
-	ok "crdoc was installed successfully"
+version_oc() {
+	oc version --client
 }
 
 install_oc() {
@@ -169,11 +209,17 @@ install_oc() {
 	[[ $os == "darwin" ]] && os="mac"
 
 	local install="$OC_URL/openshift-client-$os.tar.gz"
-	curl -sNL "$install" | tar -xzf - -C "$LOCAL_BIN" || {
+	# NOTE: tar should be extracted to a tmp dir since it also contains kubectl
+	# which overwrites kubectl installed by install_kubectl above
+	local oc_tmp="$LOCAL_BIN/tmp-oc"
+	mkdir -p "$oc_tmp"
+	curl -sNL "$install" | tar -xzf - -C "$oc_tmp" || {
 		fail "failed to install oc"
 		return 1
 	}
+	mv "$oc_tmp/oc" "$LOCAL_BIN/"
 	chmod +x "$LOCAL_BIN/oc"
+	rm -rf "$LOCAL_BIN/tmp-oc/"
 	ok "oc was installed successfully"
 
 }
@@ -187,13 +233,35 @@ install_all() {
 	return $ret
 }
 
+version_all() {
+
+	header "Versions"
+	for version_tool in $(declare -F | cut -f3 -d ' ' | grep version_ | grep -v 'version_all'); do
+		local tool="${version_tool#version_}"
+		local location=""
+		location="$(command -v "$tool")"
+		info "$tool -> $location"
+		"$version_tool"
+		echo
+	done
+	line "50"
+}
+
 main() {
 	local op="${1:-all}"
 	shift || true
 
 	mkdir -p "$LOCAL_BIN"
 	export PATH="$LOCAL_BIN:$PATH"
+
+	# NOTE: skip installation if invocation is tools.sh version
+	if [[ "$op" == "version" ]]; then
+		version_all
+		return $?
+	fi
+
 	install_"$op"
+	version_"$op"
 }
 
 main "$@"
