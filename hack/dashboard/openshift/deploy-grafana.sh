@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 set -eu -o pipefail
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
@@ -96,19 +95,18 @@ validate_cluster() {
 }
 
 wait_for_kepler_to_be_available() {
-	local timeout=2m
-	header "waiting for kepler to be available (timeout: $timeout)"
-	run oc wait --for=condition=Available kepler kepler --timeout=$timeout && {
+	header "waiting for kepler to be available"
+	wait_until 10 10 "kepler to be available" condition_check "True" oc get kepler kepler \
+		-o jsonpath="{.status.exporter.conditions[?(@.type=='Available')].status}" && {
 		ok "kepler is available"
 		return 0
 	}
-
-	fail "kepler not ready after waiting for $timeout."
+	fail "kepler not ready"
 	run oc get kepler
 	line 50
 	oc get kepler kepler -o jsonpath="$(
 		cat <<-EOF
-			{range .status.conditions[?(@.status!="True")]}
+			{range .status.exporter.conditions[?(@.status!="True")]}
 				{" * "}{.type}{":"} {.status}
 				      {.reason}
 				      {.message}
@@ -140,7 +138,7 @@ enable_userworkload_monitoring() {
 	fi
 	show_restore_info
 
-	wait_until 10 10 "$UWM_NS to be created " oc get ns "$UWM_NS"
+	wait_until 10 10 "$UWM_NS to be created" oc get ns "$UWM_NS"
 	wait_until 10 10 "User Workload Prometheus to be created" \
 		oc wait --for condition=Available -n "$UWM_NS" prometheus user-workload
 }

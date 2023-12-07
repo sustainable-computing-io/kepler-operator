@@ -87,7 +87,9 @@
         "footer": {
           "enablePagination": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true
@@ -172,7 +174,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -185,7 +189,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "kepler:container_joules_total:consumed:24h:all * $watt_per_second_to_kWh",
+          "expr": "kepler:kepler:container_joules_total:consumed:24h:all * $watt_per_second_to_kWh",
           "refId": "A"
         }
       ],
@@ -237,7 +241,9 @@
         "minVizWidth": 0,
         "orientation": "horizontal",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "limit": 10,
           "values": true
@@ -253,7 +259,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk(10, kepler:container_joules_total:consumed:24h:by_ns) * $watt_per_second_to_kWh",
+          "expr": "topk(10, kepler:kepler:container_joules_total:consumed:24h:by_ns) * $watt_per_second_to_kWh",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -269,7 +275,9 @@
           "options": {
             "fields": {
               "Value": {
-                "aggregations": ["lastNotNull"],
+                "aggregations": [
+                  "lastNotNull"
+                ],
                 "operation": "aggregate"
               },
               "container_namespace": {
@@ -439,7 +447,10 @@
       ],
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": [
+            "mean",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "bottom"
         },
@@ -455,7 +466,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(kepler:container_package_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
+          "expr": "sum(kepler:kepler:container_package_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
           "hide": false,
           "interval": "5m",
           "legendFormat": "PKG",
@@ -468,7 +479,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(kepler:container_dram_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
+          "expr": "sum(kepler:kepler:container_dram_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
           "hide": false,
           "interval": "5m",
           "legendFormat": "DRAM",
@@ -481,7 +492,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(kepler:container_other_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
+          "expr": "sum(kepler:kepler:container_other_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
           "hide": false,
           "interval": "5m",
           "legendFormat": "OTHER",
@@ -494,7 +505,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(kepler:container_gpu_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
+          "expr": "sum(kepler:kepler:container_gpu_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
           "hide": false,
           "interval": "5m",
           "legendFormat": " GPU",
@@ -636,7 +647,10 @@
       ],
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": [
+            "mean",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "sortBy": "Max",
@@ -654,7 +668,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "kepler:container_package_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * $watt_per_second_to_kWh",
+          "expr": "kepler:kepler:container_package_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * $watt_per_second_to_kWh",
           "hide": false,
           "interval": "5m",
           "legendFormat": "PKG (CORE + UNCORE)",
@@ -667,7 +681,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "kepler:container_dram_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * $watt_per_second_to_kWh",
+          "expr": "kepler:kepler:container_dram_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * $watt_per_second_to_kWh",
           "hide": false,
           "interval": "5m",
           "legendFormat": "DRAM",
@@ -680,7 +694,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "kepler:container_other_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * $watt_per_second_to_kWh",
+          "expr": "kepler:kepler:container_other_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * $watt_per_second_to_kWh",
           "hide": false,
           "interval": "5m",
           "legendFormat": "OTHER",
@@ -693,7 +707,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "kepler:container_gpu_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * $watt_per_second_to_kWh",
+          "expr": "kepler:kepler:container_gpu_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * $watt_per_second_to_kWh",
           "hide": false,
           "interval": "5m",
           "legendFormat": " GPU",
@@ -774,7 +788,9 @@
       ],
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "right",
           "sortBy": "Mean",
@@ -789,7 +805,7 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "kepler:container_package_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}",
+          "expr": "kepler:kepler:container_package_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}",
           "hide": false,
           "interval": "5m",
           "legendFormat": "{{pod_name}}",
@@ -870,7 +886,9 @@
       ],
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "right",
           "sortBy": "Mean",
@@ -885,7 +903,7 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "kepler:container_dram_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}",
+          "expr": "kepler:kepler:container_dram_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}",
           "hide": false,
           "interval": "5m",
           "legendFormat": "{{pod_name}}",
@@ -966,7 +984,9 @@
       ],
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "right",
           "sortBy": "Mean",
@@ -981,7 +1001,7 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name) (kepler:other_joules_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"})",
+          "expr": "sum by (pod_name) (kepler:kepler:other_joules_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"})",
           "hide": false,
           "interval": "5m",
           "legendFormat": "{{pod_name}}",
@@ -1062,7 +1082,9 @@
       ],
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "right",
           "sortBy": "Mean",
@@ -1077,7 +1099,7 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name) (kepler:container_gpu_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"})",
+          "expr": "sum by (pod_name) (kepler:kepler:container_gpu_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"})",
           "hide": false,
           "interval": "5m",
           "legendFormat": "{{pod_name}}",

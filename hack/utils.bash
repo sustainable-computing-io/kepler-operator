@@ -84,6 +84,17 @@ line() {
 	printf "$ch%.0s" $(seq "$len") >&2
 	echo
 }
+# condition_check <exp> <cond>
+# checks if the condition result matches the expected result
+condition_check() {
+	local exp="$1"
+	local cond="$2"
+	shift 2
+	[[ -n $exp ]] && [[ $("$cond" "$@") == "$exp" ]] && {
+		return 0
+	}
+	return 1
+}
 
 # wait_until <max_tries> <delay> <msg> <condition>
 # waits for condition to be true for a max of <max_tries> x <delay> seconds
@@ -99,6 +110,7 @@ wait_until() {
 	local -i ret=1
 	echo " ❯ $condition $*" 2>&1
 	while [[ $tries -lt $max_tries ]]; do
+
 		$condition "$@" && {
 			ret=0
 			break
