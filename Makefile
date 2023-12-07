@@ -265,6 +265,10 @@ CRDOC ?= $(LOCALBIN)/crdoc
 tools:
 	@./hack/tools.sh
 
+.PHONY: kubectl
+kubectl: ## Download kubectl locally if necessary.
+	@./hack/tools.sh $@
+
 .PHONY: kustomize
 kustomize: ## Download kustomize locally if necessary.
 	@./hack/tools.sh kustomize

@@ -12,6 +12,8 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Install all tools
+        uses: ./.github/tools-cache
       - name: make docs
         run: |
           make docs
@@ -36,6 +38,9 @@ jobs:
       - uses: actions/setup-go@main
         with:
           go-version-file: go.mod
+
+      - name: Install all tools
+        uses: ./.github/tools-cache
 
       - name: run escapes detect
         run: make escapes_detect
@@ -69,6 +74,10 @@ jobs:
       - uses: actions/setup-go@main
         with:
           go-version-file: go.mod
+
+      - name: Install all tools
+        uses: ./.github/tools-cache
+
       - name: run vulnerability detect
         run: make govulncheck
 

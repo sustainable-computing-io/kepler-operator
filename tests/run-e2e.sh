@@ -25,6 +25,7 @@ declare BUNDLE_IMG=""
 declare CI_MODE=false
 declare NO_DEPLOY=false
 declare NO_BUILDS=false
+declare NO_UPGRADE=false
 declare SHOW_USAGE=false
 declare LOGS_DIR="tmp/e2e"
 declare OPERATORS_NS="operators"
@@ -93,7 +94,7 @@ gather_olm() {
 }
 
 run_bundle_upgrade() {
-	header "Running Bundle"
+	header "Running Bundle Upgrade"
 	local -i ret=0
 
 	local replaced_version=""
@@ -124,6 +125,22 @@ run_bundle_upgrade() {
 	return 0
 }
 
+run_bundle() {
+	header "Running Bundle"
+	local -i ret=0
+
+	run ./tmp/bin/operator-sdk run bundle "$BUNDLE_IMG" \
+		--namespace "$OPERATORS_NS" --use-http || {
+		ret=$?
+		line 50 heavy
+		gather_olm || true
+		fail "Running Bundle failed"
+		return $ret
+
+	}
+	return 0
+}
+
 log_events() {
 	local ns="$1"
 	shift
@@ -140,6 +157,7 @@ watch_operator_errors() {
 		grep -i error | tee "$err_log"
 }
 
+# run_e2e takes an optional set of args to be passed to go test
 run_e2e() {
 	header "Running e2e tests"
 
@@ -150,8 +168,8 @@ run_e2e() {
 	watch_operator_errors "$error_log" &
 
 	local ret=0
-	go test -v -failfast -timeout $TEST_TIMEOUT \
-		./tests/e2e/... \
+	run go test -v -failfast -timeout $TEST_TIMEOUT \
+		./tests/e2e/... "$@" \
 		2>&1 | tee "$LOGS_DIR/e2e.log" || ret=1
 
 	# terminate both log_events
@@ -173,16 +191,26 @@ run_e2e() {
 	return $ret
 }
 
+# NOTE: ARGS_PARSED will be set by parse_args to the number of args
+# it was able to parse
+declare -i ARGS_PARSED=0
+
 parse_args() {
 	### while there are args parse them
 	while [[ -n "${1+xxx}" ]]; do
+		ARGS_PARSED+=1
 		case $1 in
 		-h | --help)
 			SHOW_USAGE=true
 			break
 			;; # exit the loop
+		--) break ;;
 		--no-deploy)
 			NO_DEPLOY=true
+			shift
+			;;
+		--no-upgrade)
+			NO_UPGRADE=true
 			shift
 			;;
 		--no-builds)
@@ -197,11 +225,13 @@ parse_args() {
 			shift
 			IMG_BASE="$1"
 			shift
+			ARGS_PARSED+=1
 			;;
 		--ns)
 			shift
 			OPERATORS_NS=$1
 			shift
+			ARGS_PARSED+=1
 			;;
 		*) return 1 ;; # show usage on everything else
 		esac
@@ -221,18 +251,31 @@ print_usage() {
 	scr="$(basename "$0")"
 
 	read -r -d '' help <<-EOF_HELP || true
-		Usage:
+		🔆 Usage:
 		  $scr
-		  $scr  --no-deploy
+		  $scr  [OPTIONS] -- [GO TEST ARGS]
 		  $scr  -h|--help
 
+		💡 Examples :
+		  # run all tests
+		  ❯   $scr
 
-		Options:
+		  # run only invalid test
+		  ❯   $scr -- -run TestInvalid
+
+		  # Do not run upgrade scenario
+		  ❯   $scr --no-upgrade
+
+		  # Do not redeploy operator and run only invalid test
+		  ❯   $scr --no-deploy  -- -run TestInvalid
+
+		⚙️ Options :
 		  -h|--help        show this help
 		  --ci             run in CI mode
 		  --no-deploy      do not build and deploy Operator; useful for rerunning tests
 		  --no-builds      skip building operator images; useful when operator image is already
 		                   built and pushed
+		  --no-upgrade     run the operator bundle instead of performing an upgrade test
 		  --ns NAMESPACE   namespace to deploy operators (default: $OPERATORS_NS)
 		                   E.g. running against openshift use --ns openshift-operators
 
@@ -260,6 +303,8 @@ restart_operator() {
 	run kubectl wait -n "$OPERATORS_NS" --for=delete \
 		pods -l app.kubernetes.io/component=operator --timeout=60s
 
+	update_crds
+
 	info "scale up"
 	kubectl scale -n "$OPERATORS_NS" --replicas=1 "$deployment"
 	wait_for_operator "$OPERATORS_NS"
@@ -268,13 +313,11 @@ restart_operator() {
 
 }
 
-update_cluster_mon_crds() {
+update_crds() {
 	# try replacing any installed crds; failure is often because the
 	# CRDs are absent and in that case, try creating and fail if that fails
 
-	run kubectl apply --server-side --force-conflicts \
-		-k config/crd
-
+	run kubectl apply --server-side --force-conflicts -k config/crd
 	run kubectl wait --for=condition=Established crds --all --timeout=120s
 
 	return 0
@@ -285,8 +328,10 @@ kind_load_images() {
 	while read -r img; do
 		run docker pull "$img"
 		run kind load docker-image "$img"
-		run docker image rm "$img"
+		$CI_MODE && run docker image rm "$img"
 	done < <(yq -r .spec.relatedImages[].image "$OPERATOR_CSV")
+
+	return 0
 }
 
 docker_prune() {
@@ -305,14 +350,17 @@ deploy_operator() {
 		run df -h
 	}
 
-	kind_load_images
-
-	delete_olm_subscription || true
 	ensure_imgpullpolicy_always_in_yaml
-	update_cluster_mon_crds
+	kind_load_images
+	delete_olm_subscription || true
 	build_bundle
 	push_bundle
-	run_bundle_upgrade
+
+	if $NO_UPGRADE; then
+		run_bundle
+	else
+		run_bundle_upgrade
+	fi
 	wait_for_operator "$OPERATORS_NS"
 }
 
@@ -366,6 +414,21 @@ wait_for_operator() {
 	run kubectl wait -n "$OPERATORS_NS" --for=condition=Available \
 		--timeout=300s "$deployment"
 
+	# NOTE: ensure that operator is actually ready by creating an invalid kepler
+	# and wait until the operator is able to reconcile
+	info "Ensure that operator can reconcile"
+
+	local invalid_kepler='invalid-pre-test-kepler'
+	sed -e "s|name: kepler$|name: $invalid_kepler|g" \
+		config/samples/kepler.system_v1alpha1_kepler.yaml |
+		kubectl apply -f -
+
+	run kubectl wait --for=jsonpath='{.status.exporter}' \
+		--timeout=60s kepler $invalid_kepler
+	run kubectl delete kepler $invalid_kepler
+	run kubectl wait --timeout=30s \
+		--for=delete kepler $invalid_kepler
+
 	ok "Operator up and running"
 }
 
@@ -378,6 +441,7 @@ print_config() {
 		  CI Mode:         $CI_MODE
 		  Skip Builds:     $NO_BUILDS
 		  Skip Deploy:     $NO_DEPLOY
+		  Skip Upgrade:    $NO_UPGRADE
 		  Operator namespace: $OPERATORS_NS
 		  Logs directory: $LOGS_DIR
 
@@ -388,6 +452,8 @@ print_config() {
 main() {
 	export PATH="$LOCAL_BIN:$PATH"
 	parse_args "$@" || die "parse args failed"
+	# eat up all the parsed args so that the rest can be passed to go test
+	shift $ARGS_PARSED
 	$SHOW_USAGE && {
 		print_usage
 		exit 0
@@ -399,14 +465,14 @@ main() {
 	init_logs_dir
 	print_config
 
-	if ! $NO_DEPLOY; then
-		deploy_operator
-	else
+	if $NO_DEPLOY; then
 		restart_operator || die "restarting operator failed 🤕"
+	else
+		deploy_operator
 	fi
 
 	local -i ret=0
-	run_e2e || ret=$?
+	run_e2e "$@" || ret=$?
 
 	info "e2e test - exit code: $ret"
 	line 50 heavy

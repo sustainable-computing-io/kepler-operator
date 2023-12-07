@@ -15,7 +15,8 @@ runs:
       shell: bash
       run: make tools
 
-    - name: Show version info of tools
+    - name: Show version of tools
       shell: bash
       run: |
         ls ./tmp/bin
+        ./hack/tools.sh version
