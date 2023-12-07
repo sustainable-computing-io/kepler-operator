@@ -79,7 +79,7 @@ jobs:
         uses: ./.github/tools-cache
 
       - name: run vulnerability detect
-        run: make govulncheck
+        run: make check-govuln
 
   bundle:
     needs: [docs, golangci, fmt, vulnerability_detect, escapes_detect]

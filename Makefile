@@ -261,51 +261,28 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 CRDOC ?= $(LOCALBIN)/crdoc
 
+# NOTE: please keep this list sorted so that it can be easily searched
+TOOLS = controller-gen \
+		crdoc \
+		govulncheck \
+		kubectl \
+		kustomize \
+		oc \
+		operator-sdk \
+		shfmt \
+		yq \
+
 .PHONY: tools
 tools:
-	@./hack/tools.sh
+	./hack/tools.sh
 
-.PHONY: kubectl
-kubectl: ## Download kubectl locally if necessary.
-	@./hack/tools.sh $@
-
-.PHONY: kustomize
-kustomize: ## Download kustomize locally if necessary.
-	@./hack/tools.sh kustomize
-
-.PHONY: controller-gen
-controller-gen:  ## Download controller-gen locally if necessary.
-	@./hack/tools.sh controller-gen
-
-.PHONY: crdoc
-crdoc:  ## Download crdoc locally if necessary.
-	@./hack/tools.sh crdoc
-
-.PHONY: operator-sdk
-operator-sdk: ## Download operator-sdk locally if necessary.
-	@./hack/tools.sh operator-sdk
-
-.PHONY: yq
-yq: ## Download yq locally if necessary
-	@./hack/tools.sh yq
-
-.PHONY: oc
-oc: ## Download oc locally if necessary
-	@./hack/tools.sh oc
-
-.PHONY: shfmt
-shfmt: ## Download shmft locally if necessary
-	@./hack/tools.sh shfmt
-
-.PHONY: install-govulncheck
-install-govulncheck: ## Download govulncheck locally if necessary
-	@./hack/tools.sh govulncheck
+$(TOOLS):
+	./hack/tools.sh $@
 
 mod-tidy:
 	@go mod tidy
 
-
-govulncheck: install-govulncheck mod-tidy
+check-govuln: govulncheck mod-tidy
 	@govulncheck ./... || true
 
 escapes_detect: mod-tidy
