@@ -116,6 +116,7 @@ func main() {
 		Metrics: metricsserver.Options{
 			BindAddress: metricsAddr,
 		},
+		// TODO: add new introduced namespace from KeplerInternal.Spec.Deployment.Namespace
 		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
 			cacheNs := map[string]cache.Config{
 				controllers.KeplerDeploymentNS: {},

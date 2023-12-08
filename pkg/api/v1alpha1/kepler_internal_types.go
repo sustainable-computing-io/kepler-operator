@@ -64,7 +64,7 @@ type KeplerInternalSpec struct {
 // +kubebuilder:printcolumn:name="Port",type=integer,JSONPath=`.spec.exporter.deployment.port`
 // +kubebuilder:printcolumn:name="Desired",type=integer,JSONPath=`.status.exporter.desiredNumberScheduled`
 // +kubebuilder:printcolumn:name="Current",type=integer,JSONPath=`.status.exporter.currentNumberScheduled`
-// +kubebuilder:printcolumn:name="Up-to-date",type=integer,JSONPath=`.status.updatedNumberScheduled`
+// +kubebuilder:printcolumn:name="Up-to-date",type=integer,JSONPath=`.status.exporter.updatedNumberScheduled`
 // +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.exporter.numberReady`
 // +kubebuilder:printcolumn:name="Available",type=integer,JSONPath=`.status.exporter.numberAvailable`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
