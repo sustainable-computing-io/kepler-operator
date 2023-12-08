@@ -111,6 +111,7 @@ func (f Framework) NewClient(scheme *runtime.Scheme) client.Client {
 	return c
 }
 
+type internalFn func(*v1alpha1.KeplerInternal)
 type keplerFn func(*v1alpha1.Kepler)
 
 func WithExporterPort(port int32) keplerFn {
@@ -177,6 +178,76 @@ func (f Framework) DeleteKepler(name string) {
 		err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
 		return errors.IsNotFound(err), nil
 	})
+}
+
+func (f Framework) CreateInternal(name string, fns ...internalFn) *v1alpha1.KeplerInternal {
+	ki := v1alpha1.KeplerInternal{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1alpha1.GroupVersion.String(),
+			Kind:       "KeplerInternal",
+		},
+
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1alpha1.KeplerInternalSpec{},
+	}
+
+	for _, fn := range fns {
+		fn(&ki)
+	}
+
+	f.T.Logf("%s: creating/updating kepler-internal %s", time.Now().UTC().Format(time.RFC3339), name)
+	err := f.client.Patch(context.TODO(), &ki, client.Apply,
+		client.ForceOwnership, client.FieldOwner("e2e-test"),
+	)
+	assert.NoError(f.T, err, "failed to create kepler-internal")
+
+	f.T.Cleanup(func() {
+		f.DeleteInternal(name)
+	})
+
+	return &ki
+}
+
+func (f Framework) DeleteInternal(name string) {
+	f.T.Helper()
+
+	k := v1alpha1.KeplerInternal{}
+	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get kepler-internal :%s", name)
+
+	f.T.Logf("%s: deleting kepler-internal %s", time.Now().UTC().Format(time.RFC3339), name)
+
+	err = f.client.Delete(context.Background(), &k)
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete kepler-internal:%s :%v", name, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("kepler-internal %s is deleted", name), func() (bool, error) {
+		k := v1alpha1.KeplerInternal{}
+		err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
+		return errors.IsNotFound(err), nil
+	})
+}
+
+func (f Framework) WaitUntilInternalCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus) *v1alpha1.KeplerInternal {
+	f.T.Helper()
+	k := v1alpha1.KeplerInternal{}
+	f.WaitUntil(fmt.Sprintf("kepler-internal %s is %s", name, t),
+		func() (bool, error) {
+			err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
+			if errors.IsNotFound(err) {
+				return true, fmt.Errorf("kepler-internal %s is not found", name)
+			}
+
+			condition, _ := k8s.FindCondition(k.Status.Exporter.Conditions, t)
+			return condition.Status == s, nil
+		})
+	return &k
 }
 
 func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus) *v1alpha1.Kepler {
