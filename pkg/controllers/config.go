@@ -29,4 +29,12 @@ var (
 		ImageLibbpf: "",
 		Cluster:     k8s.Kubernetes,
 	}
+
+	InternalConfig = struct {
+		ModelServerImage string
+		EstimatorImage   string
+	}{
+		ModelServerImage: "",
+		EstimatorImage:   "",
+	}
 )

@@ -21,9 +21,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -107,4 +109,23 @@ func (f Framework) AssertNoResourceExists(name, ns string, obj client.Object, fn
 	if wait.Interrupted(err) {
 		f.T.Errorf("%s (%v) exists after %v", k8s.GVKName(obj), key, opt.WaitTimeout)
 	}
+}
+
+func (f Framework) AssertInternalStatus(name string) {
+	// the status will be updated
+	ki := f.WaitUntilInternalCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionTrue)
+	assert.Equal(f.T, []corev1.Toleration{{Operator: "Exists"}}, ki.Spec.Exporter.Deployment.Tolerations)
+
+	reconciled, err := k8s.FindCondition(ki.Status.Exporter.Conditions, v1alpha1.Reconciled)
+	assert.NoError(f.T, err, "unable to get reconciled condition")
+	assert.Equal(f.T, reconciled.ObservedGeneration, ki.Generation)
+	assert.Equal(f.T, reconciled.Status, v1alpha1.ConditionTrue)
+	//
+	ki = f.WaitUntilInternalCondition(name, v1alpha1.Available, v1alpha1.ConditionTrue)
+	available, err := k8s.FindCondition(ki.Status.Exporter.Conditions, v1alpha1.Available)
+	assert.NoError(f.T, err, "unable to get available condition")
+	assert.Equal(f.T, available.ObservedGeneration, ki.Generation)
+	assert.Equal(f.T, available.Status, v1alpha1.ConditionTrue)
+
+	f.WaitUntilInternalHasExpectedRunning(name)
 }

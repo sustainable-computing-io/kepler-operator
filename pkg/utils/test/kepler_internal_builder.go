@@ -49,3 +49,26 @@ func (b InternalBuilder) WithExporterPort(p int) func(k *v1alpha1.KeplerInternal
 		k.Spec.Exporter.Deployment.Port = int32(p)
 	}
 }
+
+func (b InternalBuilder) WithEstimator() func(k *v1alpha1.KeplerInternal) {
+	return func(k *v1alpha1.KeplerInternal) {
+		k.Spec.Estimator = &v1alpha1.InternalEstimatorSpec{
+			Node: v1alpha1.EstimatorGroup{
+				Total: &v1alpha1.EstimatorConfig{
+					SidecarEnabled: true,
+				},
+				Components: &v1alpha1.EstimatorConfig{
+					SidecarEnabled: true,
+				},
+			},
+		}
+	}
+}
+
+func (b InternalBuilder) WithModelServer() func(k *v1alpha1.KeplerInternal) {
+	return func(k *v1alpha1.KeplerInternal) {
+		k.Spec.ModelServer = &v1alpha1.InternalModelServerSpec{
+			Enabled: true,
+		}
+	}
+}

@@ -39,7 +39,9 @@ import (
 	securityv1 "github.com/openshift/api/security/v1"
 
 	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/components/estimator"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/components/modelserver"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/controllers"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	//+kubebuilder:scaffold:imports
@@ -98,6 +100,9 @@ func main() {
 	keplerImageLibbpf := os.Getenv("RELATED_IMAGE_KEPLER_LIBBPF")
 	flag.StringVar(&controllers.Config.Image, "kepler.image", keplerImage, "kepler image")
 	flag.StringVar(&controllers.Config.ImageLibbpf, "kepler.image.libbpf", keplerImageLibbpf, "kepler libbpf image")
+
+	flag.StringVar(&controllers.InternalConfig.ModelServerImage, "estimator.image", estimator.StableImage, "kepler estimator image")
+	flag.StringVar(&controllers.InternalConfig.EstimatorImage, "model-server.image", modelserver.StableImage, "kepler model server image")
 
 	opts := zap.Options{
 		Development: true,

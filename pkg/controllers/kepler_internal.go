@@ -14,6 +14,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/components/modelserver"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/reconciler"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 
@@ -41,11 +42,11 @@ type KeplerInternalReconciler struct {
 
 // common to all components deployed by operator
 //+kubebuilder:rbac:groups=core,resources=namespaces,verbs=list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=core,resources=services;configmaps;serviceaccounts,verbs=list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=services;configmaps;serviceaccounts;persistentvolumeclaims,verbs=list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=*,verbs=*
 
 // RBAC for running Kepler exporter
-//+kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=apps,resources=daemonsets;deployments,verbs=list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=list;watch;create;update;patch;delete;use
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;prometheusrules,verbs=list;watch;create;update;patch;delete
 
@@ -219,6 +220,38 @@ func (r KeplerInternalReconciler) updateAvailableStatus(ctx context.Context, ki 
 		c.ObservedGeneration = ki.Generation
 	}
 	ki.Status.Exporter.Conditions = append(ki.Status.Exporter.Conditions, c)
+
+	// update estimator status
+	estimatorStatus := &v1alpha1.EstimatorStatus{
+		Status: v1alpha1.DeploymentNotInstalled,
+	}
+	if ki.Spec.Estimator != nil && len(dset.Spec.Template.Spec.Containers) > 1 {
+		// estimator enabled and has a sidecar container
+		if ds.NumberReady == ds.DesiredNumberScheduled {
+			estimatorStatus.Status = v1alpha1.DeploymentRunning
+		} else {
+			estimatorStatus.Status = v1alpha1.DeploymentNotReady
+		}
+	}
+	ki.Status.Estimator = *estimatorStatus
+
+	// update model server status
+	modelServerStatus := &v1alpha1.ModelServerStatus{
+		Status: v1alpha1.DeploymentNotInstalled,
+	}
+	if ki.Spec.ModelServer != nil {
+		key = types.NamespacedName{Name: ki.ModelServerDeploymentName(), Namespace: ki.Namespace()}
+		deploy := appsv1.Deployment{}
+		if err := r.Client.Get(ctx, key, &deploy); err == nil {
+			if deploy.Status.ReadyReplicas > 0 {
+				modelServerStatus.Status = v1alpha1.DeploymentRunning
+			} else {
+				modelServerStatus.Status = v1alpha1.DeploymentNotReady
+			}
+		}
+	}
+	ki.Status.ModelServer = *modelServerStatus
+
 }
 
 func availableConditionForGetError(err error) v1alpha1.Condition {
@@ -326,10 +359,25 @@ func (r KeplerInternalReconciler) reconcilersForInternal(k *v1alpha1.KeplerInter
 		})
 	}
 
+	if k.Spec.Estimator != nil {
+		if k.Spec.Estimator.Image == "" {
+			k.Spec.Estimator.Image = InternalConfig.EstimatorImage
+		}
+	}
+
 	rs = append(rs, exporterReconcilers(k, Config.Cluster)...)
 
-	// TODO: add this when modelServer is supported by Kepler Spec
-	// rs = append(rs, modelServerReconcilers(k)...)
+	if k.Spec.ModelServer != nil && k.Spec.ModelServer.Enabled {
+		if k.Spec.ModelServer.Image == "" {
+			k.Spec.ModelServer.Image = InternalConfig.ModelServerImage
+		}
+		reconcilers, err := modelServerInternalReconcilers(k)
+		if err != nil {
+			r.logger.Info(fmt.Sprintf("cannot init model server reconciler from config: %v", err))
+		} else {
+			rs = append(rs, reconcilers...)
+		}
+	}
 
 	if cleanup {
 		rs = append(rs, reconciler.Deleter{
@@ -397,4 +445,33 @@ func openshiftResources(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []clie
 		)
 	}
 	return res
+}
+
+func modelServerInternalReconcilers(ki *v1alpha1.KeplerInternal) ([]reconciler.Reconciler, error) {
+	ms := ki.Spec.ModelServer
+	msName := ki.ModelServerDeploymentName()
+	namespace := ki.Spec.Exporter.Deployment.Namespace
+	cm := modelserver.NewConfigMap(msName, components.Full, ms, namespace)
+	deploy := modelserver.NewDeployment(msName, ms, namespace)
+	svc := modelserver.NewService(msName, ms, namespace)
+
+	resources := []client.Object{cm, deploy, svc}
+
+	if ms.Storage.PersistentVolumeClaim != nil {
+		pvc := modelserver.NewPVC(msName, namespace, ms.Storage.PersistentVolumeClaim)
+		resources = append(resources, pvc)
+	}
+
+	rs := updatersForInternalResources(ki, resources...)
+	return rs, nil
+}
+
+func updatersForInternalResources(ki *v1alpha1.KeplerInternal, resources ...client.Object) []reconciler.Reconciler {
+	rs := []reconciler.Reconciler{}
+	resourceUpdater := newUpdaterWithOwner(ki)
+	for _, res := range resources {
+		rs = append(rs, resourceUpdater(res))
+	}
+	return rs
+
 }
