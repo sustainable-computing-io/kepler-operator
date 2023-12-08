@@ -24,7 +24,7 @@ spec:
     - jsonPath: .status.exporter.currentNumberScheduled
       name: Current
       type: integer
-    - jsonPath: .status.updatedNumberScheduled
+    - jsonPath: .status.exporter.updatedNumberScheduled
       name: Up-to-date
       type: integer
     - jsonPath: .status.exporter.numberReady
