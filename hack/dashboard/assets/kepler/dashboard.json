@@ -1138,8 +1138,8 @@
         "allValue": ".*",
         "current": {
           "selected": false,
-          "text": "openshift-kepler-operator",
-          "value": "openshift-kepler-operator"
+          "text": "kepler-operator",
+          "value": "kepler-operator"
         },
         "datasource": {
           "type": "prometheus",
