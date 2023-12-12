@@ -164,7 +164,7 @@ run_e2e() {
 	local error_log="$LOGS_DIR/operator-errors.log"
 
 	log_events "$OPERATORS_NS" &
-	log_events "openshift-kepler-operator" &
+	log_events "kepler-operator" &
 	watch_operator_errors "$error_log" &
 
 	local ret=0
