@@ -250,6 +250,37 @@ func (f Framework) WaitUntilInternalCondition(name string, t v1alpha1.ConditionT
 	return &k
 }
 
+func (f Framework) WaitUntilInternalHasExpectedRunning(name string) *v1alpha1.KeplerInternal {
+	f.T.Helper()
+	k := v1alpha1.KeplerInternal{}
+	f.WaitUntil(fmt.Sprintf("kepler-internal %s has expected running status", name),
+		func() (bool, error) {
+			err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
+			if errors.IsNotFound(err) {
+				return true, fmt.Errorf("kepler-internal %s is not found", name)
+			}
+			var statusOK bool
+			if k.Spec.Estimator != nil && k.Spec.Estimator.Enabled() {
+				if k.Status.Estimator.Status == v1alpha1.DeploymentNotInstalled {
+					return true, fmt.Errorf("kepler-internal %s should install estimator", name)
+				}
+				statusOK = k.Status.Estimator.Status == v1alpha1.DeploymentRunning
+			} else {
+				statusOK = k.Status.Estimator.Status == v1alpha1.DeploymentNotInstalled
+			}
+			if k.Spec.ModelServer != nil && k.Spec.ModelServer.Enabled {
+				if k.Status.ModelServer.Status == v1alpha1.DeploymentNotInstalled {
+					return true, fmt.Errorf("kepler-internal %s should install model-server", name)
+				}
+				statusOK = statusOK && k.Status.ModelServer.Status == v1alpha1.DeploymentRunning
+			} else {
+				statusOK = statusOK && k.Status.ModelServer.Status == v1alpha1.DeploymentNotInstalled
+			}
+			return statusOK, nil
+		})
+	return &k
+}
+
 func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus) *v1alpha1.Kepler {
 	f.T.Helper()
 	k := v1alpha1.Kepler{}

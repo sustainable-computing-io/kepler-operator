@@ -24,6 +24,8 @@ import (
 
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/components/estimator"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/components/modelserver"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 
 	secv1 "github.com/openshift/api/security/v1"
@@ -74,16 +76,29 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.
 	}
 
 	deployment := k.Spec.Exporter.Deployment.ExporterDeploymentSpec
-	image := k.Spec.Exporter.Deployment.Image
 	nodeSelector := deployment.NodeSelector
 	tolerations := deployment.Tolerations
-	port := deployment.Port
 	// NOTE: since 2 or more KeplerInternals can be deployed to the same namespace,
 	// we need to make sure that the pod selector of each of the DaemonSet
 	// create of each kepler is unique. Thus the daemonset name is added as
 	// label to the pod
 
-	bindAddress := "0.0.0.0:" + strconv.Itoa(int(port))
+	exporterContainer := newExporterContainer(k.Name, k.DaemonsetName(), k.Spec.Exporter.Deployment)
+	containers := []corev1.Container{exporterContainer}
+
+	var volumes = []corev1.Volume{
+		k8s.VolumeFromHost("lib-modules", "/lib/modules"),
+		k8s.VolumeFromHost("tracing", "/sys"),
+		k8s.VolumeFromHost("proc", "/proc"),
+		k8s.VolumeFromHost("kernel-src", "/usr/src/kernels"),
+		k8s.VolumeFromConfigMap("cfm", k.Name),
+	} // exporter default Volumes
+
+	if estimator.NeedsEstimatorSidecar(k.Spec.Estimator) {
+		// add sidecar container and update kepler-exporter container
+		// add shared volumes
+		containers, volumes = addEstimatorSidecar(k.Spec.Estimator.Image, &exporterContainer, volumes)
+	}
 
 	return &appsv1.DaemonSet{
 		TypeMeta: metav1.TypeMeta{
@@ -109,58 +124,8 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.
 					ServiceAccountName: k.Name,
 					DNSPolicy:          corev1.DNSPolicy(corev1.DNSClusterFirstWithHostNet),
 					Tolerations:        tolerations,
-					Containers: []corev1.Container{{
-						Name:            k.DaemonsetName(),
-						SecurityContext: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
-						Image:           image,
-						Command: []string{
-							"/usr/bin/kepler",
-							"-address", bindAddress,
-							"-enable-cgroup-id=true",
-							"-enable-gpu=$(ENABLE_GPU)",
-							"-v=$(KEPLER_LOG_LEVEL)",
-							"-kernel-source-dir=/usr/share/kepler/kernel_sources",
-							"-redfish-cred-file-path=/etc/redfish/redfish.csv",
-						},
-						Ports: []corev1.ContainerPort{{
-							ContainerPort: int32(port),
-							Name:          "http",
-						}},
-						LivenessProbe: &corev1.Probe{
-							ProbeHandler: corev1.ProbeHandler{
-								HTTPGet: &corev1.HTTPGetAction{
-									Path:   "/healthz",
-									Port:   intstr.IntOrString{Type: intstr.Int, IntVal: port},
-									Scheme: "HTTP",
-								},
-							},
-							FailureThreshold:    5,
-							InitialDelaySeconds: 10,
-							PeriodSeconds:       60,
-							SuccessThreshold:    1,
-							TimeoutSeconds:      10},
-						Env: []corev1.EnvVar{
-							{Name: "NODE_IP", ValueFrom: k8s.EnvFromField("status.hostIP")},
-							{Name: "NODE_NAME", ValueFrom: k8s.EnvFromField("spec.nodeName")},
-							{Name: "KEPLER_LOG_LEVEL", ValueFrom: k8s.EnvFromConfigMap("KEPLER_LOG_LEVEL", k.Name)},
-							{Name: "ENABLE_GPU", ValueFrom: k8s.EnvFromConfigMap("ENABLE_GPU", k.Name)}},
-						VolumeMounts: []corev1.VolumeMount{
-							{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
-							{Name: "tracing", MountPath: "/sys", ReadOnly: true},
-							{Name: "kernel-src", MountPath: "/usr/src/kernels", ReadOnly: true},
-							{Name: "kernel-debug", MountPath: "/sys/kernel/debug"},
-							{Name: "proc", MountPath: "/proc"},
-							{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
-						}, // VolumeMounts
-					}}, // Container: kepler /  Containers
-					Volumes: []corev1.Volume{
-						k8s.VolumeFromHost("lib-modules", "/lib/modules"),
-						k8s.VolumeFromHost("tracing", "/sys"),
-						k8s.VolumeFromHost("proc", "/proc"),
-						k8s.VolumeFromHost("kernel-src", "/usr/src/kernels"),
-						k8s.VolumeFromHost("kernel-debug", "/sys/kernel/debug"),
-						k8s.VolumeFromConfigMap("cfm", k.Name),
-					}, // Volumes
+					Containers:         containers,
+					Volumes:            volumes,
 				}, // PodSpec
 			}, // PodTemplateSpec
 		}, // Spec
@@ -249,6 +214,40 @@ func NewConfigMap(d components.Detail, k *v1alpha1.KeplerInternal) *corev1.Confi
 	deployment := k.Spec.Exporter.Deployment.ExporterDeploymentSpec
 	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
 
+	modelConfig := ""
+	if k.Spec.Estimator != nil {
+		modelConfig = estimator.ModelConfig(k.Spec.Estimator)
+	}
+
+	exporterConfigMap := k8s.StringMap{
+		"KEPLER_NAMESPACE":                  k.Namespace(),
+		"KEPLER_LOG_LEVEL":                  "1",
+		"METRIC_PATH":                       "/metrics",
+		"BIND_ADDRESS":                      bindAddress,
+		"ENABLE_GPU":                        "true",
+		"ENABLE_QAT":                        "false",
+		"ENABLE_EBPF_CGROUPID":              "true",
+		"EXPOSE_HW_COUNTER_METRICS":         "true",
+		"EXPOSE_IRQ_COUNTER_METRICS":        "true",
+		"EXPOSE_KUBELET_METRICS":            "true",
+		"EXPOSE_CGROUP_METRICS":             "true",
+		"ENABLE_PROCESS_METRICS":            "false",
+		"CPU_ARCH_OVERRIDE":                 "",
+		"CGROUP_METRICS":                    "*",
+		"REDFISH_PROBE_INTERVAL_IN_SECONDS": "60",
+		"REDFISH_SKIP_SSL_VERIFY":           "true",
+		"MODEL_CONFIG":                      modelConfig,
+	}
+
+	ms := k.Spec.ModelServer
+	if ms != nil {
+		if ms.Enabled {
+			exporterConfigMap["MODEL_SERVER_ENABLE"] = "true"
+		}
+		modelServerConfig := modelserver.ConfigForClient(k.ModelServerDeploymentName(), k.Namespace(), k.Spec.ModelServer)
+		exporterConfigMap = exporterConfigMap.Merge(modelServerConfig)
+	}
+
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -259,25 +258,7 @@ func NewConfigMap(d components.Detail, k *v1alpha1.KeplerInternal) *corev1.Confi
 			Namespace: k.Namespace(),
 			Labels:    labels(k).ToMap(),
 		},
-		Data: map[string]string{
-			"KEPLER_NAMESPACE":                  k.Namespace(),
-			"KEPLER_LOG_LEVEL":                  "1",
-			"METRIC_PATH":                       "/metrics",
-			"BIND_ADDRESS":                      bindAddress,
-			"ENABLE_GPU":                        "true",
-			"ENABLE_QAT":                        "false",
-			"ENABLE_EBPF_CGROUPID":              "true",
-			"EXPOSE_HW_COUNTER_METRICS":         "true",
-			"EXPOSE_IRQ_COUNTER_METRICS":        "true",
-			"EXPOSE_KUBELET_METRICS":            "true",
-			"EXPOSE_CGROUP_METRICS":             "true",
-			"ENABLE_PROCESS_METRICS":            "false",
-			"CPU_ARCH_OVERRIDE":                 "",
-			"CGROUP_METRICS":                    "*",
-			"REDFISH_PROBE_INTERVAL_IN_SECONDS": "60",
-			"REDFISH_SKIP_SSL_VERIFY":           "true",
-			"MODEL_CONFIG":                      "CONTAINER_COMPONENTS_ESTIMATOR=false",
-		},
+		Data: exporterConfigMap,
 	}
 }
 
@@ -599,4 +580,59 @@ func labels(ki *v1alpha1.KeplerInternal) k8s.StringMap {
 		"operator.sustainable-computing.io/internal": ki.Name,
 		"app.kubernetes.io/part-of":                  ki.Name,
 	})
+}
+
+func newExporterContainer(kiName, dsName string, deployment v1alpha1.InternalExporterDeploymentSpec) corev1.Container {
+	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
+	return corev1.Container{
+		Name:            dsName,
+		SecurityContext: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
+		Image:           deployment.Image,
+		Command: []string{
+			"/usr/bin/kepler",
+			"-address", bindAddress,
+			"-enable-cgroup-id=true",
+			"-enable-gpu=$(ENABLE_GPU)",
+			"-v=$(KEPLER_LOG_LEVEL)",
+			"-kernel-source-dir=/usr/share/kepler/kernel_sources",
+			"-redfish-cred-file-path=/etc/redfish/redfish.csv",
+		},
+		Ports: []corev1.ContainerPort{{
+			ContainerPort: int32(deployment.Port),
+			Name:          "http",
+		}},
+		LivenessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/healthz",
+					Port:   intstr.IntOrString{Type: intstr.Int, IntVal: deployment.Port},
+					Scheme: "HTTP",
+				},
+			},
+			FailureThreshold:    5,
+			InitialDelaySeconds: 10,
+			PeriodSeconds:       60,
+			SuccessThreshold:    1,
+			TimeoutSeconds:      10},
+		Env: []corev1.EnvVar{
+			{Name: "NODE_IP", ValueFrom: k8s.EnvFromField("status.hostIP")},
+			{Name: "NODE_NAME", ValueFrom: k8s.EnvFromField("spec.nodeName")},
+			{Name: "KEPLER_LOG_LEVEL", ValueFrom: k8s.EnvFromConfigMap("KEPLER_LOG_LEVEL", kiName)},
+			{Name: "ENABLE_GPU", ValueFrom: k8s.EnvFromConfigMap("ENABLE_GPU", kiName)}},
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
+			{Name: "tracing", MountPath: "/sys", ReadOnly: true},
+			{Name: "kernel-src", MountPath: "/usr/src/kernels", ReadOnly: true},
+			{Name: "proc", MountPath: "/proc"},
+			{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
+		},
+	}
+}
+
+func addEstimatorSidecar(estimatorImage string, exporterContainer *corev1.Container, volumes []corev1.Volume) ([]corev1.Container, []corev1.Volume) {
+	sidecarContainer := estimator.Container(estimatorImage)
+	volumes = append(volumes, estimator.Volumes()...)
+	exporterContainer = estimator.AddEstimatorDependency(exporterContainer)
+	containers := []corev1.Container{*exporterContainer, sidecarContainer}
+	return containers, volumes
 }

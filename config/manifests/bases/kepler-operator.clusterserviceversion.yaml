@@ -100,7 +100,6 @@ spec:
           resources:
           - configmaps
           - persistentvolumeclaims
-          - persistentvolumes
           - serviceaccounts
           - services
           verbs:
