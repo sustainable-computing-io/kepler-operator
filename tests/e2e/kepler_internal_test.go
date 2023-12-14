@@ -42,6 +42,7 @@ func TestKeplerInternal_Reconciliation(t *testing.T) {
 		b.WithNamespace(testNs),
 		b.WithExporterLibBpfImage(),
 		b.WithExporterPort(9108),
+		b.WithCluster(Cluster),
 	)
 
 	// then the following resources will be created
@@ -75,6 +76,7 @@ func TestKeplerInternal_WithEstimator(t *testing.T) {
 		b.WithNamespace(testNs),
 		b.WithExporterLibBpfImage(),
 		b.WithEstimator(),
+		b.WithCluster(Cluster),
 	)
 
 	// then the following resources will be created
@@ -107,6 +109,7 @@ func TestKeplerInternal_WithModelServer(t *testing.T) {
 		b.WithNamespace(testNs),
 		b.WithExporterLibBpfImage(),
 		b.WithModelServer(),
+		b.WithCluster(Cluster),
 	)
 
 	// then the following resources will be created
@@ -145,6 +148,7 @@ func TestKeplerInternal_WithEstimatorAndModelServer(t *testing.T) {
 		b.WithExporterLibBpfImage(),
 		b.WithEstimator(),
 		b.WithModelServer(),
+		b.WithCluster(Cluster),
 	)
 
 	// then the following resources will be created

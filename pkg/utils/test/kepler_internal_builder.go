@@ -18,6 +18,7 @@ package test
 
 import (
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 )
 
 const (
@@ -28,7 +29,7 @@ const (
 type InternalBuilder struct {
 }
 
-func (b InternalBuilder) WithNamespace(ns string) func(k *v1alpha1.KeplerInternal) {
+func (InternalBuilder) WithNamespace(ns string) func(k *v1alpha1.KeplerInternal) {
 	return func(k *v1alpha1.KeplerInternal) {
 		k.Spec.Exporter.Deployment.Namespace = ns
 	}
@@ -38,19 +39,19 @@ func (b InternalBuilder) WithExporterLibBpfImage() func(k *v1alpha1.KeplerIntern
 	return b.WithExporterImage(libBPFImage)
 }
 
-func (b InternalBuilder) WithExporterImage(img string) func(k *v1alpha1.KeplerInternal) {
+func (InternalBuilder) WithExporterImage(img string) func(k *v1alpha1.KeplerInternal) {
 	return func(k *v1alpha1.KeplerInternal) {
 		k.Spec.Exporter.Deployment.Image = img
 	}
 }
 
-func (b InternalBuilder) WithExporterPort(p int) func(k *v1alpha1.KeplerInternal) {
+func (InternalBuilder) WithExporterPort(p int) func(k *v1alpha1.KeplerInternal) {
 	return func(k *v1alpha1.KeplerInternal) {
 		k.Spec.Exporter.Deployment.Port = int32(p)
 	}
 }
 
-func (b InternalBuilder) WithEstimator() func(k *v1alpha1.KeplerInternal) {
+func (InternalBuilder) WithEstimator() func(k *v1alpha1.KeplerInternal) {
 	return func(k *v1alpha1.KeplerInternal) {
 		k.Spec.Estimator = &v1alpha1.InternalEstimatorSpec{
 			Node: v1alpha1.EstimatorGroup{
@@ -65,10 +66,18 @@ func (b InternalBuilder) WithEstimator() func(k *v1alpha1.KeplerInternal) {
 	}
 }
 
-func (b InternalBuilder) WithModelServer() func(k *v1alpha1.KeplerInternal) {
+func (InternalBuilder) WithModelServer() func(k *v1alpha1.KeplerInternal) {
 	return func(k *v1alpha1.KeplerInternal) {
 		k.Spec.ModelServer = &v1alpha1.InternalModelServerSpec{
 			Enabled: true,
+		}
+	}
+}
+
+func (InternalBuilder) WithCluster(c k8s.Cluster) func(k *v1alpha1.KeplerInternal) {
+	return func(k *v1alpha1.KeplerInternal) {
+		k.Spec.OpenShift = v1alpha1.OpenShiftSpec{
+			Enabled: c == k8s.OpenShift,
 		}
 	}
 }
