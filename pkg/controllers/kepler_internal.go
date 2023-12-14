@@ -406,7 +406,7 @@ func exporterReconcilers(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []rec
 			exporter.NewClusterRoleBinding(components.Metadata, ki),
 			exporter.NewClusterRole(components.Metadata, ki),
 		)
-		rs = append(rs, resourceReconcilers(deleteResource, openshiftResources(ki, cluster)...)...)
+		rs = append(rs, resourceReconcilers(deleteResource, openshiftNamespacedResources(ki, cluster)...)...)
 		return rs
 	}
 
@@ -415,29 +415,42 @@ func exporterReconcilers(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []rec
 	rs := resourceReconcilers(updateResource,
 		exporter.NewClusterRole(components.Full, ki),
 		exporter.NewClusterRoleBinding(components.Full, ki),
+	)
+	rs = append(rs, resourceReconcilers(updateResource, openshiftClusterResources(ki, cluster)...)...)
 
-		// namespace scoped
+	// namespace scoped
+	rs = append(rs, resourceReconcilers(updateResource,
 		exporter.NewServiceAccount(ki),
 		exporter.NewConfigMap(components.Full, ki),
 		exporter.NewDaemonSet(components.Full, ki),
 		exporter.NewService(ki),
 		exporter.NewServiceMonitor(ki),
 		exporter.NewPrometheusRule(ki),
-	)
-	rs = append(rs, resourceReconcilers(updateResource, openshiftResources(ki, cluster)...)...)
+	)...)
+	rs = append(rs, resourceReconcilers(updateResource, openshiftNamespacedResources(ki, cluster)...)...)
 	return rs
 }
 
-func openshiftResources(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []client.Object {
+func openshiftClusterResources(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []client.Object {
+
+	oshift := ki.Spec.OpenShift
+	if cluster != k8s.OpenShift || !oshift.Enabled {
+		return nil
+	}
+	// NOTE: SCC is required for kepler deployment even if openshift is not enabled
+	return []client.Object{
+		exporter.NewSCC(components.Full, ki),
+	}
+}
+
+func openshiftNamespacedResources(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []client.Object {
 	oshift := ki.Spec.OpenShift
 
 	if cluster != k8s.OpenShift || !oshift.Enabled {
 		return nil
 	}
-	// cluster-scoped resources first
-	res := []client.Object{
-		exporter.NewSCC(components.Full, ki),
-	}
+
+	res := []client.Object{}
 	if oshift.Dashboard.Enabled {
 		res = append(res,
 			exporter.NewOverviewDashboard(components.Full),
