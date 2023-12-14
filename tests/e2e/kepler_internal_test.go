@@ -28,7 +28,7 @@ import (
 
 func TestKeplerInternal_Reconciliation(t *testing.T) {
 	f := test.NewFramework(t)
-	name := "e2e-kepler-internal"
+	name := "e2e-ki"
 	// test namespace must be the deployment namespace for controller
 	// to watch the deployments / daemonsets etc
 	testNs := controllers.KeplerDeploymentNS
@@ -60,7 +60,7 @@ func TestKeplerInternal_Reconciliation(t *testing.T) {
 
 func TestKeplerInternal_WithEstimator(t *testing.T) {
 	f := test.NewFramework(t)
-	name := "e2e-kepler-internal-with-estimator"
+	name := "e2e-ki-with-estimator"
 	// Ensure Kepler is not deployed (by any chance)
 	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
 
@@ -93,7 +93,7 @@ func TestKeplerInternal_WithEstimator(t *testing.T) {
 
 func TestKeplerInternal_WithModelServer(t *testing.T) {
 	f := test.NewFramework(t)
-	name := "e2e-kepler-internal-with-modelserver"
+	name := "e2e-ki-with-modelserver"
 	// Ensure Kepler is not deployed (by any chance)
 	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
 
@@ -131,7 +131,7 @@ func TestKeplerInternal_WithModelServer(t *testing.T) {
 
 func TestKeplerInternal_WithEstimatorAndModelServer(t *testing.T) {
 	f := test.NewFramework(t)
-	name := "e2e-kepler-internal-with-estimator-and-modelserver"
+	name := "e2e-ki-est-mserver"
 	// Ensure Kepler is not deployed (by any chance)
 	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
 
