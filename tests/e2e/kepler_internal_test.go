@@ -26,6 +26,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const (
+	keplerImage = "quay.io/sustainable_computing_io/kepler:release-0.7.2"
+)
+
 func TestKeplerInternal_Reconciliation(t *testing.T) {
 	f := test.NewFramework(t)
 	name := "e2e-ki"
@@ -40,7 +44,7 @@ func TestKeplerInternal_Reconciliation(t *testing.T) {
 	b := test.InternalBuilder{}
 	ki := f.CreateInternal(name,
 		b.WithNamespace(testNs),
-		b.WithExporterLibBpfImage(),
+		b.WithExporterImage(keplerImage),
 		b.WithExporterPort(9108),
 		b.WithCluster(Cluster),
 	)
@@ -74,7 +78,7 @@ func TestKeplerInternal_WithEstimator(t *testing.T) {
 	b := test.InternalBuilder{}
 	ki := f.CreateInternal(name,
 		b.WithNamespace(testNs),
-		b.WithExporterLibBpfImage(),
+		b.WithExporterImage(keplerImage),
 		b.WithEstimator(),
 		b.WithCluster(Cluster),
 	)
@@ -107,7 +111,7 @@ func TestKeplerInternal_WithModelServer(t *testing.T) {
 	b := test.InternalBuilder{}
 	ki := f.CreateInternal(name,
 		b.WithNamespace(testNs),
-		b.WithExporterLibBpfImage(),
+		b.WithExporterImage(keplerImage),
 		b.WithModelServer(),
 		b.WithCluster(Cluster),
 	)
@@ -145,7 +149,7 @@ func TestKeplerInternal_WithEstimatorAndModelServer(t *testing.T) {
 	b := test.InternalBuilder{}
 	ki := f.CreateInternal(name,
 		b.WithNamespace(testNs),
-		b.WithExporterLibBpfImage(),
+		b.WithExporterImage(keplerImage),
 		b.WithEstimator(),
 		b.WithModelServer(),
 		b.WithCluster(Cluster),
