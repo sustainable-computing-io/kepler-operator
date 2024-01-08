@@ -16,6 +16,7 @@ declare -r OPERATOR_DEPLOY_YAML="config/manager/manager.yaml"
 declare -r OPERATOR_CSV="bundle/manifests/$OPERATOR.clusterserviceversion.yaml"
 declare -r OPERATOR_DEPLOY_NAME="kepler-operator-controller"
 declare -r OPERATOR_RELEASED_BUNDLE="quay.io/sustainable_computing_io/$OPERATOR-bundle"
+declare -r TEST_IMAGES_YAML="tests/images.yaml"
 
 declare IMG_BASE="${IMG_BASE:-localhost:5001/$OPERATOR}"
 # NOTE: this vars are iniitialized in init_operator_img
@@ -323,13 +324,25 @@ update_crds() {
 	return 0
 }
 
+kind_load_image() {
+	local img="$1"
+
+	run docker pull "$img"
+	run kind load docker-image "$img"
+	$CI_MODE && run docker image rm "$img"
+	return 0
+}
+
 kind_load_images() {
 	header "Load Images"
 	while read -r img; do
-		run docker pull "$img"
-		run kind load docker-image "$img"
-		$CI_MODE && run docker image rm "$img"
+		kind_load_image "$img"
 	done < <(yq -r .spec.relatedImages[].image "$OPERATOR_CSV")
+
+	info "loading additional images from $TEST_IMAGES_YAML"
+	while read -r img; do
+		kind_load_image "$img"
+	done < <(yq -r .images[].image "$TEST_IMAGES_YAML")
 
 	return 0
 }
