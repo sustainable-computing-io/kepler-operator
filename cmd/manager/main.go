@@ -97,9 +97,7 @@ func main() {
 
 	// NOTE: RELATED_IMAGE_KEPLER can be set as env or flag, flag takes precedence over env
 	keplerImage := os.Getenv("RELATED_IMAGE_KEPLER")
-	keplerImageLibbpf := os.Getenv("RELATED_IMAGE_KEPLER_LIBBPF")
 	flag.StringVar(&controllers.Config.Image, "kepler.image", keplerImage, "kepler image")
-	flag.StringVar(&controllers.Config.ImageLibbpf, "kepler.image.libbpf", keplerImageLibbpf, "kepler libbpf image")
 
 	flag.StringVar(&controllers.InternalConfig.ModelServerImage, "estimator.image", estimator.StableImage, "kepler estimator image")
 	flag.StringVar(&controllers.InternalConfig.EstimatorImage, "model-server.image", modelserver.StableImage, "kepler model server image")

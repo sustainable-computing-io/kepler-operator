@@ -27,7 +27,7 @@ metadata:
     capabilities: Basic Install
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.9.2
-    createdAt: "2023-12-08T08:56:48Z"
+    createdAt: "2024-01-08T03:38:21Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.27.0
     operators.operatorframework.io/internal-objects: |-
@@ -245,15 +245,12 @@ spec:
                 - --openshift
                 - --leader-elect
                 - --kepler.image=$(RELATED_IMAGE_KEPLER)
-                - --kepler.image.libbpf=$(RELATED_IMAGE_KEPLER_LIBBPF)
                 - --zap-log-level=5
                 command:
                 - /manager
                 env:
                 - name: RELATED_IMAGE_KEPLER
-                  value: quay.io/sustainable_computing_io/kepler:release-0.6.1
-                - name: RELATED_IMAGE_KEPLER_LIBBPF
-                  value: quay.io/sustainable_computing_io/kepler:release-0.6.1-libbpf
+                  value: quay.io/sustainable_computing_io/kepler:release-0.7.2
                 image: quay.io/sustainable_computing_io/kepler-operator:0.9.2
                 imagePullPolicy: IfNotPresent
                 livenessProbe:
@@ -356,9 +353,7 @@ spec:
     name: Kepler Operator Contributors
     url: https://sustainable-computing.io/
   relatedImages:
-  - image: quay.io/sustainable_computing_io/kepler:release-0.6.1
+  - image: quay.io/sustainable_computing_io/kepler:release-0.7.2
     name: kepler
-  - image: quay.io/sustainable_computing_io/kepler:release-0.6.1-libbpf
-    name: kepler-libbpf
   replaces: kepler-operator.v0.9.0
   version: 0.9.2

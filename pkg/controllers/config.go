@@ -21,13 +21,11 @@ import "github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 // should be initialized in main
 var (
 	Config = struct {
-		Image       string
-		ImageLibbpf string
-		Cluster     k8s.Cluster
+		Image   string
+		Cluster k8s.Cluster
 	}{
-		Image:       "",
-		ImageLibbpf: "",
-		Cluster:     k8s.Kubernetes,
+		Image:   "",
+		Cluster: k8s.Kubernetes,
 	}
 
 	InternalConfig = struct {
