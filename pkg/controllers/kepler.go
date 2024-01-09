@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"strings"
 
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -25,10 +24,7 @@ import (
 )
 
 const (
-	Finalizer                 = "kepler.system.sustainable.computing.io/finalizer"
-	BpfAttachMethodAnnotation = "kepler.sustainable.computing.io/bpf-attach-method"
-	BpfAttachMethodBCC        = "bcc"
-	BpfAttachMethodLibbpf     = "libbpf"
+	Finalizer = "kepler.system.sustainable.computing.io/finalizer"
 )
 
 var (
@@ -260,22 +256,25 @@ func newKeplerInternal(d components.Detail, k *v1alpha1.Kepler) *v1alpha1.Kepler
 		}
 	}
 
-	keplerImage := Config.Image
-	if hasLibBPFAnnotation(k) {
-		keplerImage = Config.ImageLibbpf
-	}
-
 	isOpenShift := Config.Cluster == k8s.OpenShift
 
 	return &v1alpha1.KeplerInternal{
 		TypeMeta:   metav1.TypeMeta{Kind: "KeplerInternal", APIVersion: v1alpha1.GroupVersion.String()},
 		ObjectMeta: metav1.ObjectMeta{Name: k.Name, Annotations: k.Annotations},
-		Spec:       v1alpha1.KeplerInternalSpec{Exporter: v1alpha1.InternalExporterSpec{Deployment: v1alpha1.InternalExporterDeploymentSpec{ExporterDeploymentSpec: k.Spec.Exporter.Deployment, Image: keplerImage, Namespace: KeplerDeploymentNS}}, OpenShift: v1alpha1.OpenShiftSpec{Enabled: isOpenShift, Dashboard: v1alpha1.DashboardSpec{Enabled: isOpenShift}}},
-		Status:     v1alpha1.KeplerInternalStatus{},
+		Spec: v1alpha1.KeplerInternalSpec{
+			Exporter: v1alpha1.InternalExporterSpec{
+				Deployment: v1alpha1.InternalExporterDeploymentSpec{
+					ExporterDeploymentSpec: k.Spec.Exporter.Deployment,
+					Image:                  Config.Image,
+					Namespace:              KeplerDeploymentNS,
+				},
+			},
+			OpenShift: v1alpha1.OpenShiftSpec{
+				Enabled: isOpenShift,
+				Dashboard: v1alpha1.DashboardSpec{
+					Enabled: isOpenShift,
+				},
+			},
+		},
 	}
-}
-
-func hasLibBPFAnnotation(k *v1alpha1.Kepler) bool {
-	bpftype, ok := k.Annotations[BpfAttachMethodAnnotation]
-	return ok && strings.ToLower(bpftype) == BpfAttachMethodLibbpf
 }

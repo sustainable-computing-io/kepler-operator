@@ -127,5 +127,6 @@ func (f Framework) AssertInternalStatus(name string) {
 	assert.Equal(f.T, available.ObservedGeneration, ki.Generation)
 	assert.Equal(f.T, available.Status, v1alpha1.ConditionTrue)
 
-	f.WaitUntilInternalHasExpectedRunning(name)
+	f.AssertModelServerStatus(name)
+	f.AssertEstimatorStatus(name)
 }

@@ -66,7 +66,6 @@ main() {
 		sed \
 			-e "s|<OPERATOR_IMG>|$OPERATOR_IMG|g" \
 			-e "s|<KEPLER_IMG>|$KEPLER_IMG|g" \
-			-e "s|<KEPLER_IMG_LIBBPF>|$KEPLER_IMG_LIBBPF|g" \
 			-e "s|<OLD_BUNDLE_VERSION>|$old_bundle_version|g" |
 		tee tmp/pre-bundle.yaml |
 		operator-sdk generate bundle "${gen_opts[@]}"

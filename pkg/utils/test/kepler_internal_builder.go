@@ -21,11 +21,6 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 )
 
-const (
-	libBPFImage = "quay.io/sustainable_computing_io/kepler:release-0.6.1-libbpf"
-	bccImage    = "quay.io/sustainable_computing_io/kepler:release-0.6.1"
-)
-
 type InternalBuilder struct {
 }
 
@@ -33,10 +28,6 @@ func (InternalBuilder) WithNamespace(ns string) func(k *v1alpha1.KeplerInternal)
 	return func(k *v1alpha1.KeplerInternal) {
 		k.Spec.Exporter.Deployment.Namespace = ns
 	}
-}
-
-func (b InternalBuilder) WithExporterLibBpfImage() func(k *v1alpha1.KeplerInternal) {
-	return b.WithExporterImage(libBPFImage)
 }
 
 func (InternalBuilder) WithExporterImage(img string) func(k *v1alpha1.KeplerInternal) {

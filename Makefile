@@ -23,8 +23,7 @@ GOARCH := $(shell go env GOARCH)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= $(shell cat VERSION)
 
-KEPLER_VERSION ?=release-0.6.1
-KEPLER_VERSION_LIBBPF ?=release-0.6.1-libbpf
+KEPLER_VERSION ?=release-0.7.2
 
 # IMG_BASE and KEPLER_IMG_BASE are set to distinguish between Operator-specific images and Kepler-Specific images.
 # IMG_BASE is used for building and pushing operator related images.
@@ -39,7 +38,6 @@ OPERATOR_IMG ?= $(IMG_BASE)/kepler-operator:$(VERSION)
 ADDITIONAL_TAGS ?=
 
 KEPLER_IMG ?= $(KEPLER_IMG_BASE):$(KEPLER_VERSION)
-KEPLER_IMG_LIBBPF ?= $(KEPLER_IMG_BASE):$(KEPLER_VERSION_LIBBPF)
 
 # E2E_TEST_IMG defines the image:tag used for the e2e test image
 E2E_TEST_IMG ?=$(IMG_BASE)/kepler-operator-e2e:$(VERSION)
@@ -157,7 +155,7 @@ RUN_ARGS ?=
 .PHONY: run
 run: install fmt vet ## Run a controller from your host against openshift cluster
 	go run ./cmd/manager/... \
-		--kepler.image=$(KEPLER_IMG)  --kepler.image.libbpf=$(KEPLER_IMG_LIBBPF) \
+		--kepler.image=$(KEPLER_IMG) \
 		--zap-devel --zap-log-level=8 \
 		--openshift=$(OPENSHIFT) \
 		$(RUN_ARGS) \
@@ -336,7 +334,6 @@ VERSION_REPLACED ?=
 bundle: generate manifests kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
 	OPERATOR_IMG=$(OPERATOR_IMG) \
 	KEPLER_IMG=$(KEPLER_IMG) \
-	KEPLER_IMG_LIBBPF=$(KEPLER_IMG_LIBBPF) \
 	VERSION=$(VERSION) \
 	VERSION_REPLACED=$(VERSION_REPLACED) \
 	BUNDLE_GEN_FLAGS='$(BUNDLE_GEN_FLAGS)' \
