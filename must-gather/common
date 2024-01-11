@@ -17,7 +17,7 @@
 
 set -eu -o pipefail
 
-export KEPLER_NS="openshift-kepler-operator"
+export KEPLER_NS="kepler-operator"
 export LOGFILE_NAME="gather-debug.log"
 
 get_timestamp() {
@@ -42,8 +42,8 @@ log() {
 
 run() {
 	length=$(($# - 1))
-	cmd=${@:1:$length}
-	gather_file="${@: -1}"
+	cmd=${*:1:$length}
+	gather_file="${*: -1}"
 
 	log_file "$cmd"
 	$cmd >>"$gather_file" 2>>"$LOGFILE_PATH" || true

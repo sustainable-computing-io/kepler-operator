@@ -41,27 +41,23 @@ get_kepler_events() {
 }
 
 get_kepler_daemon_set() {
-	KEPLER_EXPORTER_DS="kepler-exporter-ds"
 	log "getting kepler exporter daemonset"
-	run oc -n "$KEPLER_NS" get ds $KEPLER_EXPORTER_DS -oyaml "$BASE_COLLECTION_PATH/$KEPLER_EXPORTER_DS"".yaml"
+	run oc -n "$KEPLER_NS" get ds kepler -oyaml "$BASE_COLLECTION_PATH/kepler-ds.yaml"
 }
 
 get_kepler_config_map() {
-	KEPLER_EXPORTER_CM="kepler-exporter-cm"
 	log "getting kepler exporter config map"
-	run oc -n "$KEPLER_NS" get cm $KEPLER_EXPORTER_CM -oyaml "$BASE_COLLECTION_PATH/$KEPLER_EXPORTER_CM"".yaml"
+	run oc -n "$KEPLER_NS" get cm kepler -oyaml "$BASE_COLLECTION_PATH/kepler-cm.yaml"
 }
 
 get_kepler_sa() {
-	KEPLER_EXPORTER_SA="kepler-exporter-sa"
 	log "getting kepler exporter service account"
-	run oc -n "$KEPLER_NS" get serviceaccount $KEPLER_EXPORTER_SA -oyaml "$BASE_COLLECTION_PATH/$KEPLER_EXPORTER_SA"".yaml"
+	run oc -n "$KEPLER_NS" get serviceaccount kepler -oyaml "$BASE_COLLECTION_PATH/kepler-sa.yaml"
 }
 
 get_kepler_scc() {
-	KEPLER_EXPORTER_SCC="kepler-exporter-scc"
 	log "getting kepler exporter scc"
-	run oc get scc "$KEPLER_EXPORTER_SCC" -oyaml "$BASE_COLLECTION_PATH/$KEPLER_EXPORTER_SCC"".yaml"
+	run oc get scc kepler -oyaml "$BASE_COLLECTION_PATH/kepler-scc.yaml"
 }
 
 gather_kepler_exporter_info() {
