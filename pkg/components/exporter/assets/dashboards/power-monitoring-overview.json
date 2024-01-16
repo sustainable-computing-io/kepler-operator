@@ -100,7 +100,31 @@
           "unit": "short"
         },
         {
-          "alias": "Number of nodes",
+          "alias": "Components Source",
+          "colors": [],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "components_power_source",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "Platform Source",
+          "colors": [],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "platform_power_source",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "Nodes",
           "colors": [],
           "dateFormat": "YYYY-MM-DD HH:mm:ss",
           "decimals": 0,
@@ -120,7 +144,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "count by (cpu_architecture)(kepler_node_info{container=\"kepler\"}) ",
+          "expr": "count by (cpu_architecture, components_power_source, platform_power_source)(kepler_node_info{container=\"kepler\"}) ",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -128,7 +152,7 @@
           "refId": "A"
         }
       ],
-      "title": "CPU Architecture by Nodes",
+      "title": "Node - CPU Architecture & Power Source",
       "type": "table"
     },
     {
