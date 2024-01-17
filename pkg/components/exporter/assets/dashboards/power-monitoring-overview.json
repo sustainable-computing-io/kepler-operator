@@ -88,7 +88,7 @@
           "type": "hidden"
         },
         {
-          "alias": "CPU architecture",
+          "alias": "CPU Architecture",
           "colors": [],
           "dateFormat": "YYYY-MM-DD HH:mm:ss",
           "decimals": 0,
@@ -106,7 +106,7 @@
           "decimals": 0,
           "link": true,
           "linkTargetBlank": false,
-          "pattern": "components_power_source",
+          "pattern": "zz_components_power_source",
           "thresholds": [],
           "type": "number",
           "unit": "short"
@@ -144,7 +144,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "count by (cpu_architecture, components_power_source, platform_power_source)(kepler_node_info{container=\"kepler\"}) ",
+          "expr": "count ( label_replace( kepler_node_info{container=\"kepler\"}, \"zz_components_power_source\", \"$1\", \"components_power_source\", \"(.+)\") ) by (cpu_architecture, zz_components_power_source, platform_power_source)",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -324,6 +324,144 @@
         }
       ],
       "title": "Top 10 Energy Consuming Namespaces (kWh) in Last 24 hours",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "kwatth"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 15,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Power Consumption"
+          }
+        ]
+      },
+      "pluginVersion": "8.5.1",
+      "styles": [
+        {
+          "alias": "Time",
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "format": "table",
+          "pattern": "Time",
+          "type": "hidden"
+        },
+        {
+          "alias": "Node",
+          "colors": [],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "aa_instance",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "CPU Architecture",
+          "colors": [],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "cpu_architecture",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "Component Power Source",
+          "colors": [],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "components_power_source",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "Platform Power Source",
+          "colors": [],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "platform_power_source",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "Count",
+          "pattern": "Value #A",
+          "unit": "kWh",
+          "type": "hidden"
+        }
+      ],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "count (label_replace( kepler_node_info{container=\"kepler\"}, \"aa_instance\", \"$1\", \"instance\", \"(.+)\")) by (aa_instance, cpu_architecture, components_power_source, platform_power_source)",
+          "format": "table",
+          "interval": "",
+          "legendFormat": "{{container_namespace}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Detailed Node Information",
       "type": "table"
     }
   ],
