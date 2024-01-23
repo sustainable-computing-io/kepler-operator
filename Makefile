@@ -241,7 +241,9 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 .PHONY: deploy
 deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | \
-		sed  -e "s|<OPERATOR_IMG>|$(OPERATOR_IMG)|g" | tee tmp/deploy.yaml | \
+		sed  -e "s|<OPERATOR_IMG>|$(OPERATOR_IMG)|g" \
+		-e "s|<KEPLER_IMG>|$(KEPLER_IMG)|g" \
+		| tee tmp/deploy.yaml | \
 		kubectl apply --server-side --force-conflicts -f -
 
 .PHONY: undeploy
