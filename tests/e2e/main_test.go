@@ -21,6 +21,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/sustainable.computing.io/kepler-operator/pkg/controllers"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 )
 
@@ -30,6 +31,9 @@ var (
 
 func TestMain(m *testing.M) {
 	openshift := flag.Bool("openshift", true, "Indicate if tests are run aginast an OpenShift cluster.")
+	flag.StringVar(&controllers.KeplerDeploymentNS, "deployment-namespace", controllers.KeplerDeploymentNS,
+		"Namespace where kepler and its components are deployed.")
+
 	flag.Parse()
 
 	if *openshift {
