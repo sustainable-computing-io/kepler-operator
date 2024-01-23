@@ -37,7 +37,7 @@
       },
       "id": 33,
       "panels": [],
-      "title": "Power Consumption Overview",
+      "title": "Power Consumption / Overview",
       "type": "row"
     },
     {
@@ -45,7 +45,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "CPU architecture determined by Kepler",
+      "description": "CPU architecture & Power source determined by Kepler",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -103,26 +103,29 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "count by (cpu_architecture)(kepler_node_info)",
+          "expr": "count ( label_replace( kepler_node_info{container=\"kepler\"}, \"zz_components_power_source\", \"$1\", \"components_power_source\", \"(.+)\") ) by (cpu_architecture, zz_components_power_source, platform_power_source)",
           "format": "table",
           "instant": true,
-          "legendFormat": "{{cpu_architecture}}",
+          "legendFormat": "__auto",
           "range": false,
           "refId": "A"
         }
       ],
-      "title": "CPU Architecture by Nodes",
+      "title": "Node - CPU Architecture & Power Source",
       "transformations": [
         {
           "id": "organize",
           "options": {
             "excludeByName": {
-              "Time": true
+              "Time": true,
+              "platform_power_source": true
             },
             "indexByName": {},
             "renameByName": {
               "Value": "Number of nodes",
-              "cpu_architecture": "CPU architecture"
+              "cpu_architecture": "CPU architecture",
+              "platform_power_source": "Platform Source",
+              "zz_components_power_source": "Component Source"
             }
           }
         }
@@ -303,6 +306,102 @@
       "type": "bargauge"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Architecture, Component and Power source per Instance",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "id": 35,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "Kepler metrics for Container Energy Consumption",
+          "url": "https://github.com/sustainable-computing-io/kepler-doc/blob/84e3e01a0110829937cd40f9634dd8d0c92540a4/docs/design/metrics.md#kepler-metrics-for-container-energy-consumption"
+        }
+      ],
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count (label_replace( kepler_node_info{container=\"kepler\"}, \"aa_instance\", \"$1\", \"instance\", \"(.+)\")) by (aa_instance, cpu_architecture, components_power_source, platform_power_source)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Detailed Node Information",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "platform_power_source": true
+            },
+            "indexByName": {},
+            "renameByName": {
+              "aa_instance": "Instance",
+              "components_power_source": "Component Power Source",
+              "cpu_architecture": "CPU Architecture",
+              "platform_power_source": "Platform Power Source"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
       "collapsed": false,
       "datasource": "prometheus",
       "gridPos": {
@@ -313,7 +412,7 @@
       },
       "id": 8,
       "panels": [],
-      "title": "Power Consumption",
+      "title": "Power Consumption / Namespace",
       "type": "row"
     },
     {
