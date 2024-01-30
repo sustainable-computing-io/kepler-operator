@@ -74,9 +74,23 @@ gather_olm_info() {
 	"$SCRIPT_DIR"/gather-olm-info "$BASE_COLLECTION_PATH"
 }
 
+gather_operator_info() {
+	IS_POWER_MONITORING_OPERATOR=$(oc get csv | grep power-monitoring-operator || true)
+	if [ -n "${IS_POWER_MONITORING_OPERATOR}" ]; then
+		gather_power_monitoring_operator_info
+	else
+		gather_kepler_operator_info
+	fi
+}
+
 gather_kepler_operator_info() {
 	log "getting kepler-operator info"
 	"$SCRIPT_DIR"/gather-kepler-operator-info "$BASE_COLLECTION_PATH"
+}
+
+gather_power_monitoring_operator_info() {
+	log "getting power-monitoring-operator info"
+	"$SCRIPT_DIR"/gather-power-monitoring-operator-info "$BASE_COLLECTION_PATH"
 }
 
 gather_monitoring_info() {
@@ -105,6 +119,8 @@ main() {
 	export KUBECACHEDIR=/tmp/cache-dir
 
 	echo "powermon must-gather started..."
+	gather_olm_info
+	gather_operator_info
 	get_kepler_instance
 	get_kepler_events
 	get_kepler_daemon_set
@@ -112,8 +128,6 @@ main() {
 	get_kepler_sa
 	get_kepler_scc
 	gather_kepler_exporter_info
-	gather_olm_info
-	gather_kepler_operator_info
 	gather_monitoring_info
 
 	echo "powermon must-gather completed"
