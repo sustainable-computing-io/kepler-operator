@@ -75,12 +75,14 @@ gather_olm_info() {
 }
 
 gather_operator_info() {
-	IS_POWER_MONITORING_OPERATOR=$(oc get csv | grep power-monitoring-operator || true)
-	if [ -n "${IS_POWER_MONITORING_OPERATOR}" ]; then
-		gather_power_monitoring_operator_info
-	else
+	oc get -n openshift-operators csv | grep kepler-operator && {
 		gather_kepler_operator_info
-	fi
+	}
+
+	oc get -n openshift-operators csv | grep power-monitoring-operator && {
+		gather_power_monitoring_operator_info
+	}
+	return 0
 }
 
 gather_kepler_operator_info() {
