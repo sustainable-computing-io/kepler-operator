@@ -25,6 +25,16 @@ print_usage() {
 	echo -e "Usage: /usr/bin/gather <gather-collection-path>"
 }
 
+get_kepler_internal_instances() {
+	log "getting kepler internal instance(s)"
+	KEPLER_INTERNALS=$(oc get keplerinternals.kepler.system.sustainable.computing.io -oname)
+	if [ -n "$KEPLER_INTERNALS" ]; then
+		run oc get "$KEPLER_INTERNALS" -oyaml "$BASE_COLLECTION_PATH/kepler-internals.yaml"
+	else
+		echo "no kepler internals found" >>"$BASE_COLLECTION_PATH/kepler-internals.yaml"
+	fi
+}
+
 get_kepler_instance() {
 	log "getting kepler instance(s)"
 	KEPLERS=$(oc get keplers.kepler.system.sustainable.computing.io -oname)
@@ -124,6 +134,7 @@ main() {
 	gather_olm_info
 	gather_operator_info
 	get_kepler_instance
+	get_kepler_internal_instances
 	get_kepler_events
 	get_kepler_daemon_set
 	get_kepler_config_map

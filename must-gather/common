@@ -17,7 +17,7 @@
 
 set -eu -o pipefail
 
-export KEPLER_NS=$(oc get ns -l app.kubernetes.io/managed-by=kepler-operator --output=jsonpath='{.items[*].metadata.name}')
+export KEPLER_NS=$(oc get keplerinternals kepler -o jsonpath='{.spec.exporter.deployment.namespace}')
 export LOGFILE_NAME="gather-debug.log"
 
 get_timestamp() {
