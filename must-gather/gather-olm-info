@@ -26,14 +26,19 @@ KEPLER_OPERATOR_LABELS="operators.coreos.com/kepler-operator.openshift-operators
 POWER_MONITORING_OPERATOR_LABELS="operators.coreos.com/power-monitoring-operator.openshift-operators"
 
 get_olm() {
-	IS_POWER_MONITORING_OPERATOR=$(oc get csv | grep power-monitoring-operator || true)
-	if [ -n "${IS_POWER_MONITORING_OPERATOR}" ]; then
-		log "collecting olm info for power-monitoring-operator"
-		run oc -n openshift-operators get olm -l "${POWER_MONITORING_OPERATOR_LABELS}"= -oyaml "$OLM_INFO_DIR/olm-reources.yaml"
-	else
+	oc get -n openshift-operators csv | grep kepler-operator && {
 		log "collecting olm info for kepler-operator"
-		run oc -n openshift-operators get olm -l "${KEPLER_OPERATOR_LABELS}"= -oyaml "$OLM_INFO_DIR/olm-reources.yaml"
-	fi
+		run oc -n openshift-operators get olm -l "${KEPLER_OPERATOR_LABELS}"= \
+			-oyaml "$OLM_INFO_DIR/kepler-operator-olm-resources.yaml"
+	}
+
+	oc get -n openshift-operators csv | grep power-monitoring-operator && {
+		log "collecting olm info for power-monitoring-operator"
+		run oc -n openshift-operators get olm -l "${POWER_MONITORING_OPERATOR_LABELS}"= \
+			-oyaml "$OLM_INFO_DIR/power-mon-olm-resources.yaml"
+	}
+
+	return 0
 }
 
 get_summary() {
