@@ -25,6 +25,16 @@ print_usage() {
 	echo -e "Usage: /usr/bin/gather <gather-collection-path>"
 }
 
+get_kepler_internal_instances() {
+	log "getting kepler internal instance(s)"
+	KEPLER_INTERNALS=$(oc get keplerinternals.kepler.system.sustainable.computing.io -oname)
+	if [ -n "$KEPLER_INTERNALS" ]; then
+		run oc get "$KEPLER_INTERNALS" -oyaml "$BASE_COLLECTION_PATH/kepler-internals.yaml"
+	else
+		echo "no kepler internals found" >>"$BASE_COLLECTION_PATH/kepler-internals.yaml"
+	fi
+}
+
 get_kepler_instance() {
 	log "getting kepler instance(s)"
 	KEPLERS=$(oc get keplers.kepler.system.sustainable.computing.io -oname)
@@ -75,12 +85,14 @@ gather_olm_info() {
 }
 
 gather_operator_info() {
-	IS_POWER_MONITORING_OPERATOR=$(oc get csv | grep power-monitoring-operator || true)
-	if [ -n "${IS_POWER_MONITORING_OPERATOR}" ]; then
-		gather_power_monitoring_operator_info
-	else
+	oc get -n openshift-operators csv | grep kepler-operator && {
 		gather_kepler_operator_info
-	fi
+	}
+
+	oc get -n openshift-operators csv | grep power-monitoring-operator && {
+		gather_power_monitoring_operator_info
+	}
+	return 0
 }
 
 gather_kepler_operator_info() {
@@ -122,6 +134,7 @@ main() {
 	gather_olm_info
 	gather_operator_info
 	get_kepler_instance
+	get_kepler_internal_instances
 	get_kepler_events
 	get_kepler_daemon_set
 	get_kepler_config_map
