@@ -21,8 +21,71 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 source "${SCRIPT_DIR}"/common
 
+declare SHOW_HELP=false
+declare COLLECTION_DIR=""
+
+parse_args() {
+	while [[ -n "${1+xxx}" ]]; do
+		case $1 in
+		-h | --help)
+			SHOW_HELP=true
+			return 0
+			;;
+		-ns | --ns)
+			shift
+			OPERATOR_NS="$1"
+			shift
+			;;
+		-op | --operator)
+			shift
+			OPERATOR="$1"
+			shift
+			;;
+		-path | --path)
+			shift
+			COLLECTION_DIR="$1"
+			shift
+			;;
+		*)
+			return 1
+			;;
+		esac
+
+	done
+
+	export OPERATOR OPERATOR_NS
+	return 0
+}
+
 print_usage() {
-	echo -e "Usage: /usr/bin/gather <gather-collection-path>"
+	local scr
+	scr="$(basename "$0")"
+
+	read -r -d '' help <<-EOF_HELP || true
+		Usage:
+		  $scr
+		  $scr  --ns | -n
+		  $scr  --operator | -op
+		  $scr  --path | -path
+
+
+		 ─────────────────────────────────────────────────────────────────
+
+		Options:
+		  --operator | -op OPERATOR     specify the name of operator that is deployed
+		                                  default: $OPERATOR
+		  --ns | -n NAMESPACE           namespace where the operator is deployed
+			                                  default: $OPERATOR_NS
+		  --path | -path PATH           gather collection path
+			                                  default: /must-gather
+
+
+
+	EOF_HELP
+
+	echo -e "$help"
+	return 0
+
 }
 
 get_kepler_internal_instances() {
@@ -37,6 +100,10 @@ get_kepler_internal_instances() {
 
 get_kepler_instance() {
 	log "getting kepler instance(s)"
+	local ns=""
+	ns=$(oc get keplerinternals kepler -o jsonpath='{.spec.exporter.deployment.namespace}') && {
+		export KEPLER_NS=$ns
+	}
 	KEPLERS=$(oc get keplers.kepler.system.sustainable.computing.io -oname)
 	if [ -n "$KEPLERS" ]; then
 		run oc get "$KEPLERS" -oyaml "$BASE_COLLECTION_PATH/keplers.yaml"
@@ -85,24 +152,8 @@ gather_olm_info() {
 }
 
 gather_operator_info() {
-	oc get -n openshift-operators csv | grep kepler-operator && {
-		gather_kepler_operator_info
-	}
-
-	oc get -n openshift-operators csv | grep power-monitoring-operator && {
-		gather_power_monitoring_operator_info
-	}
-	return 0
-}
-
-gather_kepler_operator_info() {
-	log "getting kepler-operator info"
-	"$SCRIPT_DIR"/gather-kepler-operator-info "$BASE_COLLECTION_PATH"
-}
-
-gather_power_monitoring_operator_info() {
-	log "getting power-monitoring-operator info"
-	"$SCRIPT_DIR"/gather-power-monitoring-operator-info "$BASE_COLLECTION_PATH"
+	log "getting $OPERATOR info"
+	"$SCRIPT_DIR"/gather-operator-info "$BASE_COLLECTION_PATH"
 }
 
 gather_monitoring_info() {
@@ -111,14 +162,18 @@ gather_monitoring_info() {
 }
 
 main() {
-	case ${1-} in
-	--help | -h)
-		print_usage
-		exit 0
-		;;
-	esac
 
-	BASE_COLLECTION_PATH="${1:-/must-gather}"
+	parse_args "$@" || {
+		print_usage
+		echo "failed parsing args"
+		return 1
+	}
+	$SHOW_HELP && {
+		print_usage
+		return 0
+	}
+
+	BASE_COLLECTION_PATH="${COLLECTION_DIR:-/must-gather}"
 	# NOTE: convert relative to absolute path
 	BASE_COLLECTION_PATH="$(readlink -f "$BASE_COLLECTION_PATH")"
 	export LOGFILE_PATH="${BASE_COLLECTION_PATH}/${LOGFILE_NAME}"

@@ -17,8 +17,11 @@
 
 set -eu -o pipefail
 
-export KEPLER_NS=$(oc get keplerinternals kepler -o jsonpath='{.spec.exporter.deployment.namespace}')
 export LOGFILE_NAME="gather-debug.log"
+
+declare OPERATOR_NS=${OPERATOR_NS:-"openshift-operators"}
+declare OPERATOR=${OPERATOR:-"kepler-operator"}
+declare KEPLER_NS=${KEPLER_NS:-"kepler-operator"}
 
 get_timestamp() {
 	date -u +"%Y-%m-%d %H:%M:%SZ"
