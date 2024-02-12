@@ -31,7 +31,11 @@ declare SHOW_HELP=false
 source "$PROJECT_ROOT/hack/utils.bash"
 
 init() {
-	OPERATOR=$(kubectl get operators -o name | grep -E 'power|kepler' | awk -F '[/.]' '{print $(NF-1)}') || {
+	OPERATOR=$(
+		kubectl get subscription -A -o jsonpath='{.items[?(@.metadata.name=="power-monitoring-operator")].metadata.name}'
+		kubectl get subscription -A -o jsonpath='{.items[?(@.metadata.name=="kepler-operator")].metadata.name}'
+	)
+	[[ -z "$OPERATOR" ]] && {
 		fail "No operator found! Is it installed?"
 		return 1
 	}
