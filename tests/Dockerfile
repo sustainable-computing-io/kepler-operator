@@ -1,5 +1,5 @@
 # The Dockerfile's resulting image is used in executing Kepler Operator e2e tests on ProwCI
-FROM golang:1.20
+FROM golang:1.21
 
 WORKDIR /workspace
 
