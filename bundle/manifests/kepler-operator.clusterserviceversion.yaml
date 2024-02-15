@@ -27,7 +27,7 @@ metadata:
     capabilities: Basic Install
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.10.0
-    createdAt: "2024-01-16T09:18:34Z"
+    createdAt: "2024-02-15T04:47:16Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.27.0
     operators.operatorframework.io/internal-objects: |-
@@ -270,6 +270,9 @@ spec:
                   periodSeconds: 20
                 name: manager
                 ports:
+                - containerPort: 9443
+                  name: webhook-server
+                  protocol: TCP
                 - containerPort: 8080
                   name: metrics
                   protocol: TCP
@@ -291,6 +294,10 @@ spec:
                   capabilities:
                     drop:
                     - ALL
+                volumeMounts:
+                - mountPath: /tmp/k8s-webhook-server/serving-certs
+                  name: cert
+                  readOnly: true
               securityContext:
                 runAsNonRoot: true
               serviceAccountName: kepler-operator-controller-manager
@@ -366,3 +373,55 @@ spec:
     name: kepler
   replaces: kepler-operator.v0.9.2
   version: 0.10.0
+  webhookdefinitions:
+  - admissionReviewVersions:
+    - v1
+    containerPort: 443
+    conversionCRDs:
+    - keplers.kepler.system.sustainable.computing.io
+    deploymentName: kepler-operator-controller
+    generateName: ckeplers.kb.io
+    sideEffects: None
+    targetPort: 9443
+    type: ConversionWebhook
+    webhookPath: /convert
+  - admissionReviewVersions:
+    - v1
+    containerPort: 443
+    deploymentName: kepler-operator-controller
+    failurePolicy: Fail
+    generateName: mkepler.kb.io
+    rules:
+    - apiGroups:
+      - kepler.system.sustainable.computing.io
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - keplers
+    sideEffects: None
+    targetPort: 9443
+    type: MutatingAdmissionWebhook
+    webhookPath: /mutate-kepler-system-sustainable-computing-io-v1alpha1-kepler
+  - admissionReviewVersions:
+    - v1
+    containerPort: 443
+    deploymentName: kepler-operator-controller
+    failurePolicy: Fail
+    generateName: vkepler.kb.io
+    rules:
+    - apiGroups:
+      - kepler.system.sustainable.computing.io
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - keplers
+    sideEffects: None
+    targetPort: 9443
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate-kepler-system-sustainable-computing-io-v1alpha1-kepler

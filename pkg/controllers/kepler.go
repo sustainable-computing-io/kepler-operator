@@ -84,8 +84,9 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, nil
 	}
 
-	// TODO: have admission webhook decline all but `kepler` instance
-	if kepler.Name != "kepler" {
+	// NOTE: validating webhook should ensure that this isn't possible, however,
+	// if the webhook is removed, we should mark the instance as invalid.
+	if kepler.Name != v1alpha1.KeplerInstanceName {
 		return r.setInvalidStatus(ctx, req)
 	}
 
