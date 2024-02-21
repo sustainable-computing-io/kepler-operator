@@ -100,7 +100,6 @@ func (f Framework) AssertNoResourceExists(name, ns string, obj client.Object, fn
 	key := types.NamespacedName{Name: name, Namespace: ns}
 
 	err := wait.PollImmediate(opt.PollInterval, opt.WaitTimeout, func() (bool, error) {
-
 		getErr := f.client.Get(context.Background(), key, obj)
 		// NOTE: return true (stop loop) if resource does not exist
 		return errors.IsNotFound(getErr), nil
@@ -111,9 +110,9 @@ func (f Framework) AssertNoResourceExists(name, ns string, obj client.Object, fn
 	}
 }
 
-func (f Framework) AssertInternalStatus(name string) {
+func (f Framework) AssertInternalStatus(name string, fns ...AssertOptionFn) {
 	// the status will be updated
-	ki := f.WaitUntilInternalCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionTrue)
+	ki := f.WaitUntilInternalCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionTrue, fns...)
 	assert.Equal(f.T, []corev1.Toleration{{Operator: "Exists"}}, ki.Spec.Exporter.Deployment.Tolerations)
 
 	reconciled, err := k8s.FindCondition(ki.Status.Exporter.Conditions, v1alpha1.Reconciled)
@@ -121,12 +120,12 @@ func (f Framework) AssertInternalStatus(name string) {
 	assert.Equal(f.T, reconciled.ObservedGeneration, ki.Generation)
 	assert.Equal(f.T, reconciled.Status, v1alpha1.ConditionTrue)
 	//
-	ki = f.WaitUntilInternalCondition(name, v1alpha1.Available, v1alpha1.ConditionTrue)
+	ki = f.WaitUntilInternalCondition(name, v1alpha1.Available, v1alpha1.ConditionTrue, fns...)
 	available, err := k8s.FindCondition(ki.Status.Exporter.Conditions, v1alpha1.Available)
 	assert.NoError(f.T, err, "unable to get available condition")
 	assert.Equal(f.T, available.ObservedGeneration, ki.Generation)
 	assert.Equal(f.T, available.Status, v1alpha1.ConditionTrue)
 
-	f.AssertModelServerStatus(name)
-	f.AssertEstimatorStatus(name)
+	f.AssertModelServerStatus(name, fns...)
+	f.AssertEstimatorStatus(name, fns...)
 }
