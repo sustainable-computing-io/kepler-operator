@@ -104,7 +104,7 @@ run_bundle_upgrade() {
 	local released_bundle="$OPERATOR_RELEASED_BUNDLE:$replaced_version"
 
 	info "Running Released Bundle - $replaced_version"
-	run ./tmp/bin/operator-sdk run bundle "$released_bundle" \
+	run operator-sdk run bundle "$released_bundle" \
 		--install-mode AllNamespaces --namespace "$OPERATORS_NS" || {
 		ret=$?
 		line 50 heavy
@@ -114,7 +114,7 @@ run_bundle_upgrade() {
 	}
 
 	info "Running Upgrade to new bundle"
-	run ./tmp/bin/operator-sdk run bundle-upgrade "$BUNDLE_IMG" \
+	run operator-sdk run bundle-upgrade "$BUNDLE_IMG" \
 		--namespace "$OPERATORS_NS" --use-http || {
 		ret=$?
 		line 50 heavy
@@ -130,7 +130,7 @@ run_bundle() {
 	header "Running Bundle"
 	local -i ret=0
 
-	run ./tmp/bin/operator-sdk run bundle "$BUNDLE_IMG" \
+	run operator-sdk run bundle "$BUNDLE_IMG" \
 		--namespace "$OPERATORS_NS" --use-http || {
 		ret=$?
 		line 50 heavy
