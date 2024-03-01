@@ -221,6 +221,25 @@ spec:
                     - image
                     - namespace
                     type: object
+                  redfish:
+                    description: RedfishSpec for connecting to Redfish API
+                    properties:
+                      probeInterval:
+                        description: ProbeInterval controls how frequently power info
+                          is queried from Redfish
+                        type: string
+                      secretRef:
+                        description: SecretRef refers to the name of secret which
+                          contains credentials to initialize RedfishClient
+                        type: string
+                      skipSSLVerify:
+                        default: false
+                        description: SkipSSLVerify controls if RedfishClient will
+                          skip verifying server
+                        type: boolean
+                    required:
+                    - secretRef
+                    type: object
                 required:
                 - deployment
                 type: object

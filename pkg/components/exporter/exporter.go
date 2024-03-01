@@ -45,6 +45,11 @@ const (
 	overviewDashboardName = "power-monitoring-overview"
 	nsInfoDashboardName   = "power-monitoring-by-ns"
 	DashboardNs           = "openshift-config-managed"
+	REDFISH_ARGS          = "-redfish-cred-file-path=/etc/redfish/redfish.csv"
+	REDFISH_CSV           = "redfish.csv"
+	REDFISH_ANNOTATION    = "kepler.system.sustainable.computing.io/redfish-secret-ref"
+
+	IdxKeplerContainer = 0
 )
 
 var (
@@ -129,6 +134,19 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.
 				}, // PodSpec
 			}, // PodTemplateSpec
 		}, // Spec
+	}
+}
+
+func MountRedfishSecretToDaemonSet(ds *appsv1.DaemonSet, secret *corev1.Secret) {
+	spec := ds.Spec.Template.Spec
+	spec.Containers[IdxKeplerContainer].Command = append(spec.Containers[IdxKeplerContainer].Command, REDFISH_ARGS)
+	spec.Containers[IdxKeplerContainer].VolumeMounts = append(spec.Containers[IdxKeplerContainer].VolumeMounts,
+		corev1.VolumeMount{Name: "redfish-cred", MountPath: "/etc/redfish", ReadOnly: true})
+	spec.Volumes = append(spec.Volumes,
+		k8s.VolumeFromSecret("redfish-cred", secret.ObjectMeta.Name))
+	ds.Spec.Template.Spec = spec
+	ds.Spec.Template.Annotations = map[string]string{
+		REDFISH_ANNOTATION: secret.ResourceVersion,
 	}
 }
 
@@ -377,6 +395,7 @@ func NewSCC(d components.Detail, ki *v1alpha1.KeplerInternal) *secv1.SecurityCon
 		Users: []string{ki.FQServiceAccountName()},
 		Volumes: []secv1.FSType{
 			secv1.FSType("configMap"),
+			secv1.FSType("secret"),
 			secv1.FSType("projected"),
 			secv1.FSType("emptyDir"),
 			secv1.FSType("hostPath")},
@@ -596,7 +615,6 @@ func newExporterContainer(kiName, dsName string, deployment v1alpha1.InternalExp
 			"-enable-gpu=$(ENABLE_GPU)",
 			"-v=$(KEPLER_LOG_LEVEL)",
 			"-kernel-source-dir=/usr/share/kepler/kernel_sources",
-			"-redfish-cred-file-path=/etc/redfish/redfish.csv",
 		},
 		Ports: []corev1.ContainerPort{{
 			ContainerPort: int32(deployment.Port),
