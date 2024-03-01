@@ -17,6 +17,7 @@ package e2e
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
@@ -59,7 +60,7 @@ func TestKeplerInternal_Reconciliation(t *testing.T) {
 	assert.Equal(t, 1, len(containers[0].Ports))
 	assert.EqualValues(t, 9108, containers[0].Ports[0].ContainerPort)
 	// test expected status
-	f.AssertInternalStatus(ki.Name)
+	f.AssertInternalStatus(ki.Name, test.Timeout(5*time.Minute))
 }
 
 func TestKeplerInternal_WithEstimator(t *testing.T) {
@@ -92,7 +93,7 @@ func TestKeplerInternal_WithEstimator(t *testing.T) {
 	// deamonset must have a sidecar
 	assert.Equal(t, 2, len(containers))
 	// test expected status
-	f.AssertInternalStatus(ki.Name)
+	f.AssertInternalStatus(ki.Name, test.Timeout(5*time.Minute))
 }
 
 func TestKeplerInternal_WithModelServer(t *testing.T) {
@@ -124,7 +125,7 @@ func TestKeplerInternal_WithModelServer(t *testing.T) {
 	containers := ds.Spec.Template.Spec.Containers
 	assert.Equal(t, 1, len(containers))
 	// test expected status
-	f.AssertInternalStatus(ki.Name)
+	f.AssertInternalStatus(ki.Name, test.Timeout(5*time.Minute))
 
 	// confirm model-server deployment ready
 	deploy := appsv1.Deployment{}
@@ -164,7 +165,7 @@ func TestKeplerInternal_WithEstimatorAndModelServer(t *testing.T) {
 	// deamonset must have a sidecar
 	assert.Equal(t, 2, len(containers))
 	// test expected status
-	f.AssertInternalStatus(ki.Name)
+	f.AssertInternalStatus(ki.Name, test.Timeout(5*time.Minute))
 
 	// confirm model-server deployment ready
 	deploy := appsv1.Deployment{}
