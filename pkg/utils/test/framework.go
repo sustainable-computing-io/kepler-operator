@@ -111,8 +111,10 @@ func (f Framework) NewClient(scheme *runtime.Scheme) client.Client {
 	return c
 }
 
-type internalFn func(*v1alpha1.KeplerInternal)
-type keplerFn func(*v1alpha1.Kepler)
+type (
+	internalFn func(*v1alpha1.KeplerInternal)
+	keplerFn   func(*v1alpha1.Kepler)
+)
 
 func WithExporterPort(port int32) keplerFn {
 	return func(k *v1alpha1.Kepler) {
@@ -204,13 +206,13 @@ func (f Framework) CreateInternal(name string, fns ...internalFn) *v1alpha1.Kepl
 	assert.NoError(f.T, err, "failed to create kepler-internal")
 
 	f.T.Cleanup(func() {
-		f.DeleteInternal(name)
+		f.DeleteInternal(name, Timeout(5*time.Minute))
 	})
 
 	return &ki
 }
 
-func (f Framework) DeleteInternal(name string) {
+func (f Framework) DeleteInternal(name string, fns ...AssertOptionFn) {
 	f.T.Helper()
 
 	k := v1alpha1.KeplerInternal{}
@@ -231,10 +233,10 @@ func (f Framework) DeleteInternal(name string) {
 		k := v1alpha1.KeplerInternal{}
 		err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
 		return errors.IsNotFound(err), nil
-	})
+	}, fns...)
 }
 
-func (f Framework) WaitUntilInternalCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus) *v1alpha1.KeplerInternal {
+func (f Framework) WaitUntilInternalCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus, fns ...AssertOptionFn) *v1alpha1.KeplerInternal {
 	f.T.Helper()
 	k := v1alpha1.KeplerInternal{}
 	f.WaitUntil(fmt.Sprintf("kepler-internal %s is %s", name, t),
@@ -246,11 +248,11 @@ func (f Framework) WaitUntilInternalCondition(name string, t v1alpha1.ConditionT
 
 			condition, _ := k8s.FindCondition(k.Status.Exporter.Conditions, t)
 			return condition.Status == s, nil
-		})
+		}, fns...)
 	return &k
 }
 
-func (f Framework) AssertEstimatorStatus(name string) *v1alpha1.KeplerInternal {
+func (f Framework) AssertEstimatorStatus(name string, fns ...AssertOptionFn) *v1alpha1.KeplerInternal {
 	f.T.Helper()
 	k := v1alpha1.KeplerInternal{}
 
@@ -269,11 +271,11 @@ func (f Framework) AssertEstimatorStatus(name string) *v1alpha1.KeplerInternal {
 		actual := k.Status.Estimator.Status
 		f.T.Logf("estimator is %t, expected: %s and actual %s", enabled, expected, actual)
 		return actual == expected, nil
-	})
+	}, fns...)
 	return &k
 }
 
-func (f Framework) AssertModelServerStatus(name string) *v1alpha1.KeplerInternal {
+func (f Framework) AssertModelServerStatus(name string, fns ...AssertOptionFn) *v1alpha1.KeplerInternal {
 	f.T.Helper()
 	k := v1alpha1.KeplerInternal{}
 
@@ -292,7 +294,7 @@ func (f Framework) AssertModelServerStatus(name string) *v1alpha1.KeplerInternal
 		actual := k.Status.ModelServer.Status
 		f.T.Logf("model-server is %t, expected: %s and actual %s", enabled, expected, actual)
 		return actual == expected, nil
-	})
+	}, fns...)
 	return &k
 }
 
