@@ -6,6 +6,16 @@ metadata:
   creationTimestamp: null
   name: keplers.kepler.system.sustainable.computing.io
 spec:
+  conversion:
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          name: kepler-operator-webhook-service
+          namespace: kepler-operator-system
+          path: /convert
+      conversionReviewVersions:
+      - v1
   group: kepler.system.sustainable.computing.io
   names:
     kind: Kepler

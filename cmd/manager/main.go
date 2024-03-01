@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strings"
 
@@ -169,6 +170,15 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "kepler-internal")
 		os.Exit(1)
 	}
+
+	// Setup webhooks
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = setupWebhooks(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook")
+			os.Exit(1)
+		}
+	}
+
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -185,4 +195,11 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func setupWebhooks(mgr ctrl.Manager) error {
+	if err := (&keplersystemv1alpha1.Kepler{}).SetupWebhookWithManager(mgr); err != nil {
+		return fmt.Errorf("unable to create webhook: %v", err)
+	}
+	return nil
 }

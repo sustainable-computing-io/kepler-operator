@@ -73,10 +73,9 @@ func TestBadKepler_Reconciliation(t *testing.T) {
 	// Ensure Kepler is not deployed (by any chance)
 	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
 	f.AssertNoResourceExists("invalid-name", "", &v1alpha1.Kepler{}, test.NoWait())
-	k := f.CreateKepler("invalid-name")
-
-	ds := appsv1.DaemonSet{}
-	f.AssertNoResourceExists(k.Name, controllers.KeplerDeploymentNS, &ds)
+	kepler := f.NewKepler("invalid-name")
+	err := f.Patch(&kepler)
+	assert.ErrorContains(t, err, "denied the request")
 }
 
 func TestNodeSelector(t *testing.T) {

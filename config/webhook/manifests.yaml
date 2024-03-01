@@ -1,0 +1,52 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-kepler-system-sustainable-computing-io-v1alpha1-kepler
+  failurePolicy: Fail
+  name: mkepler.kb.io
+  rules:
+  - apiGroups:
+    - kepler.system.sustainable.computing.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - keplers
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-kepler-system-sustainable-computing-io-v1alpha1-kepler
+  failurePolicy: Fail
+  name: vkepler.kb.io
+  rules:
+  - apiGroups:
+    - kepler.system.sustainable.computing.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - keplers
+  sideEffects: None
