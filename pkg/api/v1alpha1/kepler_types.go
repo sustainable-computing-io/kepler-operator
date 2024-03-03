@@ -121,6 +121,24 @@ type Condition struct {
 	Message string `json:"message"`
 }
 
+type ObjectReference struct {
+	// group of the referent.
+	// +kubebuilder:validation:Required
+	// +required
+	Group string `json:"group"`
+	// resource of the referent.
+	// +kubebuilder:validation:Required
+	// +required
+	Resource string `json:"resource"`
+	// namespace of the referent.
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
+	// name of the referent.
+	// +kubebuilder:validation:Required
+	// +required
+	Name string `json:"name"`
+}
+
 // ExporterStatus defines the observed state of Kepler Exporter
 type ExporterStatus struct {
 	// The number of nodes that are running at least 1 kepler pod and are
@@ -152,6 +170,10 @@ type ExporterStatus struct {
 	// kepler pod and have none of the kepler pod running and available
 	// +optional
 	NumberUnavailable int32 `json:"numberUnavailable,omitempty"`
+
+	// relatedObjects is a list of objects that are related to the kepler exporter.
+	// +optional
+	RelatedObjects []ObjectReference `json:"relatedObjects,omitempty"`
 
 	// conditions represent the latest available observations of the kepler-exporter
 	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
