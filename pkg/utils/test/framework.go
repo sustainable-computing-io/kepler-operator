@@ -128,7 +128,7 @@ func (f Framework) GetKepler(name string) *v1alpha1.Kepler {
 	return &kepler
 }
 
-func (f Framework) CreateKepler(name string, fns ...keplerFn) *v1alpha1.Kepler {
+func (f Framework) NewKepler(name string, fns ...keplerFn) v1alpha1.Kepler {
 	kepler := v1alpha1.Kepler{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.GroupVersion.String(),
@@ -144,7 +144,18 @@ func (f Framework) CreateKepler(name string, fns ...keplerFn) *v1alpha1.Kepler {
 	for _, fn := range fns {
 		fn(&kepler)
 	}
+	return kepler
+}
 
+func (f Framework) Patch(obj client.Object) error {
+	f.T.Logf("%s: creating/updating object %s", time.Now().UTC().Format(time.RFC3339), obj.GetName())
+	return f.client.Patch(context.TODO(), obj, client.Apply,
+		client.ForceOwnership, client.FieldOwner("e2e-test"),
+	)
+}
+
+func (f Framework) CreateKepler(name string, fns ...keplerFn) *v1alpha1.Kepler {
+	kepler := f.NewKepler(name, fns...)
 	f.T.Logf("%s: creating/updating kepler %s", time.Now().UTC().Format(time.RFC3339), name)
 	err := f.client.Patch(context.TODO(), &kepler, client.Apply,
 		client.ForceOwnership, client.FieldOwner("e2e-test"),

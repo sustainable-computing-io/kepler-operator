@@ -84,15 +84,16 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, nil
 	}
 
-	// TODO: have admission webhook decline all but `kepler` instance
-	if kepler.Name != "kepler" {
+	// NOTE: validating webhook should ensure that this isn't possible, however,
+	// if the webhook is removed, we should mark the instance as invalid.
+	if kepler.Name != v1alpha1.KeplerInstanceName {
 		return r.setInvalidStatus(ctx, req)
 	}
 
 	logger.V(6).Info("Running sub reconcilers", "kepler", kepler.Spec)
 
 	result, recErr := r.runKeplerReconcilers(ctx, kepler)
-	updateErr := r.updateStatus(ctx, req, err)
+	updateErr := r.updateStatus(ctx, req, recErr)
 
 	if recErr != nil {
 		return result, recErr

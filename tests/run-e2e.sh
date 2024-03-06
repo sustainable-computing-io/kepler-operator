@@ -416,6 +416,24 @@ ensure_deploy_img_is_always_pulled() {
 	ok "Operator deployment imagePullPolicy is Always"
 }
 
+reject_invalid() {
+	local invalid_kepler='invalid-pre-test-kepler'
+
+	# ensure that applying an invalid kepler will be rejected by the webhook
+	{
+		# NOTE: || true ignores pipefail so that non-zero exit code will not be reported
+		# when kubectl apply fails (as expected)
+		sed -e "s|name: kepler$|name: $invalid_kepler|g" \
+			config/samples/kepler.system_v1alpha1_kepler.yaml |
+			kubectl apply -f- 2>&1 || true
+
+	} | tee /dev/stderr |
+		grep -q "BadRequest.* admission webhook .* denied the request" && return 0
+
+	kubectl delete kepler "$invalid_kepler" || true
+	return 1
+}
+
 # wait_for_operator requires the namespace where the operator is installed
 wait_for_operator() {
 	header "Waiting  for Kepler Operator ($OPERATORS_NS) to be Ready"
@@ -429,18 +447,9 @@ wait_for_operator() {
 
 	# NOTE: ensure that operator is actually ready by creating an invalid kepler
 	# and wait until the operator is able to reconcile
-	info "Ensure that operator can reconcile"
+	info "Ensure that webhooks are installed and working"
 
-	local invalid_kepler='invalid-pre-test-kepler'
-	sed -e "s|name: kepler$|name: $invalid_kepler|g" \
-		config/samples/kepler.system_v1alpha1_kepler.yaml |
-		kubectl apply -f -
-
-	run kubectl wait --for=jsonpath='{.status.exporter}' \
-		--timeout=60s kepler $invalid_kepler
-	run kubectl delete kepler $invalid_kepler
-	run kubectl wait --timeout=30s \
-		--for=delete kepler $invalid_kepler
+	wait_until 30 10 "webhooks to be ready" reject_invalid
 
 	ok "Operator up and running"
 }

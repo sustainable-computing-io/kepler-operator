@@ -12,6 +12,9 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+# WEBHOOKS
+ENABLE_WEBHOOKS ?= true # enable webhooks by default
+
 # Setting GOENV
 GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
