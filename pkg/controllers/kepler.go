@@ -93,7 +93,7 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	logger.V(6).Info("Running sub reconcilers", "kepler", kepler.Spec)
 
 	result, recErr := r.runKeplerReconcilers(ctx, kepler)
-	updateErr := r.updateStatus(ctx, req, err)
+	updateErr := r.updateStatus(ctx, req, recErr)
 
 	if recErr != nil {
 		return result, recErr

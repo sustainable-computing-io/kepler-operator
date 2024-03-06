@@ -112,7 +112,7 @@ func (r *KeplerInternalReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	logger.V(6).Info("Running sub reconcilers", "kepler-internal", ki.Spec)
 
 	result, recErr := r.runReconcilers(ctx, ki)
-	updateErr := r.updateStatus(ctx, req, err)
+	updateErr := r.updateStatus(ctx, req, recErr)
 
 	if recErr != nil {
 		return result, recErr
