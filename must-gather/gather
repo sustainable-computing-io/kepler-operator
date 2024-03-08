@@ -18,132 +18,427 @@
 set -eu -o pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+declare -r SCRIPT_DIR
 
-source "${SCRIPT_DIR}"/common
+source "${SCRIPT_DIR}"/utils
 
-print_usage() {
-	echo -e "Usage: /usr/bin/gather <gather-collection-path>"
-}
+declare OPERATOR_NS=""
+declare OPERATOR=""
+declare COLLECTION_DIR=""
 
-get_kepler_internal_instances() {
-	log "getting kepler internal instance(s)"
-	KEPLER_INTERNALS=$(oc get keplerinternals.kepler.system.sustainable.computing.io -oname)
-	if [ -n "$KEPLER_INTERNALS" ]; then
-		run oc get "$KEPLER_INTERNALS" -oyaml "$BASE_COLLECTION_PATH/kepler-internals.yaml"
-	else
-		echo "no kepler internals found" >>"$BASE_COLLECTION_PATH/kepler-internals.yaml"
-	fi
-}
+declare OLM_INFO_DIR=""
+declare KEPLER_NS=""
+declare KEPLER_OPERATOR_INFO_DIR=""
 
-get_kepler_instance() {
-	log "getting kepler instance(s)"
-	KEPLERS=$(oc get keplers.kepler.system.sustainable.computing.io -oname)
-	if [ -n "$KEPLERS" ]; then
-		run oc get "$KEPLERS" -oyaml "$BASE_COLLECTION_PATH/keplers.yaml"
-	else
-		echo "no keplers found" >>"$BASE_COLLECTION_PATH/keplers.yaml"
-	fi
-}
+declare UWM_INFO_DIR=""
+declare CA_BUNDLE=""
+declare THANOS_RULER_ROUTE=""
+declare SA_TOKEN=""
+declare PROM_PODS=""
 
-get_kepler_events() {
-	log "getting $KEPLER_NS events"
-	run oc -n "$KEPLER_NS" get events "$BASE_COLLECTION_PATH/$KEPLER_NS""_events"
-}
+declare -r OPERATOR_NS_DEFAULT="openshift-operators"
+declare -r OPERATOR_DEFAULT="kepler-operator"
+declare -r COLLECTION_DIR_DEFAULT="/must-gather"
+declare -r OPERATOR_DEPLOY_NAME="kepler-operator-controller"
+declare -r LOGFILE_NAME="gather-debug.log"
+declare -r UWM_NS="openshift-user-workload-monitoring"
 
-get_kepler_daemon_set() {
-	log "getting kepler exporter daemonset"
-	run oc -n "$KEPLER_NS" get ds kepler -oyaml "$BASE_COLLECTION_PATH/kepler-ds.yaml"
-}
+declare SHOW_HELP=false
 
-get_kepler_config_map() {
-	log "getting kepler exporter config map"
-	run oc -n "$KEPLER_NS" get cm kepler -oyaml "$BASE_COLLECTION_PATH/kepler-cm.yaml"
-}
-
-get_kepler_sa() {
-	log "getting kepler exporter service account"
-	run oc -n "$KEPLER_NS" get serviceaccount kepler -oyaml "$BASE_COLLECTION_PATH/kepler-sa.yaml"
-}
-
-get_kepler_scc() {
-	log "getting kepler exporter scc"
-	run oc get scc kepler -oyaml "$BASE_COLLECTION_PATH/kepler-scc.yaml"
-}
-
-gather_kepler_exporter_info() {
-	KEPLER_PODS=$(oc -n "$KEPLER_NS" get pods -oname 2>/dev/null || echo "")
-	for pod in $KEPLER_PODS; do
-		pod=$(echo "$pod" | awk -F '/' '{print $2}')
-		log "running gather script for kepler pod: $pod"
-		"$SCRIPT_DIR"/gather-kepler-exporter-info "$BASE_COLLECTION_PATH" "$pod"
-	done
-}
-
-gather_olm_info() {
-	log "running gather script for olm"
-	"$SCRIPT_DIR"/gather-olm-info "$BASE_COLLECTION_PATH"
-}
-
-gather_operator_info() {
-	oc get -n openshift-operators csv | grep kepler-operator && {
-		gather_kepler_operator_info
+init_globals() {
+	[[ -z "$OPERATOR_NS" ]] && {
+		OPERATOR_NS="$OPERATOR_NS_DEFAULT"
 	}
-
-	oc get -n openshift-operators csv | grep power-monitoring-operator && {
-		gather_power_monitoring_operator_info
+	[[ -z "$OPERATOR" ]] && {
+		OPERATOR="$OPERATOR_DEFAULT"
+	}
+	[[ -z "$COLLECTION_DIR" ]] && {
+		COLLECTION_DIR="$COLLECTION_DIR_DEFAULT"
 	}
 	return 0
 }
 
-gather_kepler_operator_info() {
-	log "getting kepler-operator info"
-	"$SCRIPT_DIR"/gather-kepler-operator-info "$BASE_COLLECTION_PATH"
+init_monitoring() {
+	THANOS_RULER_ROUTE="$(oc get routes -n $UWM_NS thanos-ruler -o jsonpath='{.status.ingress[0].host}')" || return 1
+	SA_TOKEN="$(oc create token default)" || return 1
+	PROM_PODS="$(oc -n $UWM_NS get pods -l app.kubernetes.io/component=prometheus -oname)" || return 1
+
+	return 0
 }
 
-gather_power_monitoring_operator_info() {
-	log "getting power-monitoring-operator info"
-	"$SCRIPT_DIR"/gather-power-monitoring-operator-info "$BASE_COLLECTION_PATH"
+parse_args() {
+	while [[ -n "${1+xxx}" ]]; do
+		case $1 in
+		-h | --help)
+			SHOW_HELP=true
+			return 0
+			;;
+		-n | --ns)
+			shift
+			OPERATOR_NS="$1"
+			shift
+			;;
+		-o | --operator)
+			shift
+			OPERATOR="$1"
+			shift
+			;;
+		-d | --dest-dir)
+			shift
+			COLLECTION_DIR="$1"
+			shift
+			;;
+		*)
+			return 1
+			;;
+		esac
+	done
+	return 0
 }
 
-gather_monitoring_info() {
-	log "getting monitoring info"
-	"$SCRIPT_DIR"/gather-monitoring-info "$BASE_COLLECTION_PATH"
+print_usage() {
+	local scr
+	scr="$(basename "$0")"
+
+	read -r -d '' help <<-EOF_HELP || true
+		Usage:
+		  $scr
+		  $scr  --ns | -n
+		  $scr  --operator | -o
+		  $scr  --dest-dir | -d
+
+
+		 ─────────────────────────────────────────────────────────────────
+
+		Options:
+		  --operator | -op     specify the name of operator that is deployed
+		                          default: $OPERATOR_DEFAULT
+		  --ns | -n            namespace where the operator is deployed
+			                          default: $OPERATOR_NS_DEFAULT
+		  --dest-dir | -d      gather collection path
+			                          default: $COLLECTION_DIR_DEFAULT
+
+	EOF_HELP
+
+	echo -e "$help"
+	return 0
 }
 
-main() {
-	case ${1-} in
-	--help | -h)
-		print_usage
-		exit 0
-		;;
-	esac
+get_kepler_internal_instances() {
+	log "getting kepler internal instance(s)"
+	oc get keplerinternals kepler >/dev/null || {
+		log "no kepler internals found; skipping gathering kepler"
+		return 0
+	}
+	local kepler_internals=""
+	kepler_internals=$(oc get keplerinternals.kepler.system.sustainable.computing.io -oname)
+	run oc get "$kepler_internals" -oyaml "$COLLECTION_DIR/kepler-internals.yaml"
+}
 
-	BASE_COLLECTION_PATH="${1:-/must-gather}"
-	# NOTE: convert relative to absolute path
-	BASE_COLLECTION_PATH="$(readlink -f "$BASE_COLLECTION_PATH")"
-	export LOGFILE_PATH="${BASE_COLLECTION_PATH}/${LOGFILE_NAME}"
+get_kepler_instance() {
+	log "getting kepler instance(s)"
+	oc get kepler kepler >/dev/null || {
+		log "no kepler found; skipping gathering kepler"
+		return 0
+	}
+	KEPLER_NS=$(oc get keplerinternals kepler -o jsonpath='{.spec.exporter.deployment.namespace}')
+	local kepler=""
+	kepler=$(oc get keplers.kepler.system.sustainable.computing.io -oname)
+	run oc get "$kepler" -oyaml "$COLLECTION_DIR/keplers.yaml"
+}
 
-	mkdir -p "${BASE_COLLECTION_PATH}"
-	cd "${BASE_COLLECTION_PATH}"
-	echo -e "must-gather logs are located at: '${LOGFILE_PATH}'"
+get_kepler_events() {
+	log "getting $KEPLER_NS events"
+	run oc -n "$KEPLER_NS" get events "$COLLECTION_DIR/$KEPLER_NS""_events"
+}
 
-	mkdir -p "/tmp/cache-dir"
-	export KUBECACHEDIR=/tmp/cache-dir
+get_kepler_daemon_set() {
+	log "getting kepler exporter daemonset"
+	run oc -n "$KEPLER_NS" get ds kepler -oyaml "$COLLECTION_DIR/kepler-ds.yaml"
+}
 
-	echo "powermon must-gather started..."
-	gather_olm_info
-	gather_operator_info
-	get_kepler_instance
-	get_kepler_internal_instances
+get_kepler_config_map() {
+	log "getting kepler exporter config map"
+	run oc -n "$KEPLER_NS" get cm kepler -oyaml "$COLLECTION_DIR/kepler-cm.yaml"
+}
+
+get_kepler_sa() {
+	log "getting kepler exporter service account"
+	run oc -n "$KEPLER_NS" get serviceaccount kepler -oyaml "$COLLECTION_DIR/kepler-sa.yaml"
+}
+
+get_kepler_scc() {
+	log "getting kepler exporter scc"
+	run oc get scc kepler -oyaml "$COLLECTION_DIR/kepler-scc.yaml"
+}
+
+get_kepler_pod() {
+	local kepler_pod="$1"
+	local kepler_node_info_dir="$2"
+	shift 2
+	log "getting pod yaml for kepler pod: $kepler_pod"
+	run oc -n "$KEPLER_NS" get pod "$kepler_pod" -oyaml "$kepler_node_info_dir/kepler-pod.yaml"
+}
+
+get_kepler_cpuid() {
+	local kepler_pod="$1"
+	local kepler_node_info_dir="$2"
+	shift 2
+	log "getting information from \"cpuid\" from kepler pod: $kepler_pod"
+	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- cpuid -1 "$kepler_node_info_dir/node-cpuid-info"
+}
+
+get_kepler_env_var() {
+	local kepler_pod="$1"
+	local kepler_node_info_dir="$2"
+	shift 2
+	log "getting environment variables from kepler pod: $kepler_pod"
+	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- env "$kepler_node_info_dir/env-variables"
+}
+
+get_kepler_kernel_info() {
+	local kepler_pod="$1"
+	local kepler_node_info_dir="$2"
+	shift 2
+	log "getting kernel version from kepler pod: $kepler_pod"
+	echo "kernel version:" >>"$kepler_node_info_dir/kernel-info"
+	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- uname -a "$kepler_node_info_dir/kernel-info"
+}
+
+get_kepler_ebpf_info() {
+	local kepler_pod="$1"
+	local kepler_node_info_dir="$2"
+	shift 2
+	log "getting ebpf information from kepler pod: $kepler_pod"
+	echo "## kprobes list only applicable for bcc" >>"$kepler_node_info_dir/ebpf-info"
+	echo "kprobes list:" >>"$kepler_node_info_dir/ebpf-info"
+	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- cat /sys/kernel/debug/kprobes/list "$kepler_node_info_dir/ebpf-info"
+}
+
+get_kepler_logs() {
+	local kepler_pod="$1"
+	local kepler_node_info_dir="$2"
+	shift 2
+	log "getting logs from kepler pod: $kepler_pod"
+	run oc -n "$KEPLER_NS" logs "$kepler_pod" -c kepler "$kepler_node_info_dir/kepler.log"
+}
+
+gather_kepler_exporter_info() {
+	[[ -z "$KEPLER_NS" ]] && {
+		log "no kepler found; skipping gathering kepler exporter info"
+		return 0
+	}
 	get_kepler_events
 	get_kepler_daemon_set
 	get_kepler_config_map
 	get_kepler_sa
 	get_kepler_scc
-	gather_kepler_exporter_info
-	gather_monitoring_info
+	local kepler_pods=""
+	local kepler_pod_info_dir=""
+	kepler_pods=$(oc -n "$KEPLER_NS" get pods -oname 2>/dev/null || echo "")
+	for pod in $kepler_pods; do
+		pod=$(echo "$pod" | awk -F '/' '{print $2}')
+		log "running gather script for kepler pod: $pod"
+		kepler_pod_info_dir="$COLLECTION_DIR/kepler-info/$pod"
+		mkdir -p "$kepler_pod_info_dir"
+		get_kepler_pod "$pod" "$kepler_pod_info_dir"
+		get_kepler_cpuid "$pod" "$kepler_pod_info_dir"
+		get_kepler_env_var "$pod" "$kepler_pod_info_dir"
+		get_kepler_kernel_info "$pod" "$kepler_pod_info_dir"
+		get_kepler_ebpf_info "$pod" "$kepler_pod_info_dir"
+		get_kepler_logs "$pod" "$kepler_pod_info_dir"
+	done
+}
 
-	echo "powermon must-gather completed"
+get_olm() {
+	log "collecting olm info for $OPERATOR"
+	run oc -n "$OPERATOR_NS" get olm -l "operators.coreos.com/$OPERATOR.$OPERATOR_NS"= \
+		-oyaml "$OLM_INFO_DIR/$OPERATOR-olm-resources.yaml"
+}
+
+get_summary() {
+	log "collecting olm summary"
+	run oc -n "$OPERATOR_NS" get olm -owide "$OLM_INFO_DIR/summary.txt"
+}
+
+gather_olm_info() {
+	log "running gather script for olm"
+	OLM_INFO_DIR="$COLLECTION_DIR/olm-info"
+	mkdir -p "$OLM_INFO_DIR"
+	get_olm
+	get_summary
+}
+
+get_catalogsource() {
+	log "getting catalogsource info for $OPERATOR"
+	run oc -n "$OPERATOR_NS" get catalogsource \
+		"$OPERATOR-catalog" -oyaml "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR-catalogsource.yaml"
+}
+
+get_subscription() {
+	log "getting subscription info for $OPERATOR"
+	run oc -n "$OPERATOR_NS" get subscription \
+		-l operators.coreos.com/"$OPERATOR"."$OPERATOR_NS"= \
+		-oyaml "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR-subscription.yaml"
+}
+
+get_install_plan() {
+	log "getting installplan info for $OPERATOR"
+	run oc -n "$OPERATOR_NS" get installplan \
+		-l operators.coreos.com/"$OPERATOR"."$OPERATOR_NS"= \
+		-oyaml "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR-installplan.yaml"
+}
+
+get_csv() {
+	log "getting CSV for $OPERATOR"
+	run oc -n "$OPERATOR_NS" get csv \
+		-l operators.coreos.com/"$OPERATOR"."$OPERATOR_NS"= \
+		-oyaml "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR-csv.yaml"
+}
+
+get_kepler_operator_deployment_info() {
+	log "getting deployment info for $OPERATOR"
+	run oc -n "$OPERATOR_NS" get deployment \
+		"$OPERATOR_DEPLOY_NAME" -oyaml "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR-deployment.yaml"
+}
+
+get_kepler_operator_pod_info() {
+	log "getting pod info for $OPERATOR"
+	run oc -n "$OPERATOR_NS" get pod \
+		-l app.kubernetes.io/component=manager \
+		-l app.kubernetes.io/part-of="kepler-operator" \
+		-oyaml "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR.yaml"
+}
+
+get_kepler_operator_log() {
+	log "getting pod log for $OPERATOR"
+	run oc -n "$OPERATOR_NS" logs deployment/"$OPERATOR_DEPLOY_NAME" "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR.log"
+}
+
+get_operator_summary() {
+	run oc -n "$OPERATOR_NS" get catalogsource \
+		"$OPERATOR-catalog" -owide "$KEPLER_OPERATOR_INFO_DIR/summary.txt"
+	echo -e "\n" >>"$KEPLER_OPERATOR_INFO_DIR/summary.txt"
+
+	run oc -n "$OPERATOR_NS" get subscription -owide "$KEPLER_OPERATOR_INFO_DIR/summary.txt"
+	echo -e "\n" >>"$KEPLER_OPERATOR_INFO_DIR/summary.txt"
+
+	run oc -n "$OPERATOR_NS" get installplan -owide "$KEPLER_OPERATOR_INFO_DIR/summary.txt"
+	echo -e "\n" >>"$KEPLER_OPERATOR_INFO_DIR/summary.txt"
+
+	run oc -n "$OPERATOR_NS" get csv -owide "$KEPLER_OPERATOR_INFO_DIR/summary.txt"
+	echo -e "\n" >>"$KEPLER_OPERATOR_INFO_DIR/summary.txt"
+
+	run oc -n "$OPERATOR_NS" get deployment \
+		"$OPERATOR_DEPLOY_NAME" -owide "$KEPLER_OPERATOR_INFO_DIR/summary.txt"
+	echo -e "\n" >>"$KEPLER_OPERATOR_INFO_DIR/summary.txt"
+
+	run oc -n "$OPERATOR_NS" get pod \
+		-l app.kubernetes.io/component=manager \
+		-l app.kubernetes.io/part-of="kepler-operator" \
+		-owide "$KEPLER_OPERATOR_INFO_DIR/summary.txt"
+}
+
+gather_operator_info() {
+	log "getting $OPERATOR info"
+	KEPLER_OPERATOR_INFO_DIR="$COLLECTION_DIR/$OPERATOR-info"
+	mkdir -p "$KEPLER_OPERATOR_INFO_DIR"
+	get_subscription
+	get_catalogsource
+	get_install_plan
+	get_csv
+	get_kepler_operator_deployment_info
+	get_kepler_operator_pod_info
+	get_kepler_operator_log
+	get_operator_summary
+}
+
+get_rules() {
+	log "getting prometheus rules"
+	run oc -n openshift-config-managed get cm default-ingress-cert -o jsonpath='{.data.ca-bundle\.crt}' "${CA_BUNDLE}"
+	run oc get --certificate-authority="${CA_BUNDLE}" \
+		--token="${SA_TOKEN}" --server="https://${THANOS_RULER_ROUTE}" \
+		--raw="/api/v1/rules" "${UWM_INFO_DIR}/rules.json"
+}
+
+get_from_prom_replica() {
+	local replica="$1"
+	shift
+	local object="$1"
+	shift
+	local path="${1:-$object}"
+	shift || true
+
+	local result_path="${UWM_INFO_DIR}/${path}"
+	mkdir -p "$(dirname "${result_path}")"
+	run oc exec "${replica}" \
+		-c prometheus \
+		-n $UWM_NS \
+		-- curl -sG "http://localhost:9090/api/v1/${object}" \
+		"${result_path}.json"
+}
+
+get_from_prom_replicas() {
+	local object="$1"
+	shift
+	local path="${1:-$object}"
+	shift || true
+
+	for pod in ${PROM_PODS}; do
+		pod=$(echo "$pod" | awk -F '/' '{print $2}')
+		log "getting ${object} from prometheus pod: ${pod}"
+		get_from_prom_replica "${pod}" "${object}" "${pod}/${path}"
+	done
+}
+
+gather_monitoring_info() {
+	log "getting monitoring info"
+	UWM_INFO_DIR="${COLLECTION_DIR}/uwm-info"
+	CA_BUNDLE="${UWM_INFO_DIR}/ca-bundle.crt"
+	mkdir -p "${UWM_INFO_DIR}"
+	get_rules
+	get_from_prom_replicas status/runtimeinfo
+	get_from_prom_replicas status/config
+	get_from_prom_replicas 'targets?state=active' active-targets
+	get_from_prom_replicas status/tsdb
+}
+
+main() {
+	parse_args "$@" || {
+		print_usage
+		echo "error: parsing args failed"
+		return 1
+	}
+	$SHOW_HELP && {
+		print_usage
+		return 0
+	}
+	init_globals
+
+	# NOTE: convert relative to absolute path
+	COLLECTION_DIR="$(readlink -f "$COLLECTION_DIR")"
+	export LOGFILE_PATH="${COLLECTION_DIR}/${LOGFILE_NAME}"
+
+	mkdir -p "${COLLECTION_DIR}"
+	cd "${COLLECTION_DIR}"
+	echo -e "must-gather logs are located at: '${LOGFILE_PATH}'"
+
+	mkdir -p "/tmp/cache-dir"
+	export KUBECACHEDIR=/tmp/cache-dir
+
+	echo "$OPERATOR must-gather started..."
+	gather_olm_info
+	gather_operator_info
+	get_kepler_instance
+	get_kepler_internal_instances
+	gather_kepler_exporter_info
+	if init_monitoring; then
+		gather_monitoring_info
+	else
+		log "cannot gather UWM details; skipping gathering monitoring info"
+	fi
+
+	echo "$OPERATOR must-gather completed"
 }
 
 main "$@"

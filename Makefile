@@ -100,7 +100,7 @@ fmt: shfmt ## Run go fmt against code.
 	go fmt ./...
 	PATH=./tmp/bin:$$PATH \
 		shfmt -l -w ./**/*.sh \
-			./must-gather/gather* ./must-gather/common
+			./must-gather/gather*
 
 .PHONY: vet
 vet: ## Run go vet against code.
