@@ -93,41 +93,36 @@ func TestTolerations(t *testing.T) {
 	}
 }
 
-func TestHostPID(t *testing.T) {
+func TestDaemonSet(t *testing.T) {
 	tt := []struct {
-		spec     v1alpha1.InternalExporterSpec
-		hostPID  bool
-		scenario string
+		spec            v1alpha1.InternalExporterSpec
+		hostPID         bool
+		exporterCommand []string
+		volumeMounts    []corev1.VolumeMount
+		volumes         []corev1.Volume
+		scenario        string
+		addRedfish      bool
+		redfishSecret   *corev1.Secret
+		annotation      map[string]string
 	}{
 		{
-			spec:     v1alpha1.InternalExporterSpec{},
-			hostPID:  true,
-			scenario: "default case",
-		},
-	}
-
-	for _, tc := range tt {
-		tc := tc
-		t.Run(tc.scenario, func(t *testing.T) {
-			t.Parallel()
-			k := v1alpha1.KeplerInternal{
-				Spec: v1alpha1.KeplerInternalSpec{
-					Exporter: tc.spec,
+			spec: v1alpha1.InternalExporterSpec{
+				Deployment: v1alpha1.InternalExporterDeploymentSpec{
+					ExporterDeploymentSpec: v1alpha1.ExporterDeploymentSpec{
+						Port: 9103,
+					},
 				},
-			}
-			actual := k8s.HostPIDFromDS(NewDaemonSet(components.Full, &k))
-			assert.Equal(t, actual, tc.hostPID)
-		})
-	}
-}
-func TestVolumeMounts(t *testing.T) {
-	tt := []struct {
-		spec         v1alpha1.InternalExporterSpec
-		volumeMounts []corev1.VolumeMount
-		scenario     string
-	}{
-		{
-			spec: v1alpha1.InternalExporterSpec{},
+			},
+			hostPID: true,
+			exporterCommand: []string{
+				"/usr/bin/kepler",
+				"-address",
+				"0.0.0.0:9103",
+				"-enable-cgroup-id=true",
+				"-enable-gpu=$(ENABLE_GPU)",
+				"-v=$(KEPLER_LOG_LEVEL)",
+				"-kernel-source-dir=/usr/share/kepler/kernel_sources",
+			},
 			volumeMounts: []corev1.VolumeMount{
 				{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
 				{Name: "tracing", MountPath: "/sys", ReadOnly: true},
@@ -135,32 +130,6 @@ func TestVolumeMounts(t *testing.T) {
 				{Name: "proc", MountPath: "/proc"},
 				{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
 			},
-			scenario: "default case",
-		},
-	}
-
-	for _, tc := range tt {
-		tc := tc
-		t.Run(tc.scenario, func(t *testing.T) {
-			t.Parallel()
-			k := v1alpha1.KeplerInternal{
-				Spec: v1alpha1.KeplerInternalSpec{
-					Exporter: tc.spec,
-				},
-			}
-			actual := k8s.VolumeMountsFromDS(NewDaemonSet(components.Full, &k))
-			assert.Equal(t, actual, tc.volumeMounts)
-		})
-	}
-}
-func TestVolumes(t *testing.T) {
-	tt := []struct {
-		spec     v1alpha1.InternalExporterSpec
-		volumes  []corev1.Volume
-		scenario string
-	}{
-		{
-			spec: v1alpha1.InternalExporterSpec{},
 			volumes: []corev1.Volume{
 				k8s.VolumeFromHost("lib-modules", "/lib/modules"),
 				k8s.VolumeFromHost("tracing", "/sys"),
@@ -169,6 +138,53 @@ func TestVolumes(t *testing.T) {
 				k8s.VolumeFromConfigMap("cfm", "kepler-internal"),
 			},
 			scenario: "default case",
+		},
+		{
+			spec: v1alpha1.InternalExporterSpec{
+				Deployment: v1alpha1.InternalExporterDeploymentSpec{
+					ExporterDeploymentSpec: v1alpha1.ExporterDeploymentSpec{
+						Port: 9103,
+					},
+				},
+			},
+			hostPID: true,
+			exporterCommand: []string{
+				"/usr/bin/kepler",
+				"-address",
+				"0.0.0.0:9103",
+				"-enable-cgroup-id=true",
+				"-enable-gpu=$(ENABLE_GPU)",
+				"-v=$(KEPLER_LOG_LEVEL)",
+				"-kernel-source-dir=/usr/share/kepler/kernel_sources",
+				"-redfish-cred-file-path=/etc/redfish/redfish.csv",
+			},
+			volumeMounts: []corev1.VolumeMount{
+				{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
+				{Name: "tracing", MountPath: "/sys", ReadOnly: true},
+				{Name: "kernel-src", MountPath: "/usr/src/kernels", ReadOnly: true},
+				{Name: "proc", MountPath: "/proc"},
+				{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
+				{Name: "redfish-cred", MountPath: "/etc/redfish", ReadOnly: true},
+			},
+			volumes: []corev1.Volume{
+				k8s.VolumeFromHost("lib-modules", "/lib/modules"),
+				k8s.VolumeFromHost("tracing", "/sys"),
+				k8s.VolumeFromHost("proc", "/proc"),
+				k8s.VolumeFromHost("kernel-src", "/usr/src/kernels"),
+				k8s.VolumeFromConfigMap("cfm", "kepler-internal"),
+				k8s.VolumeFromSecret("redfish-cred", "my-redfish-secret"),
+			},
+			addRedfish: true,
+			redfishSecret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "my-redfish-secret",
+					ResourceVersion: "123",
+				},
+			},
+			annotation: map[string]string{
+				"kepler.system.sustainable.computing.io/redfish-secret-ref": "123",
+			},
+			scenario: "redfish case",
 		},
 	}
 
@@ -184,8 +200,25 @@ func TestVolumes(t *testing.T) {
 					Exporter: tc.spec,
 				},
 			}
-			actual := k8s.VolumesFromDS(NewDaemonSet(components.Full, &k))
-			assert.Equal(t, actual, tc.volumes)
+			ds := NewDaemonSet(components.Full, &k)
+			if tc.addRedfish {
+				MountRedfishSecretToDaemonSet(ds, tc.redfishSecret)
+			}
+
+			actual_hostPID := k8s.HostPIDFromDS(ds)
+			assert.Equal(t, actual_hostPID, tc.hostPID)
+
+			actual_exporterCommand := k8s.CommandFromDS(ds, IdxKeplerContainer)
+			assert.Equal(t, actual_exporterCommand, tc.exporterCommand)
+
+			actual_volumeMounts := k8s.VolumeMountsFromDS(ds, IdxKeplerContainer)
+			assert.Equal(t, actual_volumeMounts, tc.volumeMounts)
+
+			actual_Volumes := k8s.VolumesFromDS(ds)
+			assert.Equal(t, actual_Volumes, tc.volumes)
+
+			actual_Annotation := k8s.AnnotationFromDS(ds)
+			assert.Equal(t, actual_Annotation, tc.annotation)
 		})
 	}
 }
