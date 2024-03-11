@@ -11,7 +11,7 @@ source "$PROJECT_ROOT/hack/utils.bash"
 declare -r LOCAL_BIN="$PROJECT_ROOT/tmp/bin"
 declare -r OPERATOR="kepler-operator"
 declare -r OLM_CATALOG="kepler-operator-catalog"
-declare -r VERSION="0.0.0-e2e"
+declare -r VERSION=${VERSION:-"0.0.0-e2e"}
 declare -r OPERATOR_DEPLOY_YAML="config/manager/manager.yaml"
 declare -r OPERATOR_CSV="bundle/manifests/$OPERATOR.clusterserviceversion.yaml"
 declare -r OPERATOR_DEPLOY_NAME="kepler-operator-controller"
@@ -302,7 +302,7 @@ restart_operator() {
 	info "scale down Operator"
 	run kubectl scale -n "$OPERATORS_NS" --replicas=0 "$deployment"
 	run kubectl wait -n "$OPERATORS_NS" --for=delete \
-		pods -l app.kubernetes.io/component=operator --timeout=60s
+		pods -l app.kubernetes.io/component=manager --timeout=60s
 
 	update_crds
 

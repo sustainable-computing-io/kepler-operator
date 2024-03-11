@@ -8,8 +8,10 @@ import (
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
@@ -47,6 +49,7 @@ type KeplerInternalReconciler struct {
 
 // RBAC for running Kepler exporter
 //+kubebuilder:rbac:groups=apps,resources=daemonsets;deployments,verbs=list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=secrets,verbs=list;watch
 //+kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=list;watch;create;update;patch;delete;use
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;prometheusrules,verbs=list;watch;create;update;patch;delete
 
@@ -74,10 +77,46 @@ func (r *KeplerInternalReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&rbacv1.ClusterRoleBinding{}, genChanged).
 		Owns(&rbacv1.ClusterRole{}, genChanged)
 
+	c = c.Watches(&corev1.Secret{},
+		handler.EnqueueRequestsFromMapFunc(r.mapSecretToRequests),
+		builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+	)
+
 	if Config.Cluster == k8s.OpenShift {
 		c = c.Owns(&secv1.SecurityContextConstraints{}, genChanged)
 	}
 	return c.Complete(r)
+}
+
+// mapSecretToRequests returns the reconcile requests for kepler-internal objects for which an associated redfish secret has been changed.
+func (r *KeplerInternalReconciler) mapSecretToRequests(ctx context.Context, object client.Object) []reconcile.Request {
+
+	secret, ok := object.(*corev1.Secret)
+	if !ok {
+		return nil
+	}
+
+	ks := v1alpha1.KeplerInternalList{}
+	if err := r.List(ctx, &ks); err != nil {
+		return nil
+	}
+
+	requests := []reconcile.Request{}
+	for _, ki := range ks.Items {
+		ex := ki.Spec.Exporter
+
+		if ex.Redfish == nil {
+			continue
+		}
+
+		if ex.Redfish.SecretRef == secret.GetName() &&
+			ex.Deployment.Namespace == secret.GetNamespace() {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: types.NamespacedName{Name: ki.ObjectMeta.Name, Namespace: ki.ObjectMeta.Namespace},
+			})
+		}
+	}
+	return requests
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -93,7 +132,7 @@ func (r *KeplerInternalReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	logger := log.FromContext(ctx)
 	r.logger = logger
 
-	logger.Info("Start of  reconcile")
+	logger.Info("Start of reconcile")
 	defer logger.Info("End of reconcile")
 
 	ki, err := r.getInternal(ctx, req)
@@ -123,7 +162,7 @@ func (r *KeplerInternalReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 func (r KeplerInternalReconciler) runReconcilers(ctx context.Context, ki *v1alpha1.KeplerInternal) (ctrl.Result, error) {
 
 	reconcilers := r.reconcilersForInternal(ki)
-	r.logger.V(6).Info("renconcilers ...", "count", len(reconcilers))
+	r.logger.V(6).Info("reconcilers ...", "count", len(reconcilers))
 
 	return reconciler.Runner{
 		Reconcilers: reconcilers,
@@ -414,33 +453,33 @@ func availableCondition(dset *appsv1.DaemonSet) v1alpha1.Condition {
 	return c
 }
 
-func (r KeplerInternalReconciler) reconcilersForInternal(k *v1alpha1.KeplerInternal) []reconciler.Reconciler {
+func (r KeplerInternalReconciler) reconcilersForInternal(ki *v1alpha1.KeplerInternal) []reconciler.Reconciler {
 	rs := []reconciler.Reconciler{}
 
-	cleanup := !k.DeletionTimestamp.IsZero()
+	cleanup := !ki.DeletionTimestamp.IsZero()
 	if !cleanup {
 		// NOTE: create namespace first and for deletion, reverse the order
 		rs = append(rs, reconciler.Updater{
-			Owner:    k,
-			Resource: components.NewNamespace(k.Namespace()),
+			Owner:    ki,
+			Resource: components.NewNamespace(ki.Namespace()),
 			OnError:  reconciler.Requeue,
 			Logger:   r.logger,
 		})
 	}
 
-	if k.Spec.Estimator != nil {
-		if k.Spec.Estimator.Image == "" {
-			k.Spec.Estimator.Image = InternalConfig.EstimatorImage
+	if ki.Spec.Estimator != nil {
+		if ki.Spec.Estimator.Image == "" {
+			ki.Spec.Estimator.Image = InternalConfig.EstimatorImage
 		}
 	}
 
-	rs = append(rs, exporterReconcilers(k, Config.Cluster)...)
+	rs = append(rs, exporterReconcilers(ki, Config.Cluster)...)
 
-	if k.Spec.ModelServer != nil && k.Spec.ModelServer.Enabled {
-		if k.Spec.ModelServer.Image == "" {
-			k.Spec.ModelServer.Image = InternalConfig.ModelServerImage
+	if ki.Spec.ModelServer != nil && ki.Spec.ModelServer.Enabled {
+		if ki.Spec.ModelServer.Image == "" {
+			ki.Spec.ModelServer.Image = InternalConfig.ModelServerImage
 		}
-		reconcilers, err := modelServerInternalReconcilers(k)
+		reconcilers, err := modelServerInternalReconcilers(ki)
 		if err != nil {
 			r.logger.Info(fmt.Sprintf("cannot init model server reconciler from config: %v", err))
 		} else {
@@ -451,7 +490,7 @@ func (r KeplerInternalReconciler) reconcilersForInternal(k *v1alpha1.KeplerInter
 	if cleanup {
 		rs = append(rs, reconciler.Deleter{
 			OnError:     reconciler.Requeue,
-			Resource:    components.NewNamespace(k.Namespace()),
+			Resource:    components.NewNamespace(ki.Namespace()),
 			WaitTimeout: 2 * time.Minute,
 		})
 	}
@@ -459,7 +498,7 @@ func (r KeplerInternalReconciler) reconcilersForInternal(k *v1alpha1.KeplerInter
 	// WARN: only run finalizer if theren't any errors
 	// this bug 🐛 must be FIXED
 	rs = append(rs, reconciler.Finalizer{
-		Resource:  k,
+		Resource:  ki,
 		Finalizer: Finalizer,
 		Logger:    r.logger,
 	})
@@ -490,12 +529,27 @@ func exporterReconcilers(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []rec
 	// namespace scoped
 	rs = append(rs, resourceReconcilers(updateResource,
 		exporter.NewServiceAccount(ki),
-		exporter.NewConfigMap(components.Full, ki),
-		exporter.NewDaemonSet(components.Full, ki),
 		exporter.NewService(ki),
 		exporter.NewServiceMonitor(ki),
 		exporter.NewPrometheusRule(ki),
 	)...)
+	if ki.Spec.Exporter.Redfish == nil {
+		rs = append(rs, resourceReconcilers(updateResource,
+			exporter.NewDaemonSet(components.Full, ki),
+			exporter.NewConfigMap(components.Full, ki),
+		)...)
+	} else {
+		rs = append(rs,
+			reconciler.KeplerDaemonSetReconciler{
+				Ki: *ki,
+				Ds: exporter.NewDaemonSet(components.Full, ki),
+			},
+			reconciler.KeplerConfigMapReconciler{
+				Ki:  *ki,
+				Cfm: exporter.NewConfigMap(components.Full, ki),
+			},
+		)
+	}
 	rs = append(rs, resourceReconcilers(updateResource, openshiftNamespacedResources(ki, cluster)...)...)
 	return rs
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -32,6 +33,9 @@ const (
 	Kubernetes Cluster = iota
 	OpenShift
 )
+
+// ContainerIndex type represents the hard-coded index of Containers in a PodSpec
+type ContainerIndex int
 
 type StringMap map[string]string
 
@@ -157,12 +161,33 @@ func HostPIDFromDS(ds *appsv1.DaemonSet) bool {
 	return ds.Spec.Template.Spec.HostPID
 }
 
-func VolumeMountsFromDS(ds *appsv1.DaemonSet) []corev1.VolumeMount {
-	return ds.Spec.Template.Spec.Containers[0].VolumeMounts
+func CommandFromDS(ds *appsv1.DaemonSet, index ContainerIndex) []string {
+	return ds.Spec.Template.Spec.Containers[index].Command
+}
+
+func AnnotationFromDS(ds *appsv1.DaemonSet) map[string]string {
+	return ds.Spec.Template.Annotations
+}
+
+func VolumeMountsFromDS(ds *appsv1.DaemonSet, index ContainerIndex) []corev1.VolumeMount {
+	return ds.Spec.Template.Spec.Containers[index].VolumeMounts
 }
 
 func VolumesFromDS(ds *appsv1.DaemonSet) []corev1.Volume {
 	return ds.Spec.Template.Spec.Volumes
+}
+
+func VolumeFromSecret(name, secretName string) corev1.Volume {
+	return corev1.Volume{
+		Name: name,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName:  secretName,
+				Optional:    pointer.Bool(true),
+				DefaultMode: pointer.Int32(420),
+			},
+		},
+	}
 }
 
 func AllowsFromSCC(SCC *secv1.SecurityContextConstraints) SCCAllows {

@@ -72,3 +72,11 @@ func (InternalBuilder) WithCluster(c k8s.Cluster) func(k *v1alpha1.KeplerInterna
 		}
 	}
 }
+
+func (InternalBuilder) WithRedfish(c k8s.Cluster, secretName string) func(k *v1alpha1.KeplerInternal) {
+	return func(k *v1alpha1.KeplerInternal) {
+		k.Spec.Exporter.Redfish = &v1alpha1.RedfishSpec{
+			SecretRef: secretName,
+		}
+	}
+}

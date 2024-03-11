@@ -193,6 +193,12 @@ func (f Framework) DeleteKepler(name string) {
 	})
 }
 
+func (f Framework) GetKeplerInternal(name string) *v1alpha1.KeplerInternal {
+	kepler := v1alpha1.KeplerInternal{}
+	f.AssertResourceExists(name, "", &kepler)
+	return &kepler
+}
+
 func (f Framework) CreateInternal(name string, fns ...internalFn) *v1alpha1.KeplerInternal {
 	ki := v1alpha1.KeplerInternal{
 		TypeMeta: metav1.TypeMeta{

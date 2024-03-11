@@ -140,6 +140,13 @@ KeplerInternalSpec defines the desired state of KeplerInternal
           <br/>
         </td>
         <td>true</td>
+      </tr><tr>
+        <td><b><a href="#keplerinternalspecexporterredfish">redfish</a></b></td>
+        <td>object</td>
+        <td>
+          RedfishSpec for connecting to Redfish API<br/>
+        </td>
+        <td>false</td>
       </tr></tbody>
 </table>
 
@@ -259,6 +266,51 @@ The pod this Toleration is attached to tolerates any taint that matches the trip
         <td>string</td>
         <td>
           Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.<br/>
+        </td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### KeplerInternal.spec.exporter.redfish
+<sup><sup>[↩ Parent](#keplerinternalspecexporter)</sup></sup>
+
+
+
+RedfishSpec for connecting to Redfish API
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b>secretRef</b></td>
+        <td>string</td>
+        <td>
+          SecretRef refers to the name of secret which contains credentials to initialize RedfishClient<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>probeInterval</b></td>
+        <td>string</td>
+        <td>
+          ProbeInterval controls how frequently power info is queried from Redfish<br/>
+          <br/>
+            <i>Default</i>: 60s<br/>
+        </td>
+        <td>false</td>
+      </tr><tr>
+        <td><b>skipSSLVerify</b></td>
+        <td>boolean</td>
+        <td>
+          SkipSSLVerify controls if RedfishClient will skip verifying server<br/>
+          <br/>
+            <i>Default</i>: false<br/>
         </td>
         <td>false</td>
       </tr></tbody>
@@ -1518,6 +1570,13 @@ KeplerSpec defines the desired state of Kepler
           <br/>
         </td>
         <td>false</td>
+      </tr><tr>
+        <td><b><a href="#keplerspecexporterredfish">redfish</a></b></td>
+        <td>object</td>
+        <td>
+          RedfishSpec for connecting to Redfish API<br/>
+        </td>
+        <td>false</td>
       </tr></tbody>
 </table>
 
@@ -1623,6 +1682,51 @@ The pod this Toleration is attached to tolerates any taint that matches the trip
         <td>string</td>
         <td>
           Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.<br/>
+        </td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### Kepler.spec.exporter.redfish
+<sup><sup>[↩ Parent](#keplerspecexporter)</sup></sup>
+
+
+
+RedfishSpec for connecting to Redfish API
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b>secretRef</b></td>
+        <td>string</td>
+        <td>
+          SecretRef refers to the name of secret which contains credentials to initialize RedfishClient<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>probeInterval</b></td>
+        <td>string</td>
+        <td>
+          ProbeInterval controls how frequently power info is queried from Redfish<br/>
+          <br/>
+            <i>Default</i>: 60s<br/>
+        </td>
+        <td>false</td>
+      </tr><tr>
+        <td><b>skipSSLVerify</b></td>
+        <td>boolean</td>
+        <td>
+          SkipSSLVerify controls if RedfishClient will skip verifying server<br/>
+          <br/>
+            <i>Default</i>: false<br/>
         </td>
         <td>false</td>
       </tr></tbody>

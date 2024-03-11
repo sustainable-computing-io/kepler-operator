@@ -38,8 +38,30 @@ type ExporterDeploymentSpec struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
+// RedfishSpec for connecting to Redfish API
+type RedfishSpec struct {
+	// SecretRef refers to the name of secret which contains credentials to initialize RedfishClient
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	SecretRef string `json:"secretRef"`
+
+	// ProbeInterval controls how frequently power info is queried from Redfish
+	// +optional
+	// +kubebuilder:default:="60s"
+	ProbeInterval metav1.Duration `json:"probeInterval,omitempty"`
+
+	// SkipSSLVerify controls if RedfishClient will skip verifying server
+	// +optional
+	// +kubebuilder:validation:Required
+	// +kubebuilder:default:=false
+	SkipSSLVerify bool `json:"skipSSLVerify,omitempty"`
+}
+
 type ExporterSpec struct {
 	Deployment ExporterDeploymentSpec `json:"deployment,omitempty"`
+	Redfish    *RedfishSpec           `json:"redfish,omitempty"`
 }
 
 // KeplerSpec defines the desired state of Kepler

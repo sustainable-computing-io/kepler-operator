@@ -52,6 +52,13 @@ rules:
   - list
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - list
+  - watch
+- apiGroups:
   - kepler.system.sustainable.computing.io
   resources:
   - '*'

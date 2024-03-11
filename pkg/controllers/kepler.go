@@ -269,6 +269,7 @@ func newKeplerInternal(d components.Detail, k *v1alpha1.Kepler) *v1alpha1.Kepler
 					Image:                  Config.Image,
 					Namespace:              KeplerDeploymentNS,
 				},
+				Redfish: k.Spec.Exporter.Redfish,
 			},
 			OpenShift: v1alpha1.OpenShiftSpec{
 				Enabled: isOpenShift,

@@ -39,6 +39,8 @@ type InternalExporterDeploymentSpec struct {
 type InternalExporterSpec struct {
 	// +kubebuilder:validation:Required
 	Deployment InternalExporterDeploymentSpec `json:"deployment"`
+
+	Redfish *RedfishSpec `json:"redfish,omitempty"`
 }
 
 type DashboardSpec struct {

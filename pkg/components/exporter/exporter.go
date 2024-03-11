@@ -36,7 +36,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -45,6 +45,14 @@ const (
 	overviewDashboardName = "power-monitoring-overview"
 	nsInfoDashboardName   = "power-monitoring-by-ns"
 	DashboardNs           = "openshift-config-managed"
+
+	RedfishArgs             = "-redfish-cred-file-path=/etc/redfish/redfish.csv"
+	RedfishCSV              = "redfish.csv"
+	RedfishSecretAnnotation = "kepler.system.sustainable.computing.io/redfish-secret-ref"
+)
+
+const (
+	KeplerContainerIndex k8s.ContainerIndex = 0
 )
 
 var (
@@ -132,12 +140,30 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.
 	}
 }
 
+func MountRedfishSecretToDaemonSet(ds *appsv1.DaemonSet, secret *corev1.Secret) {
+	spec := &ds.Spec.Template.Spec
+	keplerContainer := &spec.Containers[KeplerContainerIndex]
+	keplerContainer.Command = append(keplerContainer.Command, RedfishArgs)
+	keplerContainer.VolumeMounts = append(keplerContainer.VolumeMounts,
+		corev1.VolumeMount{Name: "redfish-cred", MountPath: "/etc/redfish", ReadOnly: true},
+	)
+	spec.Volumes = append(spec.Volumes,
+		k8s.VolumeFromSecret("redfish-cred", secret.ObjectMeta.Name))
+
+	// NOTE: annotating the Pods with the secret's resource version
+	// forces pods to be reployed if the secret chanage
+	ds.Spec.Template.Annotations = map[string]string{
+		RedfishSecretAnnotation: secret.ResourceVersion,
+	}
+}
+
 func openshiftDashboardObjectMeta(name string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:      name,
 		Namespace: DashboardNs,
 		Labels: components.CommonLabels.Merge(k8s.StringMap{
-			"console.openshift.io/dashboard": "true",
+			"console.openshift.io/dashboard":     "true",
+			"console.openshift.io/odc-dashboard": "true",
 		}),
 		Annotations: k8s.StringMap{
 			"include.release.openshift.io/self-managed-high-availability": "true",
@@ -376,6 +402,7 @@ func NewSCC(d components.Detail, ki *v1alpha1.KeplerInternal) *secv1.SecurityCon
 		Users: []string{ki.FQServiceAccountName()},
 		Volumes: []secv1.FSType{
 			secv1.FSType("configMap"),
+			secv1.FSType("secret"),
 			secv1.FSType("projected"),
 			secv1.FSType("emptyDir"),
 			secv1.FSType("hostPath")},
@@ -586,7 +613,7 @@ func newExporterContainer(kiName, dsName string, deployment v1alpha1.InternalExp
 	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
 	return corev1.Container{
 		Name:            dsName,
-		SecurityContext: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
+		SecurityContext: &corev1.SecurityContext{Privileged: ptr.To(true)},
 		Image:           deployment.Image,
 		Command: []string{
 			"/usr/bin/kepler",
@@ -595,7 +622,6 @@ func newExporterContainer(kiName, dsName string, deployment v1alpha1.InternalExp
 			"-enable-gpu=$(ENABLE_GPU)",
 			"-v=$(KEPLER_LOG_LEVEL)",
 			"-kernel-source-dir=/usr/share/kepler/kernel_sources",
-			"-redfish-cred-file-path=/etc/redfish/redfish.csv",
 		},
 		Ports: []corev1.ContainerPort{{
 			ContainerPort: int32(deployment.Port),
