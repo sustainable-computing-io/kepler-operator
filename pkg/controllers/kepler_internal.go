@@ -91,7 +91,10 @@ func (r *KeplerInternalReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // mapSecretToRequests returns the reconcile requests for kepler-internal objects for which an associated redfish secret has been changed.
 func (r *KeplerInternalReconciler) mapSecretToRequests(ctx context.Context, object client.Object) []reconcile.Request {
 
-	secret, _ := object.(*corev1.Secret)
+	secret, ok := object.(*corev1.Secret)
+	if !ok {
+		return nil
+	}
 
 	ks := v1alpha1.KeplerInternalList{}
 	if err := r.List(ctx, &ks); err != nil {
@@ -101,6 +104,11 @@ func (r *KeplerInternalReconciler) mapSecretToRequests(ctx context.Context, obje
 	requests := []reconcile.Request{}
 	for _, ki := range ks.Items {
 		ex := ki.Spec.Exporter
+
+		if ex.Redfish == nil {
+			continue
+		}
+
 		if ex.Redfish.SecretRef == secret.GetName() &&
 			ex.Deployment.Namespace == secret.GetNamespace() {
 			requests = append(requests, reconcile.Request{

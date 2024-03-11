@@ -225,12 +225,15 @@ spec:
                     description: RedfishSpec for connecting to Redfish API
                     properties:
                       probeInterval:
+                        default: 60s
                         description: ProbeInterval controls how frequently power info
                           is queried from Redfish
                         type: string
                       secretRef:
                         description: SecretRef refers to the name of secret which
                           contains credentials to initialize RedfishClient
+                        maxLength: 63
+                        minLength: 1
                         type: string
                       skipSSLVerify:
                         default: false
