@@ -48,12 +48,13 @@ type KeplerInternalReconciler struct {
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=*,verbs=*
 
 // RBAC for running Kepler exporter
-//+kubebuilder:rbac:groups=apps,resources=daemonsets;deployments;secrets,verbs=list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=apps,resources=daemonsets;deployments,verbs=list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=secrets,verbs=list;watch
 //+kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=list;watch;create;update;patch;delete;use
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;prometheusrules,verbs=list;watch;create;update;patch;delete
 
 // RBAC required by Kepler exporter
-//+kubebuilder:rbac:groups=core,resources=nodes/metrics;nodes/proxy;nodes/stats;secrets,verbs=get;list;watch
+//+kubebuilder:rbac:groups=core,resources=nodes/metrics;nodes/proxy;nodes/stats,verbs=get;list;watch
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeplerInternalReconciler) SetupWithManager(mgr ctrl.Manager) error {

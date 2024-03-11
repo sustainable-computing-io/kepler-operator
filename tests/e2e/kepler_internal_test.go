@@ -97,9 +97,11 @@ func TestKeplerInternal_ReconciliationWithRedfish(t *testing.T) {
 	ds := appsv1.DaemonSet{}
 	f.AssertNoResourceExists(ki.Name, testNs, &ds)
 
-	cond := f.GetKeplerInternal(name).Status.Exporter.Conditions
-	assert.True(t, len(cond) > 1)
-	assert.Equal(t, fmt.Sprintf("Redfish secret configured, but secret %q not found", secretName), cond[0].Message)
+	// provide time for controller to reconcile
+	// NOTE: reconcile should be false since the secret is not created yet
+	ki = f.WaitUntilInternalCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionFalse)
+	reconciled, _ := k8s.FindCondition(ki.Status.Exporter.Conditions, v1alpha1.Reconciled)
+	assert.Equal(t, fmt.Sprintf("Redfish secret %q configured, but not found in %q namespace", secretName, testNs), reconciled.Message)
 
 	// create redfish secret
 	redfishSecret := corev1.Secret{
@@ -116,18 +118,19 @@ func TestKeplerInternal_ReconciliationWithRedfish(t *testing.T) {
 
 	// wait for DaemonSet to be created
 	f.AssertResourceExists(ki.Name, testNs, &ds)
-	cond = f.GetKeplerInternal(name).Status.Exporter.Conditions
-	assert.True(t, len(cond) > 1)
+
+	// expect reconcile to be true after secret is created
+	ki = f.WaitUntilInternalCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionTrue)
 
 	containers := ds.Spec.Template.Spec.Containers
 	assert.Equal(t, 1, len(containers))
-	exp := containers[exporter.IdxKeplerContainer]
-	assert.Contains(t, exp.Command, exporter.REDFISH_ARGS)
+	exp := containers[exporter.KeplerContainerIndex]
+	assert.Contains(t, exp.Command, exporter.RedfishArgs)
 	assert.Contains(t, exp.VolumeMounts,
 		corev1.VolumeMount{Name: "redfish-cred", MountPath: "/etc/redfish", ReadOnly: true})
 	assert.Contains(t, ds.Spec.Template.Spec.Volumes,
 		k8s.VolumeFromSecret("redfish-cred", redfishSecret.Name))
-	assert.Contains(t, ds.Spec.Template.Annotations, exporter.REDFISH_ANNOTATION)
+	assert.Contains(t, ds.Spec.Template.Annotations, exporter.RedfishSecretAnnotation)
 
 	og := ds.Status.ObservedGeneration
 	assert.Equal(t, og, int64(1))
