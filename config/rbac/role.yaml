@@ -9,7 +9,6 @@ rules:
   resources:
   - daemonsets
   - deployments
-  - secrets
   verbs:
   - create
   - delete
@@ -48,9 +47,15 @@ rules:
   - nodes/metrics
   - nodes/proxy
   - nodes/stats
-  - secrets
   verbs:
   - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
   - list
   - watch
 - apiGroups:

@@ -36,7 +36,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -45,11 +45,14 @@ const (
 	overviewDashboardName = "power-monitoring-overview"
 	nsInfoDashboardName   = "power-monitoring-by-ns"
 	DashboardNs           = "openshift-config-managed"
-	REDFISH_ARGS          = "-redfish-cred-file-path=/etc/redfish/redfish.csv"
-	REDFISH_CSV           = "redfish.csv"
-	REDFISH_ANNOTATION    = "kepler.system.sustainable.computing.io/redfish-secret-ref"
 
-	IdxKeplerContainer = 0
+	RedfishArgs             = "-redfish-cred-file-path=/etc/redfish/redfish.csv"
+	RedfishCSV              = "redfish.csv"
+	RedfishSecretAnnotation = "kepler.system.sustainable.computing.io/redfish-secret-ref"
+)
+
+const (
+	KeplerContainerIndex k8s.ContainerIndex = 0
 )
 
 var (
@@ -138,15 +141,19 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.
 }
 
 func MountRedfishSecretToDaemonSet(ds *appsv1.DaemonSet, secret *corev1.Secret) {
-	spec := ds.Spec.Template.Spec
-	spec.Containers[IdxKeplerContainer].Command = append(spec.Containers[IdxKeplerContainer].Command, REDFISH_ARGS)
-	spec.Containers[IdxKeplerContainer].VolumeMounts = append(spec.Containers[IdxKeplerContainer].VolumeMounts,
-		corev1.VolumeMount{Name: "redfish-cred", MountPath: "/etc/redfish", ReadOnly: true})
+	spec := &ds.Spec.Template.Spec
+	keplerContainer := &spec.Containers[KeplerContainerIndex]
+	keplerContainer.Command = append(keplerContainer.Command, RedfishArgs)
+	keplerContainer.VolumeMounts = append(keplerContainer.VolumeMounts,
+		corev1.VolumeMount{Name: "redfish-cred", MountPath: "/etc/redfish", ReadOnly: true},
+	)
 	spec.Volumes = append(spec.Volumes,
 		k8s.VolumeFromSecret("redfish-cred", secret.ObjectMeta.Name))
-	ds.Spec.Template.Spec = spec
+
+	// NOTE: annotating the Pods with the secret's resource version
+	// forces pods to be reployed if the secret chanage
 	ds.Spec.Template.Annotations = map[string]string{
-		REDFISH_ANNOTATION: secret.ResourceVersion,
+		RedfishSecretAnnotation: secret.ResourceVersion,
 	}
 }
 
@@ -606,7 +613,7 @@ func newExporterContainer(kiName, dsName string, deployment v1alpha1.InternalExp
 	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
 	return corev1.Container{
 		Name:            dsName,
-		SecurityContext: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
+		SecurityContext: &corev1.SecurityContext{Privileged: ptr.To(true)},
 		Image:           deployment.Image,
 		Command: []string{
 			"/usr/bin/kepler",

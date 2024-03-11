@@ -208,10 +208,10 @@ func TestDaemonSet(t *testing.T) {
 			actual_hostPID := k8s.HostPIDFromDS(ds)
 			assert.Equal(t, actual_hostPID, tc.hostPID)
 
-			actual_exporterCommand := k8s.CommandFromDS(ds, IdxKeplerContainer)
+			actual_exporterCommand := k8s.CommandFromDS(ds, KeplerContainerIndex)
 			assert.Equal(t, actual_exporterCommand, tc.exporterCommand)
 
-			actual_volumeMounts := k8s.VolumeMountsFromDS(ds, IdxKeplerContainer)
+			actual_volumeMounts := k8s.VolumeMountsFromDS(ds, KeplerContainerIndex)
 			assert.Equal(t, actual_volumeMounts, tc.volumeMounts)
 
 			actual_Volumes := k8s.VolumesFromDS(ds)

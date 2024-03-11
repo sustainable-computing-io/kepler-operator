@@ -34,6 +34,9 @@ const (
 	OpenShift
 )
 
+// ContainerIndex type represents the hard-coded index of Containers in a PodSpec
+type ContainerIndex int
+
 type StringMap map[string]string
 
 type SCCAllows struct {
@@ -158,7 +161,7 @@ func HostPIDFromDS(ds *appsv1.DaemonSet) bool {
 	return ds.Spec.Template.Spec.HostPID
 }
 
-func CommandFromDS(ds *appsv1.DaemonSet, index int) []string {
+func CommandFromDS(ds *appsv1.DaemonSet, index ContainerIndex) []string {
 	return ds.Spec.Template.Spec.Containers[index].Command
 }
 
@@ -166,7 +169,7 @@ func AnnotationFromDS(ds *appsv1.DaemonSet) map[string]string {
 	return ds.Spec.Template.Annotations
 }
 
-func VolumeMountsFromDS(ds *appsv1.DaemonSet, index int) []corev1.VolumeMount {
+func VolumeMountsFromDS(ds *appsv1.DaemonSet, index ContainerIndex) []corev1.VolumeMount {
 	return ds.Spec.Template.Spec.Containers[index].VolumeMounts
 }
 
