@@ -45,6 +45,7 @@ type RedfishSpec struct {
 
 	// ProbeInterval controls how frequently power info is queried from Redfish
 	// +optional
+	// +kubebuilder:default:="60s"
 	ProbeInterval metav1.Duration `json:"probeInterval,omitempty"`
 
 	// SkipSSLVerify controls if RedfishClient will skip verifying server

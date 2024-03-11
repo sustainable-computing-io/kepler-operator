@@ -300,6 +300,8 @@ RedfishSpec for connecting to Redfish API
         <td>string</td>
         <td>
           ProbeInterval controls how frequently power info is queried from Redfish<br/>
+          <br/>
+            <i>Default</i>: 60s<br/>
         </td>
         <td>false</td>
       </tr><tr>
@@ -1714,6 +1716,8 @@ RedfishSpec for connecting to Redfish API
         <td>string</td>
         <td>
           ProbeInterval controls how frequently power info is queried from Redfish<br/>
+          <br/>
+            <i>Default</i>: 60s<br/>
         </td>
         <td>false</td>
       </tr><tr>

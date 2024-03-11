@@ -133,6 +133,7 @@ spec:
                     description: RedfishSpec for connecting to Redfish API
                     properties:
                       probeInterval:
+                        default: 60s
                         description: ProbeInterval controls how frequently power info
                           is queried from Redfish
                         type: string
