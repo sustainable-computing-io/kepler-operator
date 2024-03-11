@@ -150,6 +150,8 @@ spec:
                       secretRef:
                         description: SecretRef refers to the name of secret which
                           contains credentials to initialize RedfishClient
+                        maxLength: 63
+                        minLength: 1
                         type: string
                       skipSSLVerify:
                         default: false
