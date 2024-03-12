@@ -189,31 +189,33 @@ func (r KeplerInternalReconciler) getInternal(ctx context.Context, req ctrl.Requ
 }
 
 func (r KeplerInternalReconciler) updateStatus(ctx context.Context, req ctrl.Request, recErr error) error {
+	logger := r.logger.WithValues("keplerinternal", req.Name, "action", "update-status")
+	logger.V(3).Info("Start of status update")
+	defer logger.V(3).Info("End of status update")
+
 	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 
-		logger := r.logger.WithValues("keplerinternal", req.Name)
 		ki, _ := r.getInternal(ctx, req)
 		// may be deleted
 		if ki == nil || !ki.GetDeletionTimestamp().IsZero() {
 			// retry since some error has occurred
-			r.logger.V(6).Info("Reconcile has deleted kepler; skipping update")
+			r.logger.V(6).Info("Reconcile has deleted kepler-internal; skipping status update")
 			return nil
 		}
 
 		// sanitize the conditions so that all types are present and the order is predictable
 		ki.Status.Exporter.Conditions = sanitizeConditions(ki.Status.Exporter.Conditions)
 
-		updated := r.updateReconciledStatus(ctx, ki, recErr) ||
-			r.updateAvailableStatus(ctx, ki, recErr)
+		{
+			now := metav1.Now()
+			reconciledChanged := r.updateReconciledStatus(ctx, ki, recErr, now)
+			availableChanged := r.updateAvailableStatus(ctx, ki, recErr, now)
+			logger.V(6).Info("conditions updated", "reconciled", reconciledChanged, "available", availableChanged)
 
-		if !updated {
-			logger.V(6).Info("no changes to existing status; skipping update")
-			return nil
-		}
-
-		now := metav1.Now()
-		for i := range ki.Status.Exporter.Conditions {
-			ki.Status.Exporter.Conditions[i].LastTransitionTime = now
+			if !reconciledChanged && !availableChanged {
+				logger.V(6).Info("no changes to existing status; skipping update")
+				return nil
+			}
 		}
 
 		return r.Client.Status().Update(ctx, ki)
@@ -256,7 +258,7 @@ func sanitizeConditions(conditions []v1alpha1.Condition) []v1alpha1.Condition {
 	return conditions
 }
 
-func (r KeplerInternalReconciler) updateReconciledStatus(ctx context.Context, ki *v1alpha1.KeplerInternal, recErr error) bool {
+func (r KeplerInternalReconciler) updateReconciledStatus(ctx context.Context, ki *v1alpha1.KeplerInternal, recErr error, time metav1.Time) bool {
 
 	reconciled := v1alpha1.Condition{
 		Type:               v1alpha1.Reconciled,
@@ -272,7 +274,7 @@ func (r KeplerInternalReconciler) updateReconciledStatus(ctx context.Context, ki
 		reconciled.Message = recErr.Error()
 	}
 
-	return updateCondition(ki.Status.Exporter.Conditions, reconciled)
+	return updateCondition(ki.Status.Exporter.Conditions, reconciled, time)
 }
 
 func findCondition(conditions []v1alpha1.Condition, t v1alpha1.ConditionType) *v1alpha1.Condition {
@@ -285,7 +287,7 @@ func findCondition(conditions []v1alpha1.Condition, t v1alpha1.ConditionType) *v
 }
 
 // returns true if the condition has been updated
-func updateCondition(conditions []v1alpha1.Condition, latest v1alpha1.Condition) bool {
+func updateCondition(conditions []v1alpha1.Condition, latest v1alpha1.Condition, time metav1.Time) bool {
 
 	old := findCondition(conditions, latest.Type)
 	if old == nil {
@@ -303,15 +305,17 @@ func updateCondition(conditions []v1alpha1.Condition, latest v1alpha1.Condition)
 	old.Status = latest.Status
 	old.Reason = latest.Reason
 	old.Message = latest.Message
+	// NOTE: last transition time changes only if the status changes
+	old.LastTransitionTime = time
 	return true
 }
 
-func (r KeplerInternalReconciler) updateAvailableStatus(ctx context.Context, ki *v1alpha1.KeplerInternal, recErr error) bool {
+func (r KeplerInternalReconciler) updateAvailableStatus(ctx context.Context, ki *v1alpha1.KeplerInternal, recErr error, time metav1.Time) bool {
 	// get daemonset owned by kepler
 	dset := appsv1.DaemonSet{}
 	key := types.NamespacedName{Name: ki.DaemonsetName(), Namespace: ki.Namespace()}
 	if err := r.Client.Get(ctx, key, &dset); err != nil {
-		return updateCondition(ki.Status.Exporter.Conditions, availableConditionForGetError(err))
+		return updateCondition(ki.Status.Exporter.Conditions, availableConditionForGetError(err), time)
 	}
 
 	ds := dset.Status
@@ -323,14 +327,18 @@ func (r KeplerInternalReconciler) updateAvailableStatus(ctx context.Context, ki 
 	ki.Status.Exporter.NumberAvailable = ds.NumberAvailable
 	ki.Status.Exporter.NumberUnavailable = ds.NumberUnavailable
 
-	c := availableCondition(&dset)
+	available := availableCondition(&dset)
+
 	if recErr == nil {
-		c.ObservedGeneration = ki.Generation
+		available.ObservedGeneration = ki.Generation
+	} else {
+		// failure to reconcile is a Degraded condition
+		available.Status = v1alpha1.ConditionDegraded
+		available.Reason = v1alpha1.ReconcileError
 	}
 
-	updated := updateCondition(ki.Status.Exporter.Conditions, c)
+	updated := updateCondition(ki.Status.Exporter.Conditions, available, time)
 
-	// update estimator status
 	estimatorStatus := v1alpha1.EstimatorStatus{
 		Status: v1alpha1.DeploymentNotInstalled,
 	}
