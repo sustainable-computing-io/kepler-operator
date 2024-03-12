@@ -108,9 +108,10 @@ const (
 type ConditionStatus string
 
 const (
-	ConditionTrue    ConditionStatus = "True"
-	ConditionFalse   ConditionStatus = "False"
-	ConditionUnknown ConditionStatus = "Unknown"
+	ConditionTrue     ConditionStatus = "True"
+	ConditionFalse    ConditionStatus = "False"
+	ConditionUnknown  ConditionStatus = "Unknown"
+	ConditionDegraded ConditionStatus = "Degraded"
 )
 
 type Condition struct {

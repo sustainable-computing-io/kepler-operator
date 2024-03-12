@@ -220,18 +220,19 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 			return nil
 		}
 
+		now := metav1.Now()
 		invalidKepler.Status.Exporter.Conditions = []v1alpha1.Condition{{
 			Type:               v1alpha1.Reconciled,
 			Status:             v1alpha1.ConditionFalse,
 			ObservedGeneration: invalidKepler.Generation,
-			LastTransitionTime: metav1.Now(),
+			LastTransitionTime: now,
 			Reason:             v1alpha1.InvalidKeplerResource,
 			Message:            "Only a single instance of Kepler named kepler is reconciled",
 		}, {
 			Type:               v1alpha1.Available,
 			Status:             v1alpha1.ConditionUnknown,
 			ObservedGeneration: invalidKepler.Generation,
-			LastTransitionTime: metav1.Now(),
+			LastTransitionTime: now,
 			Reason:             v1alpha1.InvalidKeplerResource,
 			Message:            "This instance of Kepler is invalid",
 		}}
