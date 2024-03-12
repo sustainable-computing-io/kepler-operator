@@ -257,12 +257,13 @@ func TestKeplerInternal_WithEstimatorAndModelServer(t *testing.T) {
 	containers := ds.Spec.Template.Spec.Containers
 	// deamonset must have a sidecar
 	assert.Equal(t, 2, len(containers))
-	// test expected status
-	f.AssertInternalStatus(ki.Name, test.Timeout(5*time.Minute))
 
 	// confirm model-server deployment ready
 	deploy := appsv1.Deployment{}
-	f.AssertResourceExists(ki.ModelServerDeploymentName(), testNs, &deploy)
+	f.AssertResourceExists(ki.ModelServerDeploymentName(), testNs, &deploy, test.Timeout(5*time.Minute))
 	readyReplicas := deploy.Status.ReadyReplicas
 	assert.Equal(t, int32(1), readyReplicas)
+
+	// test expected status
+	f.AssertInternalStatus(ki.Name, test.Timeout(2*time.Minute))
 }
