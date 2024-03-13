@@ -22,28 +22,15 @@ source "${SCRIPT_DIR}/common"
 
 BASE_COLLECTION_PATH=$1
 
-KEPLER_OPERATOR_LABELS="operators.coreos.com/kepler-operator.openshift-operators"
-POWER_MONITORING_OPERATOR_LABELS="operators.coreos.com/power-monitoring-operator.openshift-operators"
-
 get_olm() {
-	oc get -n openshift-operators csv | grep kepler-operator && {
-		log "collecting olm info for kepler-operator"
-		run oc -n openshift-operators get olm -l "${KEPLER_OPERATOR_LABELS}"= \
-			-oyaml "$OLM_INFO_DIR/kepler-operator-olm-resources.yaml"
-	}
-
-	oc get -n openshift-operators csv | grep power-monitoring-operator && {
-		log "collecting olm info for power-monitoring-operator"
-		run oc -n openshift-operators get olm -l "${POWER_MONITORING_OPERATOR_LABELS}"= \
-			-oyaml "$OLM_INFO_DIR/power-mon-olm-resources.yaml"
-	}
-
-	return 0
+	log "collecting olm info for $OPERATOR"
+	run oc -n "$OPERATOR_NS" get olm -l "operators.coreos.com/$OPERATOR.$OPERATOR_NS"= \
+		-oyaml "$OLM_INFO_DIR/$OPERATOR-olm-resources.yaml"
 }
 
 get_summary() {
 	log "collecting olm summary"
-	run oc -n openshift-operators get olm -owide "$OLM_INFO_DIR/summary.txt"
+	run oc -n "$OPERATOR_NS" get olm -owide "$OLM_INFO_DIR/summary.txt"
 }
 
 main() {
