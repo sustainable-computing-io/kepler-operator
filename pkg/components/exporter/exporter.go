@@ -49,6 +49,7 @@ const (
 	RedfishArgs             = "-redfish-cred-file-path=/etc/redfish/redfish.csv"
 	RedfishCSV              = "redfish.csv"
 	RedfishSecretAnnotation = "kepler.system.sustainable.computing.io/redfish-secret-ref"
+	RedfishConfigHash       = "kepler.system.sustainable.computing.io/redfish-config-hash"
 )
 
 const (
@@ -140,7 +141,7 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.
 	}
 }
 
-func MountRedfishSecretToDaemonSet(ds *appsv1.DaemonSet, secret *corev1.Secret) {
+func MountRedfishSecretToDaemonSet(ds *appsv1.DaemonSet, secret *corev1.Secret, hash uint64) {
 	spec := &ds.Spec.Template.Spec
 	keplerContainer := &spec.Containers[KeplerContainerIndex]
 	keplerContainer.Command = append(keplerContainer.Command, RedfishArgs)
@@ -151,9 +152,10 @@ func MountRedfishSecretToDaemonSet(ds *appsv1.DaemonSet, secret *corev1.Secret) 
 		k8s.VolumeFromSecret("redfish-cred", secret.ObjectMeta.Name))
 
 	// NOTE: annotating the Pods with the secret's resource version
-	// forces pods to be reployed if the secret chanage
+	// forces pods to be redeployed if the secret change
 	ds.Spec.Template.Annotations = map[string]string{
 		RedfishSecretAnnotation: secret.ResourceVersion,
+		RedfishConfigHash:       strconv.FormatUint(hash, 10),
 	}
 }
 
@@ -246,23 +248,21 @@ func NewConfigMap(d components.Detail, k *v1alpha1.KeplerInternal) *corev1.Confi
 	}
 
 	exporterConfigMap := k8s.StringMap{
-		"KEPLER_NAMESPACE":                  k.Namespace(),
-		"KEPLER_LOG_LEVEL":                  "1",
-		"METRIC_PATH":                       "/metrics",
-		"BIND_ADDRESS":                      bindAddress,
-		"ENABLE_GPU":                        "true",
-		"ENABLE_QAT":                        "false",
-		"ENABLE_EBPF_CGROUPID":              "true",
-		"EXPOSE_HW_COUNTER_METRICS":         "true",
-		"EXPOSE_IRQ_COUNTER_METRICS":        "true",
-		"EXPOSE_KUBELET_METRICS":            "true",
-		"EXPOSE_CGROUP_METRICS":             "true",
-		"ENABLE_PROCESS_METRICS":            "false",
-		"CPU_ARCH_OVERRIDE":                 "",
-		"CGROUP_METRICS":                    "*",
-		"REDFISH_PROBE_INTERVAL_IN_SECONDS": "60",
-		"REDFISH_SKIP_SSL_VERIFY":           "true",
-		"MODEL_CONFIG":                      modelConfig,
+		"KEPLER_NAMESPACE":           k.Namespace(),
+		"KEPLER_LOG_LEVEL":           "1",
+		"METRIC_PATH":                "/metrics",
+		"BIND_ADDRESS":               bindAddress,
+		"ENABLE_GPU":                 "true",
+		"ENABLE_QAT":                 "false",
+		"ENABLE_EBPF_CGROUPID":       "true",
+		"EXPOSE_HW_COUNTER_METRICS":  "true",
+		"EXPOSE_IRQ_COUNTER_METRICS": "true",
+		"EXPOSE_KUBELET_METRICS":     "true",
+		"EXPOSE_CGROUP_METRICS":      "true",
+		"ENABLE_PROCESS_METRICS":     "false",
+		"CPU_ARCH_OVERRIDE":          "",
+		"CGROUP_METRICS":             "*",
+		"MODEL_CONFIG":               modelConfig,
 	}
 
 	ms := k.Spec.ModelServer

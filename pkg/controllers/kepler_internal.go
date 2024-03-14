@@ -541,6 +541,7 @@ func exporterReconcilers(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []rec
 		exporter.NewServiceMonitor(ki),
 		exporter.NewPrometheusRule(ki),
 	)...)
+
 	if ki.Spec.Exporter.Redfish == nil {
 		rs = append(rs, resourceReconcilers(updateResource,
 			exporter.NewDaemonSet(components.Full, ki),
@@ -548,12 +549,12 @@ func exporterReconcilers(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []rec
 		)...)
 	} else {
 		rs = append(rs,
-			reconciler.KeplerDaemonSetReconciler{
-				Ki: *ki,
+			reconciler.KeplerReconciler{
+				Ki: ki,
 				Ds: exporter.NewDaemonSet(components.Full, ki),
 			},
 			reconciler.KeplerConfigMapReconciler{
-				Ki:  *ki,
+				Ki:  ki,
 				Cfm: exporter.NewConfigMap(components.Full, ki),
 			},
 		)
