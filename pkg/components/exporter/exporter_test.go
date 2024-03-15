@@ -182,7 +182,8 @@ func TestDaemonSet(t *testing.T) {
 				},
 			},
 			annotation: map[string]string{
-				"kepler.system.sustainable.computing.io/redfish-secret-ref": "123",
+				"kepler.system.sustainable.computing.io/redfish-secret-ref":  "123",
+				"kepler.system.sustainable.computing.io/redfish-config-hash": "1337",
 			},
 			scenario: "redfish case",
 		},
@@ -202,23 +203,23 @@ func TestDaemonSet(t *testing.T) {
 			}
 			ds := NewDaemonSet(components.Full, &k)
 			if tc.addRedfish {
-				MountRedfishSecretToDaemonSet(ds, tc.redfishSecret)
+				MountRedfishSecretToDaemonSet(ds, tc.redfishSecret, 1337)
 			}
 
-			actual_hostPID := k8s.HostPIDFromDS(ds)
-			assert.Equal(t, actual_hostPID, tc.hostPID)
+			actualHostPID := k8s.HostPIDFromDS(ds)
+			assert.Equal(t, tc.hostPID, actualHostPID)
 
-			actual_exporterCommand := k8s.CommandFromDS(ds, KeplerContainerIndex)
-			assert.Equal(t, actual_exporterCommand, tc.exporterCommand)
+			actualExporterCommand := k8s.CommandFromDS(ds, KeplerContainerIndex)
+			assert.Equal(t, tc.exporterCommand, actualExporterCommand)
 
-			actual_volumeMounts := k8s.VolumeMountsFromDS(ds, KeplerContainerIndex)
-			assert.Equal(t, actual_volumeMounts, tc.volumeMounts)
+			actualVolumeMounts := k8s.VolumeMountsFromDS(ds, KeplerContainerIndex)
+			assert.Equal(t, tc.volumeMounts, actualVolumeMounts)
 
-			actual_Volumes := k8s.VolumesFromDS(ds)
-			assert.Equal(t, actual_Volumes, tc.volumes)
+			actualVolumes := k8s.VolumesFromDS(ds)
+			assert.Equal(t, tc.volumes, actualVolumes)
 
-			actual_Annotation := k8s.AnnotationFromDS(ds)
-			assert.Equal(t, actual_Annotation, tc.annotation)
+			actualAnnotation := k8s.AnnotationFromDS(ds)
+			assert.Equal(t, tc.annotation, actualAnnotation)
 		})
 	}
 }
