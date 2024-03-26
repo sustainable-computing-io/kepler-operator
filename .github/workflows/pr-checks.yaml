@@ -163,6 +163,11 @@ jobs:
       - uses: ./.github/compute-version
         id: version
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
+
       - name: Run e2e tests
         run: |
           ./tests/run-e2e.sh --ci
