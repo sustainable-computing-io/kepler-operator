@@ -327,9 +327,9 @@ update_crds() {
 kind_load_image() {
 	local img="$1"
 
-	run docker pull "$img"
+	run podman pull "$img"
 	run kind load docker-image "$img"
-	$CI_MODE && run docker image rm "$img"
+	$CI_MODE && run podman image rm "$img"
 	return 0
 }
 
@@ -347,9 +347,9 @@ kind_load_images() {
 	return 0
 }
 
-docker_prune() {
-	header "Prune Docker"
-	run docker system prune -a -f
+podman_prune() {
+	header "Prune Images and Volumes"
+	run podman system prune -a -f
 }
 
 deploy_operator() {
@@ -357,9 +357,9 @@ deploy_operator() {
 
 	$CI_MODE && {
 		# NOTE: ci runs out of disk space at times, hence run images
-		info "pruning docker images and volumes"
-		run docker images
-		docker_prune
+		info "pruning container images and volumes"
+		run podman images
+		podman_prune
 		run df -h
 	}
 

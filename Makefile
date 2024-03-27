@@ -137,8 +137,8 @@ cluster-restart: ## restart the local development cluster
 	CLUSTER_PROVIDER=$(CLUSTER_PROVIDER) \
 	VERSION=$(LOCAL_DEV_CLUSTER_VERSION) \
 	GRAFANA_ENABLE=$(GRAFANA_ENABLE) \
-	KIND_WORKER_NODES=$(KIND_WORKER_NODES) \
 	./hack/cluster.sh restart
+	KIND_WORKER_NODES=$(KIND_WORKER_NODES) \
 
 .PHONY: cluster-down
 cluster-down: ## delete the local development cluster
@@ -164,10 +164,10 @@ run: install fmt vet ## Run a controller from your host against openshift cluste
 		$(RUN_ARGS) \
 		2>&1 | tee tmp/operator.log
 
-# docker_tag accepts an image:tag and a list of additional tags comma-separated
+# podman_tag accepts an image:tag and a list of additional tags comma-separated
 # it tags the image with the additional tags
 # E.g. given foo:bar, a,b,c, it will tag foo:bar as  foo:a, foo:b, foo:c
-define docker_tag
+define podman_tag
 @{ \
 	set -eu ;\
 	img="$(1)" ;\
@@ -176,52 +176,52 @@ define docker_tag
 	\
 	img_path=$${img%:*} ;\
 	for tag in $$(echo $$tags | tr -s , ' ' ); do \
-		docker tag $$img $$img_path:$$tag ;\
+		podman tag $$img $$img_path:$$tag ;\
 	done \
 }
 endef
 
 
-# docker_push accepts an image:tag and a list of additional tags comma-separated
+# podman_push accepts an image:tag and a list of additional tags comma-separated
 # it push the image:tag all other images with the additional tags
 # E.g. given foo:bar, a,b,c, it will push foo:bar, foo:a, foo:b, foo:c
-define docker_push
+define podman_push
 @{ \
 	set -eu ;\
 	img="$(1)" ;\
 	tags="$(2)" ;\
-	echo "docker push $$img and additional tags: '$$tags'" ;\
+	echo "podman push $$img and additional tags: '$$tags'" ;\
 	\
 	img_path=$${img%:*} ;\
-	docker push $$img ;\
+	podman push $$img ;\
 	for tag in $$(echo $$tags | tr -s , ' ' ); do \
-		docker push $$img_path:$$tag ;\
+		podman push $$img_path:$$tag ;\
 	done \
 }
 endef
 
 
 # If you wish built the manager image targeting other platforms you can use the --platform flag.
-# (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
-# More info: https://docs.docker.com/develop/develop-images/build_enhancements/
+# (i.e. podman build --platform linux/arm64 ). However, you must enable docker buildKit for it.
+# More info: https://docs.podman.com/develop/develop-images/build_enhancements/
 .PHONY: operator-build
-operator-build: manifests generate test ## Build docker image with the manager.
+operator-build: manifests generate test ## Build podman image with the manager.
 	go mod tidy
-	docker build -t $(OPERATOR_IMG) \
+	podman build -t $(OPERATOR_IMG) \
 		--build-arg TARGETOS=$(GOOS) \
 		--build-arg TARGETARCH=$(GOARCH) \
 		--platform=linux/$(GOARCH) .
-	$(call docker_tag,$(OPERATOR_IMG),$(ADDITIONAL_TAGS))
+	$(call podman_tag,$(OPERATOR_IMG),$(ADDITIONAL_TAGS))
 
 
 .PHONY: operator-push
-operator-push: ## Push docker image with the manager.
-	$(call docker_push,$(OPERATOR_IMG),$(ADDITIONAL_TAGS))
+operator-push: ## Push podman image with the manager.
+	$(call podman_push,$(OPERATOR_IMG),$(ADDITIONAL_TAGS))
 
 
 .PHONY: e2e-test-image
 e2e-test-image: test
-	docker build -f tests/Dockerfile \
+	podman build -f tests/Dockerfile \
 		--platform=linux/$(GOARCH) \
 		-t $(E2E_TEST_IMG) .
 
@@ -346,14 +346,14 @@ bundle: generate manifests kustomize operator-sdk ## Generate bundle manifests a
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
-	docker build -f bundle.Dockerfile \
+	podman build -f bundle.Dockerfile \
 		-t $(BUNDLE_IMG) \
 		--platform=linux/$(GOARCH) .
-	$(call docker_tag,$(BUNDLE_IMG),$(ADDITIONAL_TAGS))
+	$(call podman_tag,$(BUNDLE_IMG),$(ADDITIONAL_TAGS))
 
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.
-	$(call docker_push,$(BUNDLE_IMG),$(ADDITIONAL_TAGS))
+	$(call podman_push,$(BUNDLE_IMG),$(ADDITIONAL_TAGS))
 
 .PHONY: create-bundle
 create-bundle:
@@ -395,9 +395,9 @@ endif
 # https://github.com/operator-framework/community-operators/blob/7f1438c/docs/packaging-operator.md#updating-your-existing-operator
 .PHONY: catalog-build
 catalog-build: opm ## Build a catalog image.
-	$(OPM) index add --container-tool docker --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) $(FROM_INDEX_OPT)
+	$(OPM) index add --container-tool podman --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) $(FROM_INDEX_OPT)
 
 # Push the catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
-	docker push $(CATALOG_IMG)
+	podman push $(CATALOG_IMG)
