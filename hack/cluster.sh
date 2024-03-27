@@ -121,6 +121,7 @@ main() {
 	export CLUSTER_PROVIDER
 	export GRAFANA_ENABLE
 	export KIND_WORKER_NODES
+	export CTR_CMD=podman
 	cd "$DEV_CLUSTER_DIR"
 	"$DEV_CLUSTER_DIR/main.sh" "$op"
 
