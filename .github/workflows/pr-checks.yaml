@@ -156,6 +156,7 @@ jobs:
         env:
           # NOTE: prometheus is required since operator installs ServiceMonitor
           PROMETHEUS_ENABLE: "false"
+          KIND_WORKER_NODES: "1"
 
       - name: Ensure cluster is able to run OLM bundles
         run: make cluster-prereqs
