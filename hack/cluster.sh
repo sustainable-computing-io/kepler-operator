@@ -22,7 +22,8 @@ set -eu -o pipefail
 # config
 declare -r VERSION=${VERSION:-v0.0.3}
 declare -r CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-kind}
-declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-true}
+declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-false}
+declare -r PROMETHEUS_ENABLE=${PROMETHEUS_ENABLE:-false}
 declare -r KIND_WORKER_NODES=${KIND_WORKER_NODES:-2}
 
 # constants
@@ -63,7 +64,7 @@ git_checkout() {
 }
 
 cluster_prereqs() {
-	info "setting up SCC crd"
+	info "setting up external CRDs used by the operator"
 	kubectl apply --force -f "$PROJECT_ROOT/hack/crds"
 
 	kubectl get catalogsource && {
@@ -120,6 +121,7 @@ main() {
 	git_checkout
 	export CLUSTER_PROVIDER
 	export GRAFANA_ENABLE
+	export PROMETHEUS_ENABLE
 	export KIND_WORKER_NODES
 	cd "$DEV_CLUSTER_DIR"
 	"$DEV_CLUSTER_DIR/main.sh" "$op"

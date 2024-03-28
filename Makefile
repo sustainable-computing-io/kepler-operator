@@ -117,7 +117,8 @@ docs: crdoc manifests ## Generate docs.
 ##@ Development env
 CLUSTER_PROVIDER ?= kind
 LOCAL_DEV_CLUSTER_VERSION ?= main
-GRAFANA_ENABLE ?= true
+GRAFANA_ENABLE ?= false
+PROMETHEUS_ENABLE ?= false
 KIND_WORKER_NODES ?=2
 
 .PHONY: cluster-up
@@ -125,6 +126,7 @@ cluster-up: ## setup a cluster for local development
 	CLUSTER_PROVIDER=$(CLUSTER_PROVIDER) \
 	VERSION=$(LOCAL_DEV_CLUSTER_VERSION) \
 	GRAFANA_ENABLE=$(GRAFANA_ENABLE) \
+	PROMETHEUS_ENABLE=$(PROMETHEUS_ENABLE) \
 	KIND_WORKER_NODES=$(KIND_WORKER_NODES) \
 	./hack/cluster.sh up
 
@@ -137,6 +139,7 @@ cluster-restart: ## restart the local development cluster
 	CLUSTER_PROVIDER=$(CLUSTER_PROVIDER) \
 	VERSION=$(LOCAL_DEV_CLUSTER_VERSION) \
 	GRAFANA_ENABLE=$(GRAFANA_ENABLE) \
+	PROMETHEUS_ENABLE=$(PROMETHEUS_ENABLE) \
 	KIND_WORKER_NODES=$(KIND_WORKER_NODES) \
 	./hack/cluster.sh restart
 
