@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e -u -o pipefail
 
-trap cleanup INT
+# trap cleanup INT
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 declare -r PROJECT_ROOT
@@ -39,6 +39,87 @@ cleanup() {
 	# shellcheck disable=SC2046
 	[[ -z "$(jobs -p)" ]] || kill $(jobs -p) || true
 
+	return 0
+}
+
+debug.print_callstack() {
+	local i=0
+	local cs_frames=${#BASH_SOURCE[@]}
+
+	line 50 heavy
+	echo "Traceback ... "
+	for ((i = cs_frames - 1; i >= 2; i--)); do
+		local cs_file=${BASH_SOURCE[i]}
+		local cs_fn=${FUNCNAME[i]}
+		local cs_line=${BASH_LINENO[i - 1]}
+
+		# extract the line from the file
+		local line
+		line=$(sed -n "${cs_line}{s/^ *//;p}" "$cs_file")
+
+		echo -e "  ${cs_file}[$cs_line]:" \
+			"$cs_fn:\t" \
+			"$line"
+	done
+	line 50 light
+}
+
+declare -a __init_exit_todo_list=()
+declare -i __init_script_exit_code=0
+
+# on_exit_handler <exit-value>
+__on_exit_handler() {
+	# store the script exit code to be used later
+	__init_script_exit_code=${1:-0}
+	info "->> exit code: $__init_script_exit_code"
+
+	# print callstack
+	test $__init_script_exit_code -eq 0 || debug.print_callstack
+
+	echo "Exit cleanup ... ${__init_exit_todo_list[*]} "
+	for cmd in "${__init_exit_todo_list[@]}"; do
+		echo "    running: $cmd"
+		# run commands in a subshell so that the failures
+		# can be ignored
+		($cmd) || {
+			local cmd_type
+			cmd_type="$(type -t "$cmd")"
+			local cmd_text="$cmd"
+			local failed="FAILED"
+			echo "    $cmd_type: $cmd_text - $failed to execute ..."
+		}
+	done
+}
+
+on_exit() {
+	local cmd="$*"
+
+	local n=${#__init_exit_todo_list[*]}
+	if [[ $n -eq 0 ]]; then
+		info "will run $cmd on exit"
+		# install the exit handler on first call
+		trap '__on_exit_handler $?' EXIT
+		__init_exit_todo_list=("$cmd")
+		return 0
+	fi
+
+	__init_exit_todo_list=("$cmd" "${__init_exit_todo_list[@]}") #execute in reverse order
+
+}
+
+print_result() {
+	local exit_code=$__init_script_exit_code
+
+	local scr
+	scr="$(basename "$0")"
+
+	if [[ $exit_code != 0 ]]; then
+		fail "$scr: FAILED" \
+			" -   exit code: [ $exit_code ]"
+		return "$exit_code"
+	fi
+
+	ok "$scr: PASSED"
 	return 0
 }
 
@@ -338,31 +419,34 @@ kind_load_images() {
 	while read -r img; do
 		kind_load_image "$img"
 	done < <(yq -r .spec.relatedImages[].image "$OPERATOR_CSV")
+	prune_images_if_ci
 
 	info "loading additional images from $TEST_IMAGES_YAML"
 	while read -r img; do
 		kind_load_image "$img"
 	done < <(yq -r .images[].image "$TEST_IMAGES_YAML")
+	prune_images_if_ci
 
 	return 0
 }
 
-docker_prune() {
+prune_images_if_ci() {
 	header "Prune Docker"
-	run docker system prune -a -f
+	$CI_MODE || {
+		info "skipping pruning of docker images when not in CI mode"
+		return 0
+	}
+	# NOTE: ci runs out of disk space at times, hence run images
+	info "pruning docker images and volumes"
+	run df -h
+	run docker images
+	run docker system prune -a -f --volumes
+	run df -h
 }
 
 deploy_operator() {
 	header "Build and Deploy Operator"
-
-	$CI_MODE && {
-		# NOTE: ci runs out of disk space at times, hence run images
-		info "pruning docker images and volumes"
-		run docker images
-		docker_prune
-		run df -h
-	}
-
+	prune_images_if_ci
 	ensure_imgpullpolicy_always_in_yaml
 	kind_load_images
 	delete_olm_subscription || true
@@ -375,6 +459,7 @@ deploy_operator() {
 		run_bundle_upgrade
 	fi
 	wait_for_operator "$OPERATORS_NS"
+	prune_images_if_ci
 }
 
 ensure_imgpullpolicy_always_in_yaml() {
@@ -482,6 +567,8 @@ main() {
 	}
 
 	cd "$PROJECT_ROOT"
+	on_exit print_result
+	on_exit cleanup
 
 	init_operator_img
 	init_logs_dir
