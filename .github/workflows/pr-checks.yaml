@@ -163,6 +163,12 @@ jobs:
 
       - name: Run e2e tests
         run: |
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo rm -rf /tmp/*
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /opt/hostedtoolcache/Python
+          df -kh
           ./tests/run-e2e.sh --ci
         env:
           VERSION: ${{ steps.version.outputs.version }}

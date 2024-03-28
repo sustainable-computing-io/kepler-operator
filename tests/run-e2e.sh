@@ -360,7 +360,7 @@ deploy_operator() {
 		info "pruning docker images and volumes"
 		run docker images
 		docker_prune
-		run df -h
+		df -kh
 	}
 
 	ensure_imgpullpolicy_always_in_yaml
