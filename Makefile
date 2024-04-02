@@ -26,7 +26,7 @@ GOARCH := $(shell go env GOARCH)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= $(shell cat VERSION)
 
-KEPLER_VERSION ?=release-0.7.2
+KEPLER_VERSION ?=release-0.7.8
 
 # IMG_BASE and KEPLER_IMG_BASE are set to distinguish between Operator-specific images and Kepler-Specific images.
 # IMG_BASE is used for building and pushing operator related images.
@@ -117,7 +117,7 @@ docs: crdoc manifests ## Generate docs.
 ##@ Development env
 CLUSTER_PROVIDER ?= kind
 LOCAL_DEV_CLUSTER_VERSION ?= main
-GRAFANA_ENABLE ?= true
+GRAFANA_ENABLE ?= false
 PROMETHEUS_ENABLE ?= false
 KIND_WORKER_NODES ?=2
 
