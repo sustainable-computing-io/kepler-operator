@@ -26,8 +26,8 @@ metadata:
       ]
     capabilities: Basic Install
     categories: Monitoring
-    containerImage: quay.io/sustainable_computing_io/kepler-operator:0.10.0
-    createdAt: "2024-03-11T09:21:02Z"
+    containerImage: quay.io/sustainable_computing_io/kepler-operator:0.11.0
+    createdAt: "2024-04-02T07:29:20Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.27.0
     operators.operatorframework.io/internal-objects: |-
@@ -37,7 +37,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/sustainable-computing-io/kepler-operator
     support: https://github.com/sustainable-computing-io/kepler-operator/issues
-  name: kepler-operator.v0.10.0
+  name: kepler-operator.v0.11.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -266,8 +266,8 @@ spec:
                 - /manager
                 env:
                 - name: RELATED_IMAGE_KEPLER
-                  value: quay.io/sustainable_computing_io/kepler:release-0.7.2
-                image: quay.io/sustainable_computing_io/kepler-operator:0.10.0
+                  value: quay.io/sustainable_computing_io/kepler:release-0.7.8
+                image: quay.io/sustainable_computing_io/kepler-operator:0.11.0
                 imagePullPolicy: IfNotPresent
                 livenessProbe:
                   httpGet:
@@ -376,10 +376,10 @@ spec:
     name: Kepler Operator Contributors
     url: https://sustainable-computing.io/
   relatedImages:
-  - image: quay.io/sustainable_computing_io/kepler:release-0.7.2
+  - image: quay.io/sustainable_computing_io/kepler:release-0.7.8
     name: kepler
-  replaces: kepler-operator.v0.9.2
-  version: 0.10.0
+  replaces: kepler-operator.v0.10.0
+  version: 0.11.0
   webhookdefinitions:
   - admissionReviewVersions:
     - v1

@@ -26,7 +26,7 @@ GOARCH := $(shell go env GOARCH)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= $(shell cat VERSION)
 
-KEPLER_VERSION ?=release-0.7.2
+KEPLER_VERSION ?=release-0.7.8
 
 # IMG_BASE and KEPLER_IMG_BASE are set to distinguish between Operator-specific images and Kepler-Specific images.
 # IMG_BASE is used for building and pushing operator related images.
@@ -100,7 +100,7 @@ fmt: shfmt ## Run go fmt against code.
 	go fmt ./...
 	PATH=./tmp/bin:$$PATH \
 		shfmt -l -w ./**/*.sh \
-			./must-gather/gather* ./must-gather/common
+			./must-gather/gather*
 
 .PHONY: vet
 vet: ## Run go vet against code.
@@ -117,7 +117,8 @@ docs: crdoc manifests ## Generate docs.
 ##@ Development env
 CLUSTER_PROVIDER ?= kind
 LOCAL_DEV_CLUSTER_VERSION ?= main
-GRAFANA_ENABLE ?= true
+GRAFANA_ENABLE ?= false
+PROMETHEUS_ENABLE ?= false
 KIND_WORKER_NODES ?=2
 
 .PHONY: cluster-up
@@ -125,6 +126,7 @@ cluster-up: ## setup a cluster for local development
 	CLUSTER_PROVIDER=$(CLUSTER_PROVIDER) \
 	VERSION=$(LOCAL_DEV_CLUSTER_VERSION) \
 	GRAFANA_ENABLE=$(GRAFANA_ENABLE) \
+	PROMETHEUS_ENABLE=$(PROMETHEUS_ENABLE) \
 	KIND_WORKER_NODES=$(KIND_WORKER_NODES) \
 	./hack/cluster.sh up
 
@@ -137,6 +139,7 @@ cluster-restart: ## restart the local development cluster
 	CLUSTER_PROVIDER=$(CLUSTER_PROVIDER) \
 	VERSION=$(LOCAL_DEV_CLUSTER_VERSION) \
 	GRAFANA_ENABLE=$(GRAFANA_ENABLE) \
+	PROMETHEUS_ENABLE=$(PROMETHEUS_ENABLE) \
 	KIND_WORKER_NODES=$(KIND_WORKER_NODES) \
 	./hack/cluster.sh restart
 

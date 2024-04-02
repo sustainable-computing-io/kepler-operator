@@ -148,18 +148,27 @@ jobs:
         uses: ./.github/tools-cache
 
       - name: use kepler action for kind cluster build
-        uses: sustainable-computing-io/kepler-action@v0.0.2
+        uses: sustainable-computing-io/kepler-action@v0.0.5
         with:
-          ebpfprovider: bcc
+          ebpfprovider: libbpf
           cluster_provider: kind
         env:
-          PROMETHEUS_ENABLE: "true"
+          PROMETHEUS_ENABLE: "false"
 
       - name: Ensure cluster is able to run OLM bundles
         run: make cluster-prereqs
 
       - uses: ./.github/compute-version
         id: version
+
+      - name: reclaim space before running tests
+        run: |
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo rm -rf /tmp/*
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /opt/hostedtoolcache/Python
+          df -kh
 
       - name: Run e2e tests
         run: |
