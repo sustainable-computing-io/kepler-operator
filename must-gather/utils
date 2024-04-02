@@ -15,17 +15,8 @@
 # limitations under the license.
 #
 
-set -eu -o pipefail
-
-export KEPLER_NS=$(oc get keplerinternals kepler -o jsonpath='{.spec.exporter.deployment.namespace}')
-export LOGFILE_NAME="gather-debug.log"
-
 get_timestamp() {
 	date -u +"%Y-%m-%d %H:%M:%SZ"
-}
-
-log_stdout() {
-	echo "$(get_timestamp) $*"
 }
 
 log_file() {
