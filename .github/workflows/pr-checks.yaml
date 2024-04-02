@@ -161,6 +161,15 @@ jobs:
       - uses: ./.github/compute-version
         id: version
 
+      - name: reclaim space before running tests
+        run: |
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo rm -rf /tmp/*
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /opt/hostedtoolcache/Python
+          df -kh
+
       - name: Run e2e tests
         run: |
           ./tests/run-e2e.sh --ci
