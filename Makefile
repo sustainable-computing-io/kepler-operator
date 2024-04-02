@@ -117,7 +117,7 @@ docs: crdoc manifests ## Generate docs.
 ##@ Development env
 CLUSTER_PROVIDER ?= kind
 LOCAL_DEV_CLUSTER_VERSION ?= main
-GRAFANA_ENABLE ?= true
+GRAFANA_ENABLE ?= false
 PROMETHEUS_ENABLE ?= false
 KIND_WORKER_NODES ?=2
 
