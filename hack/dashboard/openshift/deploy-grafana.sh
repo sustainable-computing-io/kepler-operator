@@ -45,7 +45,7 @@ validate_cluster() {
 		fail "No oc command found in PATH"
 		info "Please install oc"
 		cat <<-EOF
-			curl -sNL https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.13.0/openshift-client-linux.tar.gz |
+			curl -sNL https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.13.0/openshift-client-linux-arm64.tar.gz |
 			  tar -xzf - -C <install/path>
 		EOF
 		# NOTE: do not proceed without oc installed
@@ -68,7 +68,7 @@ validate_cluster() {
 		fail "oc version '$oc_version' should be at least 4.12.0"
 		info "install a newer version of oc"
 		cat <<-EOF
-			curl -sNL https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.13.0/openshift-client-linux.tar.gz |
+			curl -sNL https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.13.0/openshift-client-linux-arm64.tar.gz |
 			  tar -xzf - -C <install/path>
 		EOF
 		ret=1

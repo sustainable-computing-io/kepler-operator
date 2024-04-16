@@ -210,7 +210,7 @@ install_oc() {
 	local os="$GOOS"
 	[[ $os == "darwin" ]] && os="mac"
 
-	local install="$OC_URL/openshift-client-$os.tar.gz"
+	local install="$OC_URL/openshift-client-$os-arm64.tar.gz"
 	# NOTE: tar should be extracted to a tmp dir since it also contains kubectl
 	# which overwrites kubectl installed by install_kubectl above
 	local oc_tmp="$LOCAL_BIN/tmp-oc"
