@@ -38,7 +38,7 @@ const (
 
 const (
 	defaultModelServer = "http://%s.%s.svc.cluster.local:%d"
-	StableImage        = "quay.io/sustainable_computing_io/kepler_model_server:v0.6"
+	StableImage        = "quay.io/sustainable_computing_io/kepler_model_server:v0.7.7"
 )
 
 var (

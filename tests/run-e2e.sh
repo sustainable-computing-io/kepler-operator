@@ -338,31 +338,34 @@ kind_load_images() {
 	while read -r img; do
 		kind_load_image "$img"
 	done < <(yq -r .spec.relatedImages[].image "$OPERATOR_CSV")
+	prune_images_if_ci
 
 	info "loading additional images from $TEST_IMAGES_YAML"
 	while read -r img; do
 		kind_load_image "$img"
 	done < <(yq -r .images[].image "$TEST_IMAGES_YAML")
+	prune_images_if_ci
 
 	return 0
 }
 
-docker_prune() {
-	header "Prune Docker"
-	run docker system prune -a -f
+prune_images_if_ci() {
+	header "Prune Images"
+	$CI_MODE || {
+		info "skipping pruning of docker images when not in CI mode"
+		return 0
+	}
+	# NOTE: ci runs out of disk space at times, hence run images
+	info "pruning docker images and volumes"
+	run df -h
+	run docker images
+	run docker system prune -a -f --volumes
+	run df -h
 }
 
 deploy_operator() {
 	header "Build and Deploy Operator"
-
-	$CI_MODE && {
-		# NOTE: ci runs out of disk space at times, hence run images
-		info "pruning docker images and volumes"
-		run docker images
-		docker_prune
-		run df -h
-	}
-
+	prune_images_if_ci
 	ensure_imgpullpolicy_always_in_yaml
 	kind_load_images
 	delete_olm_subscription || true
@@ -375,6 +378,7 @@ deploy_operator() {
 		run_bundle_upgrade
 	fi
 	wait_for_operator "$OPERATORS_NS"
+	prune_images_if_ci
 }
 
 ensure_imgpullpolicy_always_in_yaml() {
