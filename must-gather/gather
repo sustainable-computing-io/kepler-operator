@@ -210,9 +210,18 @@ get_kepler_ebpf_info() {
 	local kepler_node_info_dir="$2"
 	shift 2
 	log "getting ebpf information from kepler pod: $kepler_pod"
-	echo "## kprobes list only applicable for bcc" >>"$kepler_node_info_dir/ebpf-info"
-	echo "kprobes list:" >>"$kepler_node_info_dir/ebpf-info"
-	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- cat /sys/kernel/debug/kprobes/list "$kepler_node_info_dir/ebpf-info"
+
+	echo "Probing the running kernel and dumping the number of eBPF-related parameters"
+	echo "ebpf related features supported by current kernel:" >>"$kepler_node_info_dir/kernel-ebpf-features"
+	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- bpftool feature probe kernel "$kepler_node_info_dir/kernel-ebpf-features"
+
+	echo "listing all loaded ebpf programs"
+	echo "list of all loaded ebpf programs:" >>"$kepler_node_info_dir/ebpf-info"
+	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- bpftool prog list "$kepler_node_info_dir/ebpf-info"
+
+	echo "listing all ebpf maps"
+	echo "list of all ebpf maps:" >>"$kepler_node_info_dir/ebpf-info"
+	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- bpftool map list "$kepler_node_info_dir/ebpf-info"
 }
 
 get_kepler_logs() {

@@ -164,8 +164,7 @@ func openshiftDashboardObjectMeta(name string) metav1.ObjectMeta {
 		Name:      name,
 		Namespace: DashboardNs,
 		Labels: components.CommonLabels.Merge(k8s.StringMap{
-			"console.openshift.io/dashboard":     "true",
-			"console.openshift.io/odc-dashboard": "true",
+			"console.openshift.io/dashboard": "true",
 		}),
 		Annotations: k8s.StringMap{
 			"include.release.openshift.io/self-managed-high-availability": "true",
@@ -176,6 +175,7 @@ func openshiftDashboardObjectMeta(name string) metav1.ObjectMeta {
 
 func NewOverviewDashboard(d components.Detail) *corev1.ConfigMap {
 	objMeta := openshiftDashboardObjectMeta(overviewDashboardName)
+	objMeta.Labels["console.openshift.io/odc-dashboard"] = "true"
 
 	if d == components.Metadata {
 		return &corev1.ConfigMap{
