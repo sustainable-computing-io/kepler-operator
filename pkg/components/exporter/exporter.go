@@ -99,7 +99,6 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.
 		k8s.VolumeFromHost("lib-modules", "/lib/modules"),
 		k8s.VolumeFromHost("tracing", "/sys"),
 		k8s.VolumeFromHost("proc", "/proc"),
-		k8s.VolumeFromHost("kernel-src", "/usr/src/kernels"),
 		k8s.VolumeFromConfigMap("cfm", k.Name),
 	} // exporter default Volumes
 
@@ -621,7 +620,6 @@ func newExporterContainer(kiName, dsName string, deployment v1alpha1.InternalExp
 			"-enable-cgroup-id=true",
 			"-enable-gpu=$(ENABLE_GPU)",
 			"-v=$(KEPLER_LOG_LEVEL)",
-			"-kernel-source-dir=/usr/share/kepler/kernel_sources",
 		},
 		Ports: []corev1.ContainerPort{{
 			ContainerPort: int32(deployment.Port),
@@ -648,7 +646,6 @@ func newExporterContainer(kiName, dsName string, deployment v1alpha1.InternalExp
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
 			{Name: "tracing", MountPath: "/sys", ReadOnly: true},
-			{Name: "kernel-src", MountPath: "/usr/src/kernels", ReadOnly: true},
 			{Name: "proc", MountPath: "/proc"},
 			{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
 		},
