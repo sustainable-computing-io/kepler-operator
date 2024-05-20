@@ -4,7 +4,7 @@ set -eu -o pipefail
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 declare -r PROJECT_ROOT
 declare -r powermon_bundle_package_name="power-monitoring-operator-bundle-container"
-declare -r OCP_VERSION=${OCP_VERSION:-'v4.13'}
+declare -r OCP_VERSION=${OCP_VERSION:-'v4.15'}
 
 source "$PROJECT_ROOT/hack/utils.bash"
 
@@ -42,7 +42,7 @@ function get_index_image {
     bundle=$(echo $message | jq -r '.msg.index.added_bundle_images[0]')
     version=$(echo $bundle| awk -F':' '{print $2}')
 	ocp_version=$(echo $message | jq -r '.msg.index.ocp_version')
-    if [[ $version == 0.1* ]] && [[ $ocp_version == "$requested_ocp_version" ]];
+    if [[ $version == 0.2* ]] && [[ $ocp_version == "$requested_ocp_version" ]];
     then
       index_image=$(echo $message | jq -r '.msg.index.index_image')
       break
@@ -121,7 +121,7 @@ function add_catalog_source(){
   spec:
     sourceType: grpc
     image: $index_image
-    displayName: Openshift Power Monitoring
+    displayName: OpenShift Power Monitoring
     publisher: Power Mon RC Images
 EOF
 }
