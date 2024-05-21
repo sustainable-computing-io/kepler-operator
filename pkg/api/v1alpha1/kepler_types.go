@@ -61,7 +61,10 @@ type RedfishSpec struct {
 
 type ExporterSpec struct {
 	Deployment ExporterDeploymentSpec `json:"deployment,omitempty"`
-	Redfish    *RedfishSpec           `json:"redfish,omitempty"`
+
+	// +optional
+	// +kubebuilder:validation:optional
+	Redfish *RedfishSpec `json:"redfish,omitempty"`
 }
 
 // KeplerSpec defines the desired state of Kepler

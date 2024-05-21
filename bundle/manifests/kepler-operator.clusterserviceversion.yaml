@@ -19,7 +19,8 @@ metadata:
             "exporter": {
               "deployment": {
                 "port": 9103
-              }
+              },
+              "redfish": null
             }
           }
         }
