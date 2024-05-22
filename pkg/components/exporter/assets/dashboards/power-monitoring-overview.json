@@ -120,7 +120,7 @@
           "linkTargetBlank": false,
           "pattern": "platform_power_source",
           "thresholds": [],
-          "type": "hidden",
+          "type": "number",
           "unit": "short"
         },
         {
@@ -436,7 +436,7 @@
           "linkTargetBlank": false,
           "pattern": "platform_power_source",
           "thresholds": [],
-          "type": "hidden",
+          "type": "number",
           "unit": "short"
         },
         {
