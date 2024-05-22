@@ -2,7 +2,7 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   annotations:
-    capabilities: Basic Install
+    capabilities: Seamless Upgrades
     categories: Monitoring
     containerImage: <OPERATOR_IMG>
     createdAt: "2023-01-31 16:20:00"
