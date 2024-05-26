@@ -1,18 +1,31 @@
+# Power Monitoring Must-Gather
 
-power monitoring must-gather
-============================
+The Power Monitoring `must-gather` tool is designed to collect
+information about power monitoring components within an OpenShift cluster.
+This tool extends the functionality of [OpenShift must-gather](https://github.com/openshift/must-gather)
+to specifically target and retrieve data related to power monitoring,
+including support for both the upstream Kepler Operator and the
+Power Monitoring Operator.
 
-power monitoring `must-gather` is a tool built on top of [Openshift must-gather](https://github.com/openshift/must-gather) that lets users to gather information about power monitoring components.
+## Usage
 
-### Usage
+To run the must-gather, use one of the following
+commands, depending on the operator and namespace where it is deployed
+
+### Using the image from the Operator deployment
+
 ```sh
-oc adm must-gather --image=$(oc -n openshift-operators get deployment.apps/kepler-operator-controller -o jsonpath='{.spec.template.spec.containers[?(@.name == "manager")].image}') -- /usr/bin/gather
+oc adm must-gather --image=$(oc -n <namespace> get deployment.apps/kepler-operator-controller -o jsonpath='{.spec.template.spec.containers[?(@.name == "manager")].image}') -- /usr/bin/gather --operator <operator-name> --ns <namespace>
 ```
-or
+
+Replace `<namespace>` with the namespace where the operator is deployed, and
+`<operator-name>` with the name of the operator(e.g. `kepler-operator` or `power-monitoring-operator`).
+
+### Using a specific image
+
 ```sh
-oc adm must-gather --image=quay.io/sustainable_computing_io/kepler-operator:v1alpha1
+oc adm must-gather --image=quay.io/sustainable_computing_io/kepler-operator:v1alpha1 -- /usr/bin/gather --operator <operator-name> --ns <namespace>
+
 ```
 
-The above command will gather information about power monitoring and dump that information in a new directory.
-
-
+Running these commands will collect and store information in a newly created directory, based on the specified operator and namespace.
