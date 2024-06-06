@@ -225,9 +225,11 @@ install_oc() {
 	ok "oc was installed successfully"
 
 }
+
 version_jq() {
 	jq --version
 }
+
 install_jq() {
 	validate_version jq --version "$JQ_VERSION" && {
 		return 0
