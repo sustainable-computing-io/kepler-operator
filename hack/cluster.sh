@@ -24,6 +24,7 @@ declare -r VERSION=${VERSION:-v0.0.3}
 declare -r CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-kind}
 declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-true}
 declare -r KIND_WORKER_NODES=${KIND_WORKER_NODES:-2}
+declare -r CERTMANAGER_VERSION=${CERT_MANAGER_VERSION:-1.15.0}
 
 # constants
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
@@ -31,7 +32,7 @@ declare -r PROJECT_ROOT
 declare -r TMP_DIR="$PROJECT_ROOT/tmp"
 declare -r DEV_CLUSTER_DIR="$TMP_DIR/local-dev-cluster"
 declare -r BIN_DIR="$TMP_DIR/bin"
-declare -r OPERATOR_SDK_VERSION=${OPERATOR_SDK_VERSION:-v1.27.0}
+declare -r CERTMANAGER_URL="https://github.com/jetstack/cert-manager/releases/download/v$CERTMANAGER_VERSION/cert-manager.yaml"
 
 source "$PROJECT_ROOT/hack/utils.bash"
 
@@ -62,6 +63,11 @@ git_checkout() {
 	fi
 }
 
+install_cert_manager() {
+	run kubectl apply --server-side --force-conflicts -f "$CERTMANAGER_URL"
+	run kubectl wait --for=condition=Established crds --all --timeout=120s
+}
+
 cluster_prereqs() {
 	info "setting up SCC crd"
 	kubectl apply --force -f "$PROJECT_ROOT/hack/crds"
@@ -78,6 +84,9 @@ cluster_prereqs() {
 
 	info "Ensure prometheus can monitor all namespaces"
 	run kubectl create -f hack/monitoring/rbac
+
+	info "Ensure cert-manager is installed"
+	install_cert_manager
 }
 
 ensure_all_tools() {
