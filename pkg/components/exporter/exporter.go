@@ -253,7 +253,7 @@ func NewConfigMap(d components.Detail, k *v1alpha1.KeplerInternal) *corev1.Confi
 		"BIND_ADDRESS":               bindAddress,
 		"ENABLE_GPU":                 "true",
 		"ENABLE_QAT":                 "false",
-		"ENABLE_EBPF_CGROUPID":       "false",
+		"ENABLE_EBPF_CGROUPID":       "true",
 		"EXPOSE_HW_COUNTER_METRICS":  "true",
 		"EXPOSE_IRQ_COUNTER_METRICS": "true",
 		"EXPOSE_KUBELET_METRICS":     "true",
