@@ -19,7 +19,7 @@ package modelserver
 import (
 	"fmt"
 
-	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 

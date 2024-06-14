@@ -17,7 +17,7 @@ limitations under the License.
 package test
 
 import (
-	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 )
 

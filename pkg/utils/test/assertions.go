@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 

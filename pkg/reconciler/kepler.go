@@ -23,7 +23,7 @@ import (
 	"strconv"
 
 	"github.com/cespare/xxhash/v2"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"

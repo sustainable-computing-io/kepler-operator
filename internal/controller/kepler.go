@@ -1,4 +1,4 @@
-package controllers
+package controller
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/reconciler"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
@@ -27,9 +27,7 @@ const (
 	Finalizer = "kepler.system.sustainable.computing.io/finalizer"
 )
 
-var (
-	KeplerDeploymentNS = "kepler-operator"
-)
+var KeplerDeploymentNS = "kepler-operator"
 
 // KeplerReconciler reconciles a Kepler object
 type KeplerReconciler struct {
@@ -102,7 +100,6 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 }
 
 func (r KeplerReconciler) runKeplerReconcilers(ctx context.Context, kepler *v1alpha1.Kepler) (ctrl.Result, error) {
-
 	reconcilers := r.reconcilersForKepler(kepler)
 	r.logger.V(6).Info("renconcilers ...", "count", len(reconcilers))
 
@@ -116,7 +113,6 @@ func (r KeplerReconciler) runKeplerReconcilers(ctx context.Context, kepler *v1al
 
 func (r KeplerReconciler) updateStatus(ctx context.Context, req ctrl.Request, recErr error) error {
 	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-
 		k, _ := r.getKepler(ctx, req)
 		// may be deleted
 		if k == nil || !k.GetDeletionTimestamp().IsZero() {
@@ -212,7 +208,6 @@ func (r KeplerReconciler) reconcilersForKepler(k *v1alpha1.Kepler) []reconciler.
 }
 
 func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		invalidKepler, _ := r.getKepler(ctx, req)
 		// may be deleted
@@ -244,7 +239,6 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 }
 
 func newKeplerInternal(d components.Detail, k *v1alpha1.Kepler) *v1alpha1.KeplerInternal {
-
 	if d == components.Metadata {
 		return &v1alpha1.KeplerInternal{
 			TypeMeta: metav1.TypeMeta{
