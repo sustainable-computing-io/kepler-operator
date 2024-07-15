@@ -26,7 +26,7 @@ GOARCH := $(shell go env GOARCH)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= $(shell cat VERSION)
 
-KEPLER_VERSION ?=release-0.7.10
+KEPLER_VERSION ?=release-0.7.11
 
 # IMG_BASE and KEPLER_IMG_BASE are set to distinguish between Operator-specific images and Kepler-Specific images.
 # IMG_BASE is used for building and pushing operator related images.
