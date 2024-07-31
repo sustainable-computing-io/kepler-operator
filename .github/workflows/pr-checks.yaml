@@ -125,8 +125,71 @@ jobs:
           version: ${{ steps.version.outputs.version }}
           additional_tags: ${{ steps.additional_tags.outputs.result }}
 
+  operator-upgrade:
+    needs: [build-images,bundle]
+    env:
+      KIND_VERSION: "0.15.0"
+      GO111MODULE: "on"
+      OPERATOR_IMAGE: "quay.io/sustainable_computing_io/kepler-operator"
+      KUBECONFIG: /tmp/.kube/config
+      KIND_WORKER_NODES: 2
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          go-version-file: go.mod
+
+      - name: Install Go
+        uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+
+      - name: Install all tools
+        uses: ./.github/tools-cache
+
+      - name: use kepler action for kind cluster build
+        uses: sustainable-computing-io/kepler-action@v0.0.5
+        with:
+          ebpfprovider: libbpf
+          cluster_provider: kind
+        env:
+          PROMETHEUS_ENABLE: "false"
+
+      - name: Ensure cluster is able to run OLM bundles
+        run: make cluster-prereqs
+
+      - uses: ./.github/compute-version
+        id: version
+
+      - name: Run Operator Upgrade
+        shell: bash
+        run: |
+          ./tests/run-e2e.sh --ci
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Capture cluster state
+        if: always()
+        shell: bash
+        run: |
+          # Capture apiserver state
+          # TODO: enable this when we have oc installed as part of `make tools`
+          # oc adm inspect node --dest-dir cluster-state || true
+          # oc adm inspect -A statefulset --dest-dir cluster-state || true
+          # oc adm inspect -A deployment --dest-dir cluster-state || true
+          # oc adm inspect -A ns --dest-dir cluster-state || true
+          cp -r tmp/e2e cluster-state/ || true
+
+      - name: Archive production artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: cluster-state
+          path: cluster-state
+
   e2e:
-    needs: [docs, golangci, fmt, vulnerability_detect, escapes_detect]
+    needs: [operator-upgrade]
     env:
       KIND_VERSION: "0.15.0"
       GO111MODULE: "on"
@@ -172,7 +235,7 @@ jobs:
 
       - name: Run e2e tests
         run: |
-          ./tests/run-e2e.sh --ci
+          ./tests/run-e2e.sh --ci --no-upgrade
         env:
           VERSION: ${{ steps.version.outputs.version }}
 
