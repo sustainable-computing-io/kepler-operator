@@ -1,4 +1,4 @@
-package controllers
+package controller
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/modelserver"
@@ -58,7 +58,6 @@ type KeplerInternalReconciler struct {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeplerInternalReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
 	// We only want to trigger a reconciliation when the generation
 	// of a child changes. Until we need to update our the status for our own objects,
 	// we can save CPU cycles by avoiding reconciliations triggered by
@@ -90,7 +89,6 @@ func (r *KeplerInternalReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // mapSecretToRequests returns the reconcile requests for kepler-internal objects for which an associated redfish secret has been changed.
 func (r *KeplerInternalReconciler) mapSecretToRequests(ctx context.Context, object client.Object) []reconcile.Request {
-
 	secret, ok := object.(*corev1.Secret)
 	if !ok {
 		return nil
@@ -160,7 +158,6 @@ func (r *KeplerInternalReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 }
 
 func (r KeplerInternalReconciler) runReconcilers(ctx context.Context, ki *v1alpha1.KeplerInternal) (ctrl.Result, error) {
-
 	reconcilers := r.reconcilersForInternal(ki)
 	r.logger.V(6).Info("reconcilers ...", "count", len(reconcilers))
 
@@ -194,7 +191,6 @@ func (r KeplerInternalReconciler) updateStatus(ctx context.Context, req ctrl.Req
 	defer logger.V(3).Info("End of status update")
 
 	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-
 		ki, _ := r.getInternal(ctx, req)
 		// may be deleted
 		if ki == nil || !ki.GetDeletionTimestamp().IsZero() {
@@ -219,7 +215,6 @@ func (r KeplerInternalReconciler) updateStatus(ctx context.Context, req ctrl.Req
 		}
 
 		return r.Client.Status().Update(ctx, ki)
-
 	})
 }
 
@@ -259,7 +254,6 @@ func sanitizeConditions(conditions []v1alpha1.Condition) []v1alpha1.Condition {
 }
 
 func (r KeplerInternalReconciler) updateReconciledStatus(ctx context.Context, ki *v1alpha1.KeplerInternal, recErr error, time metav1.Time) bool {
-
 	reconciled := v1alpha1.Condition{
 		Type:               v1alpha1.Reconciled,
 		Status:             v1alpha1.ConditionTrue,
@@ -288,7 +282,6 @@ func findCondition(conditions []v1alpha1.Condition, t v1alpha1.ConditionType) *v
 
 // returns true if the condition has been updated
 func updateCondition(conditions []v1alpha1.Condition, latest v1alpha1.Condition, time metav1.Time) bool {
-
 	old := findCondition(conditions, latest.Type)
 	if old == nil {
 		panic("old condition not found; this should never happen after sanitizeConditions")
@@ -386,7 +379,6 @@ func availableConditionForGetError(err error) v1alpha1.Condition {
 		Reason:  v1alpha1.DaemonSetError,
 		Message: err.Error(),
 	}
-
 }
 
 func availableCondition(dset *appsv1.DaemonSet) v1alpha1.Condition {
@@ -514,7 +506,6 @@ func (r KeplerInternalReconciler) reconcilersForInternal(ki *v1alpha1.KeplerInte
 }
 
 func exporterReconcilers(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []reconciler.Reconciler {
-
 	if cleanup := !ki.DeletionTimestamp.IsZero(); cleanup {
 		rs := resourceReconcilers(
 			deleteResource,
@@ -564,7 +555,6 @@ func exporterReconcilers(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []rec
 }
 
 func openshiftClusterResources(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []client.Object {
-
 	oshift := ki.Spec.OpenShift
 	if cluster != k8s.OpenShift || !oshift.Enabled {
 		return nil
@@ -618,5 +608,4 @@ func updatersForInternalResources(ki *v1alpha1.KeplerInternal, resources ...clie
 		rs = append(rs, resourceUpdater(res))
 	}
 	return rs
-
 }

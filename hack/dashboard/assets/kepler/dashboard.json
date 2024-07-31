@@ -1100,7 +1100,7 @@
         {
           "datasource": "prometheus",
           "editorMode": "code",
-          "expr": "sum by (pod_name) (kepler:kepler:other_joules_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"})",
+          "expr": "sum by (pod_name) (kepler:kepler:container_other_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"})",
           "hide": false,
           "interval": "5m",
           "legendFormat": "{{pod_name}}",

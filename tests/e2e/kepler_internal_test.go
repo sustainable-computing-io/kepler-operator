@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/internal/controller"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/controllers"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/test"
 	appsv1 "k8s.io/api/apps/v1"
@@ -43,7 +43,7 @@ func TestKeplerInternal_Reconciliation(t *testing.T) {
 	name := "e2e-ki"
 	// test namespace must be the deployment namespace for controller
 	// to watch the deployments / daemonsets etc
-	testNs := controllers.KeplerDeploymentNS
+	testNs := controller.KeplerDeploymentNS
 
 	// pre-condition
 	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
@@ -76,7 +76,7 @@ func TestKeplerInternal_ReconciliationWithRedfish(t *testing.T) {
 	secretName := "my-redfish-secret"
 	// test namespace must be the deployment namespace for controller
 	// to watch the deployments / daemonsets etc
-	testNs := controllers.KeplerDeploymentNS
+	testNs := controller.KeplerDeploymentNS
 
 	// pre-condition
 	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
@@ -107,7 +107,7 @@ func TestKeplerInternal_ReconciliationWithRedfish(t *testing.T) {
 	redfishSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
-			Namespace: controllers.KeplerDeploymentNS,
+			Namespace: controller.KeplerDeploymentNS,
 		},
 		Data: map[string][]byte{
 			"redfish.csv": []byte("dummy"),
@@ -143,7 +143,7 @@ func TestKeplerInternal_ReconciliationWithRedfish(t *testing.T) {
 	ds = appsv1.DaemonSet{}
 	f.WaitUntil("Daemonset to restart", func() (bool, error) {
 		err := f.Client().Get(context.TODO(),
-			client.ObjectKey{Namespace: controllers.KeplerDeploymentNS, Name: ki.Name}, &ds)
+			client.ObjectKey{Namespace: controller.KeplerDeploymentNS, Name: ki.Name}, &ds)
 		if errors.IsNotFound(err) {
 			return false, nil
 		} else if err != nil {
@@ -164,7 +164,7 @@ func TestKeplerInternal_WithEstimator(t *testing.T) {
 
 	// test namespace must be the deployment namespace for controller
 	// to watch the deployments / daemonsets etc
-	testNs := controllers.KeplerDeploymentNS
+	testNs := controller.KeplerDeploymentNS
 
 	// pre-condition
 	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
@@ -197,7 +197,7 @@ func TestKeplerInternal_WithModelServer(t *testing.T) {
 
 	// test namespace must be the deployment namespace for controller
 	// to watch the deployments / daemonsets etc
-	testNs := controllers.KeplerDeploymentNS
+	testNs := controller.KeplerDeploymentNS
 
 	// pre-condition
 	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
@@ -235,7 +235,7 @@ func TestKeplerInternal_WithEstimatorAndModelServer(t *testing.T) {
 
 	// test namespace must be the deployment namespace for controller
 	// to watch the deployments / daemonsets etc
-	testNs := controllers.KeplerDeploymentNS
+	testNs := controller.KeplerDeploymentNS
 
 	// pre-condition
 	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())

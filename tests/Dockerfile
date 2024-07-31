@@ -11,12 +11,14 @@ RUN go mod download
 
 # Install kubectl and oc
 RUN curl -L -o oc.tar.gz https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/openshift-client-linux.tar.gz \
-    && tar -xvzf oc.tar.gz \
-    && chmod +x kubectl oc \
-    && mv oc kubectl /usr/local/bin/
+  && tar -xvzf oc.tar.gz \
+  && chmod +x kubectl oc \
+  && mv oc kubectl /usr/local/bin/
 
 # Copy the go source
 COPY pkg/ pkg/
+COPY api/ api/
+COPY internal/ internal/
 COPY tests/ tests/
 
 # Compile test into e2e.test binary

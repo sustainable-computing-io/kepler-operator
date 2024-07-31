@@ -16,10 +16,8 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
-  # NOTE: this will be removed by the manager kustomization.yaml
-  # since OLM will add the volume
-  volumes:
-  - name: cert
-    secret:
-      defaultMode: 420
-      secretName: webhook-server-cert
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: webhook-server-cert

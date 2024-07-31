@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 
 	corev1 "k8s.io/api/core/v1"

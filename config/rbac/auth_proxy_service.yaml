@@ -19,3 +19,12 @@ spec:
   selector:
       app.kubernetes.io/instance: controller-manager
       app.kubernetes.io/component: manager
+
+# spec:
+#   ports:
+#   - name: https
+#     port: 8443
+#     protocol: TCP
+#     targetPort: https
+#   selector:
+#     control-plane: controller-manager
