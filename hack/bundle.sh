@@ -58,7 +58,7 @@ main() {
 	info "Found old version: $old_bundle_version"
 
 	info "Building bundle version $VERSION"
-	run operator-sdk generate kustomize manifests --apis-dir=./pkg/api --verbose
+	run operator-sdk generate kustomize manifests --verbose
 
 	local gen_opts=()
 	read -r -a gen_opts <<<"$BUNDLE_GEN_FLAGS"

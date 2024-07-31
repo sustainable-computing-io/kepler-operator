@@ -39,11 +39,11 @@ import (
 
 	securityv1 "github.com/openshift/api/security/v1"
 
-	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/internal/controller"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/estimator"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/modelserver"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/controllers"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	//+kubebuilder:scaffold:imports
 )
@@ -87,7 +87,7 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 
-	flag.StringVar(&controllers.KeplerDeploymentNS, "deployment-namespace", controllers.KeplerDeploymentNS,
+	flag.StringVar(&controller.KeplerDeploymentNS, "deployment-namespace", controller.KeplerDeploymentNS,
 		"Namespace where kepler and its components are deployed.")
 
 	flag.CommandLine.Var(flag.Value(&additionalNamespaces), "watch-namespaces",
@@ -98,10 +98,10 @@ func main() {
 
 	// NOTE: RELATED_IMAGE_KEPLER can be set as env or flag, flag takes precedence over env
 	keplerImage := os.Getenv("RELATED_IMAGE_KEPLER")
-	flag.StringVar(&controllers.Config.Image, "kepler.image", keplerImage, "kepler image")
+	flag.StringVar(&controller.Config.Image, "kepler.image", keplerImage, "kepler image")
 
-	flag.StringVar(&controllers.InternalConfig.ModelServerImage, "estimator.image", estimator.StableImage, "kepler estimator image")
-	flag.StringVar(&controllers.InternalConfig.EstimatorImage, "model-server.image", modelserver.StableImage, "kepler model server image")
+	flag.StringVar(&controller.InternalConfig.ModelServerImage, "estimator.image", estimator.StableImage, "kepler estimator image")
+	flag.StringVar(&controller.InternalConfig.EstimatorImage, "model-server.image", modelserver.StableImage, "kepler model server image")
 
 	opts := zap.Options{
 		Development: true,
@@ -112,7 +112,7 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	if openshift {
-		controllers.Config.Cluster = k8s.OpenShift
+		controller.Config.Cluster = k8s.OpenShift
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -123,7 +123,7 @@ func main() {
 		// TODO: add new introduced namespace from KeplerInternal.Spec.Deployment.Namespace
 		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
 			cacheNs := map[string]cache.Config{
-				controllers.KeplerDeploymentNS: {},
+				controller.KeplerDeploymentNS: {},
 			}
 			if openshift {
 				cacheNs[exporter.DashboardNs] = cache.Config{}
@@ -156,14 +156,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.KeplerReconciler{
+	if err = (&controller.KeplerReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "kepler")
 		os.Exit(1)
 	}
-	if err = (&controllers.KeplerInternalReconciler{
+	if err = (&controller.KeplerInternalReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {

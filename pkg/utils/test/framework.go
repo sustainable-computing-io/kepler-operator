@@ -27,7 +27,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/test/oc"
 	ctrl "sigs.k8s.io/controller-runtime"

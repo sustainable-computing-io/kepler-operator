@@ -30,12 +30,12 @@ metadata:
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.13.0
     createdAt: "2024-07-11T07:04:57Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
-    operators.operatorframework.io/builder: operator-sdk-v1.27.0
+    operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/internal-objects: |-
       [
         "keplerinternals.kepler.system.sustainable.computing.io"
       ]
-    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     repository: https://github.com/sustainable-computing-io/kepler-operator
     support: https://github.com/sustainable-computing-io/kepler-operator/issues
   name: kepler-operator.v0.13.0
@@ -302,10 +302,6 @@ spec:
                   capabilities:
                     drop:
                     - ALL
-                volumeMounts:
-                - mountPath: /tmp/k8s-webhook-server/serving-certs
-                  name: cert
-                  readOnly: true
               securityContext:
                 runAsNonRoot: true
               serviceAccountName: kepler-operator-controller-manager
