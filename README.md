@@ -16,12 +16,11 @@ Check out the project on GitHub ➡️ [Kepler][kepler]
 ## Getting Started
 
 You’ll need a Kubernetes/OpenShift cluster to run against. You can use
-[KIND](https://sigs.k8s.io/kind) or microshift to get a local cluster for
+[KIND](https://sigs.k8s.io/kind) to get a local cluster for
 testing, or run against a remote cluster.
 
 **Note:** Your controller will automatically use the current context in your
 kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
-
 
 ### To run a kind cluster locally
 
@@ -29,17 +28,21 @@ kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 make cluster-up
 ```
 
-### To run a microshift cluster locally
-
-```sh
-make cluster-up CLUSTER_PROVIDER=microshift
-```
-
 ### Run kepler-operator locally out of cluster
 
 ```sh
 make tools
 make run
+kubectl apply -k config/samples/
+```
+
+### Run kepler-operator on vanilla Kubernetes
+
+```sh
+make tools
+kubectl create -f https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.76.0/bundle.yaml
+kubectl create -f https://github.com/jetstack/cert-manager/releases/download/v1.15.3/cert-manager.yaml
+make deploy
 kubectl apply -k config/samples/
 ```
 
@@ -62,11 +65,13 @@ kubectl apply -k config/samples/
 
 ### Uninstall the operator
 
-List the installed version and the releated resources that will be
+List the installed version and the related resources that will be
 deleted before uninstalling by running the uninstall script.
+
 ```sh
 ./hack/uninstall-operator.sh
 ```
+
 Once the above is verified, uninstall the operator and all the related
 resources by specifying the `--delete` flag.
 
@@ -76,6 +81,7 @@ resources by specifying the `--delete` flag.
 ```
 
 ## Developer Docs
+
 [Developer Docs][dev-docs] can be found under [docs/developer][dev-docs]
 
 ### Automated development environment
@@ -94,6 +100,7 @@ documentation for more details).
 ## Contributing
 
 You can contribute by:
+
 * Raising [issues](https://github.com/sustainable-computing-io/kepler-operator/issues) related to kepler-operator
 * Fixing issues by opening [Pull Requests](https://github.com/sustainable-computing-io/kepler-operator/pulls)
 
