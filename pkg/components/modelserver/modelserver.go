@@ -38,7 +38,7 @@ const (
 
 const (
 	defaultModelServer = "http://%s.%s.svc.cluster.local:%d"
-	StableImage        = "quay.io/sustainable_computing_io/kepler_model_server:v0.7.11"
+	StableImage        = "quay.io/sustainable_computing_io/kepler_model_server:v0.7.11-2"
 )
 
 var (
@@ -86,8 +86,8 @@ func NewDeployment(deployName string, ms *v1alpha1.InternalModelServerSpec, name
 			Name:          "http",
 		}},
 		VolumeMounts: mounts,
-		Command:      []string{"python3.10"},
-		Args:         []string{"-u", "src/server/model_server.py"},
+		Command:      []string{"model-server"},
+		Args:         []string{"-l", "info"},
 	}}
 
 	return &appsv1.Deployment{
