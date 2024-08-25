@@ -13,6 +13,7 @@ declare -r OPERATOR="kepler-operator"
 declare -r OLM_CATALOG="kepler-operator-catalog"
 declare -r VERSION=${VERSION:-"0.0.0-e2e"}
 declare -r OPERATOR_DEPLOY_YAML="config/manager/manager.yaml"
+declare -r KEPLER_CR="config/samples/kepler.system_v1alpha1_kepler.yaml"
 declare -r OPERATOR_CSV="bundle/manifests/$OPERATOR.clusterserviceversion.yaml"
 declare -r OPERATOR_DEPLOY_NAME="kepler-operator-controller"
 declare -r OPERATOR_RELEASED_BUNDLE="quay.io/sustainable_computing_io/$OPERATOR-bundle"
@@ -96,6 +97,12 @@ gather_olm() {
 
 run_bundle_upgrade() {
 	header "Running Bundle Upgrade"
+	prune_images_if_ci
+	kind_load_images
+	delete_olm_subscription || true
+	build_bundle
+	push_bundle
+
 	local -i ret=0
 
 	local replaced_version=""
@@ -113,6 +120,11 @@ run_bundle_upgrade() {
 		return $ret
 	}
 
+	info "Creating a new Kepler CR"
+	run kubectl apply -f "$KEPLER_CR"
+
+	wait_for_kepler || return 1
+
 	info "Running Upgrade to new bundle"
 	run operator-sdk run bundle-upgrade "$BUNDLE_IMG" \
 		--namespace "$OPERATORS_NS" --use-http || {
@@ -121,8 +133,37 @@ run_bundle_upgrade() {
 		gather_olm || true
 		fail "Running Bundle Upgrade failed"
 		return $ret
-
 	}
+	wait_for_operator "$OPERATORS_NS"
+	wait_until 10 10 "kepler images to be up to date" check_images
+	wait_for_kepler || return 1
+
+	return 0
+}
+
+wait_for_kepler() {
+	header "Waiting for Kepler to be ready"
+	wait_until 10 10 "kepler to be available" condition_check "True" oc get kepler kepler \
+		-o jsonpath="{.status.exporter.conditions[?(@.type=='Available')].status}" || {
+		fail "Kepler is not ready"
+		return 1
+	}
+	ok "Kepler is ready"
+	return 0
+}
+
+check_images() {
+	header "Checking Kepler Images"
+	local actual_image=""
+	local expected_image=""
+	actual_image=$(kubectl get keplerinternals -o \
+		jsonpath="{.items[*].spec.exporter.deployment.image}")
+	expected_image=$(yq -r .spec.relatedImages[].image "$OPERATOR_CSV")
+	[[ "$actual_image" != "$expected_image" ]] && {
+		fail "Kepler images are not up to date"
+		return 1
+	}
+	ok "Kepler images are up to date"
 	return 0
 }
 
@@ -371,12 +412,7 @@ deploy_operator() {
 	delete_olm_subscription || true
 	build_bundle
 	push_bundle
-
-	if $NO_UPGRADE; then
-		run_bundle
-	else
-		run_bundle_upgrade
-	fi
+	run_bundle
 	wait_for_operator "$OPERATORS_NS"
 	prune_images_if_ci
 }
@@ -427,8 +463,7 @@ reject_invalid() {
 	{
 		# NOTE: || true ignores pipefail so that non-zero exit code will not be reported
 		# when kubectl apply fails (as expected)
-		sed -e "s|name: kepler$|name: $invalid_kepler|g" \
-			config/samples/kepler.system_v1alpha1_kepler.yaml |
+		sed -e "s|name: kepler$|name: $invalid_kepler|g" "$KEPLER_CR" |
 			kubectl apply -f- 2>&1 || true
 
 	} | tee /dev/stderr |
@@ -475,22 +510,7 @@ print_config() {
 	line 50
 }
 
-main() {
-	export PATH="$LOCAL_BIN:$PATH"
-	parse_args "$@" || die "parse args failed"
-	# eat up all the parsed args so that the rest can be passed to go test
-	shift $ARGS_PARSED
-	$SHOW_USAGE && {
-		print_usage
-		exit 0
-	}
-
-	cd "$PROJECT_ROOT"
-
-	init_operator_img
-	init_logs_dir
-	print_config
-
+deploy_and_run_e2e() {
 	if $NO_DEPLOY; then
 		restart_operator || die "restarting operator failed 🤕"
 	else
@@ -502,8 +522,32 @@ main() {
 
 	info "e2e test - exit code: $ret"
 	line 50 heavy
-
 	return $ret
+}
+
+main() {
+	export PATH="$LOCAL_BIN:$PATH"
+	parse_args "$@" || die "parse args failed"
+	# eat up all the parsed args so that the rest can be passed to go test
+	shift $ARGS_PARSED
+
+	$SHOW_USAGE && {
+		print_usage
+		exit 0
+	}
+
+	cd "$PROJECT_ROOT"
+
+	init_operator_img
+	init_logs_dir
+	print_config
+
+	if $NO_UPGRADE; then
+		deploy_and_run_e2e "$@" || return 1
+	else
+		run_bundle_upgrade || return 1
+	fi
+	return 0
 }
 
 main "$@"
