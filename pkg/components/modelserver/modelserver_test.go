@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestConfigMap(t *testing.T) {
@@ -141,4 +142,31 @@ func TestServerAPIContainer(t *testing.T) {
 		})
 	}
 
+}
+
+func TestServerContainer(t *testing.T) {
+	exporterContainer := &corev1.Container{
+		Command: []string{"kepler", "-v=1"},
+	}
+	ms := v1alpha1.InternalModelServerSpec{
+		Port: 8080,
+	}
+	deployName := "kepler-internal"
+	deployNamespace := "default"
+	expectedCommand := []string{"/usr/bin/bash", "-c"}
+	expectedArgs := []string{"until [[ \"$(curl -s -o /dev/null -w %{http_code} http://kepler-internal-svc.default.svc.cluster.local:8080/best-models)\" -eq 200 ]]; do sleep 1; done && kepler -v=1"}
+
+	t.Run("server container", func(t *testing.T) {
+		t.Parallel()
+		_ = v1alpha1.KeplerInternal{
+			Spec: v1alpha1.KeplerInternalSpec{
+				ModelServer: &ms,
+			},
+		}
+		exporterContainer := AddModelServerDependency(exporterContainer, deployName, deployNamespace, &ms)
+		actualCommand := exporterContainer.Command
+		actualArgs := exporterContainer.Args
+		assert.Equal(t, expectedCommand, actualCommand)
+		assert.Equal(t, expectedArgs, actualArgs)
+	})
 }

@@ -33,7 +33,7 @@ const (
 )
 
 var (
-	shellCommand = []string{"/bin/sh", "-c"}
+	shellCommand = []string{"/usr/bin/bash", "-c"}
 )
 
 // NeedsEstimatorSidecar returns true if any of estimator config has sidecar enabled
