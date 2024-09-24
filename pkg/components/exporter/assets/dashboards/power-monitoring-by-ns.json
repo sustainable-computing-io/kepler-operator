@@ -618,7 +618,7 @@
           "expr": "sum by (pod_name) (kepler:kepler:container_other_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"})",
           "hide": false,
           "interval": "",
-          "legendFormat": "{{pod_name}} }}",
+          "legendFormat": "{{pod_name}}",
           "range": true,
           "refId": "A"
         }
