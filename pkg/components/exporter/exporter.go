@@ -102,6 +102,11 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.
 		k8s.VolumeFromConfigMap("cfm", k.Name),
 	} // exporter default Volumes
 
+	ms := k.Spec.ModelServer
+	if ms != nil && ms.Enabled {
+		addModelServerCommand(&exporterContainer, k.ModelServerDeploymentName(), k.Namespace(), ms)
+	}
+
 	if estimator.NeedsEstimatorSidecar(k.Spec.Estimator) {
 		// add sidecar container and update kepler-exporter container
 		// add shared volumes
@@ -656,7 +661,17 @@ func newExporterContainer(kiName, dsName string, deployment v1alpha1.InternalExp
 func addEstimatorSidecar(estimatorImage string, exporterContainer *corev1.Container, volumes []corev1.Volume) ([]corev1.Container, []corev1.Volume) {
 	sidecarContainer := estimator.Container(estimatorImage)
 	volumes = append(volumes, estimator.Volumes()...)
+	// NOTE: if the exporter has arguments (e.g., for an estimator with model server deployment),
+	// update the exporter's container command with the arguments. This allows AddEstimatorDependency
+	// to append the necessary socket wait command to the arguments
+	if exporterContainer.Args != nil {
+		exporterContainer.Command = exporterContainer.Args
+	}
 	exporterContainer = estimator.AddEstimatorDependency(exporterContainer)
 	containers := []corev1.Container{*exporterContainer, sidecarContainer}
 	return containers, volumes
+}
+
+func addModelServerCommand(exporterContainer *corev1.Container, deployName, deployNamespace string, ms *v1alpha1.InternalModelServerSpec) {
+	modelserver.AddModelServerDependency(exporterContainer, deployName, deployNamespace, ms)
 }
