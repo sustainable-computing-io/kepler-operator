@@ -18,6 +18,7 @@ package modelserver
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
@@ -37,8 +38,9 @@ const (
 )
 
 const (
-	defaultModelServer = "http://%s.%s.svc.cluster.local:%d"
-	StableImage        = "quay.io/sustainable_computing_io/kepler_model_server:v0.7.11"
+	defaultModelServer        = "http://%s.%s.svc.cluster.local:%d"
+	StableImage               = "quay.io/sustainable_computing_io/kepler_model_server:v0.7.11-2"
+	waitForModelServerCommand = "until [[ \"$(curl -s -o /dev/null -w %%{http_code} %s/best-models)\" -eq 200 ]]; do sleep 1; done"
 )
 
 var (
@@ -51,6 +53,10 @@ var (
 	podSelector = labels.Merge(k8s.StringMap{
 		"app.kubernetes.io/name": "model-server",
 	})
+)
+
+var (
+	shellCommand = []string{"/usr/bin/bash", "-c"}
 )
 
 func NewDeployment(deployName string, ms *v1alpha1.InternalModelServerSpec, namespace string) *appsv1.Deployment {
@@ -86,8 +92,8 @@ func NewDeployment(deployName string, ms *v1alpha1.InternalModelServerSpec, name
 			Name:          "http",
 		}},
 		VolumeMounts: mounts,
-		Command:      []string{"python3.10"},
-		Args:         []string{"-u", "src/server/model_server.py"},
+		Command:      []string{"model-server"},
+		Args:         []string{"-l", "info"},
 	}}
 
 	return &appsv1.Deployment{
@@ -217,4 +223,21 @@ func serverUrl(deployName, deployNamespace string, ms v1alpha1.InternalModelServ
 	port := ms.Port
 	serviceName := deployName + ServiceSuffix
 	return fmt.Sprintf(defaultModelServer, serviceName, deployNamespace, port)
+}
+
+func formatModelServerCommand(deployName, deployNamespace string, ms v1alpha1.InternalModelServerSpec) string {
+	return fmt.Sprintf(waitForModelServerCommand, serverUrl(deployName, deployNamespace, ms))
+}
+
+func addModelServerWaitCmd(exporterContainer *corev1.Container, deployName, deployNamespace string, ms v1alpha1.InternalModelServerSpec) *corev1.Container {
+	cmd := exporterContainer.Command
+	exporterContainer.Command = shellCommand
+	exporterContainer.Args = []string{fmt.Sprintf("%s && %s", formatModelServerCommand(deployName, deployNamespace, ms), strings.Join(cmd, " "))}
+	return exporterContainer
+
+}
+
+func AddModelServerDependency(exporterContainer *corev1.Container, deployName, deployNamespace string, ms *v1alpha1.InternalModelServerSpec) *corev1.Container {
+	exporterContainer = addModelServerWaitCmd(exporterContainer, deployName, deployNamespace, *ms)
+	return exporterContainer
 }

@@ -109,7 +109,7 @@ func TestModifiedContainer(t *testing.T) {
 	exporterContainer := &corev1.Container{
 		Command: []string{"kepler", "-v=1"},
 	}
-	expectedCommand := []string{"/bin/sh", "-c"}
+	expectedCommand := []string{"/usr/bin/bash", "-c"}
 	expectedArgs := []string{"until [ -e /tmp/estimator.sock ]; do sleep 1; done && kepler -v=1"}
 	expectedVolumeMounts := []string{"cfm", "mnt", "tmp"}
 	keplerVolumes := []corev1.Volume{k8s.VolumeFromEmptyDir("kepler-volume")}
