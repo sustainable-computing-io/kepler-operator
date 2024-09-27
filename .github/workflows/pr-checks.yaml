@@ -197,7 +197,7 @@ jobs:
       KUBECONFIG: /tmp/.kube/config
       KIND_WORKER_NODES: 2
     name: e2e
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
