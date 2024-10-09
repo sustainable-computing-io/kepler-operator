@@ -71,6 +71,7 @@ func NewDeployment(deployName string, ms *v1alpha1.InternalModelServerSpec, name
 	volumes := []corev1.Volume{
 		storage,
 		k8s.VolumeFromConfigMap("cfm", configMapName),
+		k8s.VolumeFromEmptyDir("resource"),
 	}
 
 	mounts := []corev1.VolumeMount{{
@@ -80,6 +81,9 @@ func NewDeployment(deployName string, ms *v1alpha1.InternalModelServerSpec, name
 	}, {
 		Name:      "mnt",
 		MountPath: "/mnt",
+	}, {
+		Name:      "resource",
+		MountPath: "/usr/local/lib/python3.10/site-packages/resource",
 	}}
 
 	port := ms.Port
