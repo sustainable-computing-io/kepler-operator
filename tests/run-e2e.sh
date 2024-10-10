@@ -97,7 +97,6 @@ gather_olm() {
 
 run_bundle_upgrade() {
 	header "Running Bundle Upgrade"
-	prune_images_if_ci
 	kind_load_images
 	delete_olm_subscription || true
 	build_bundle
@@ -370,7 +369,6 @@ kind_load_image() {
 
 	run docker pull "$img"
 	run kind load docker-image "$img"
-	$CI_MODE && run docker image rm "$img"
 	return 0
 }
 
@@ -379,34 +377,17 @@ kind_load_images() {
 	while read -r img; do
 		kind_load_image "$img"
 	done < <(yq -r .spec.relatedImages[].image "$OPERATOR_CSV")
-	prune_images_if_ci
 
 	info "loading additional images from $TEST_IMAGES_YAML"
 	while read -r img; do
 		kind_load_image "$img"
 	done < <(yq -r .images[].image "$TEST_IMAGES_YAML")
-	prune_images_if_ci
 
 	return 0
 }
 
-prune_images_if_ci() {
-	header "Prune Images"
-	$CI_MODE || {
-		info "skipping pruning of docker images when not in CI mode"
-		return 0
-	}
-	# NOTE: ci runs out of disk space at times, hence run images
-	info "pruning docker images and volumes"
-	run df -h
-	run docker images
-	run docker system prune -a -f --volumes
-	run df -h
-}
-
 deploy_operator() {
 	header "Build and Deploy Operator"
-	prune_images_if_ci
 	ensure_imgpullpolicy_always_in_yaml
 	kind_load_images
 	delete_olm_subscription || true
@@ -414,7 +395,6 @@ deploy_operator() {
 	push_bundle
 	run_bundle
 	wait_for_operator "$OPERATORS_NS"
-	prune_images_if_ci
 }
 
 ensure_imgpullpolicy_always_in_yaml() {
