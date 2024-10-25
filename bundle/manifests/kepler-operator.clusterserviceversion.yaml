@@ -28,7 +28,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.14.0
-    createdAt: "2024-10-11T07:01:05Z"
+    createdAt: "2024-10-24T17:48:35Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.36.1
     operators.operatorframework.io/internal-objects: |-
@@ -267,7 +267,7 @@ spec:
                 - /manager
                 env:
                 - name: RELATED_IMAGE_KEPLER
-                  value: quay.io/sustainable_computing_io/kepler:release-0.7.11
+                  value: quay.io/sustainable_computing_io/kepler:release-0.7.12
                 image: quay.io/sustainable_computing_io/kepler-operator:0.14.0
                 imagePullPolicy: IfNotPresent
                 livenessProbe:
@@ -373,7 +373,7 @@ spec:
     name: Kepler Operator Contributors
     url: https://sustainable-computing.io/
   relatedImages:
-  - image: quay.io/sustainable_computing_io/kepler:release-0.7.11
+  - image: quay.io/sustainable_computing_io/kepler:release-0.7.12
     name: kepler
   replaces: kepler-operator.v0.13.0
   version: 0.14.0
