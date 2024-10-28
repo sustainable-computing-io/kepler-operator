@@ -84,8 +84,7 @@ main() {
 	cat <<-EOF >bundle/ci.yaml
 		---
 		reviewers:
-		    - sustainable-computing-io
-		    - husky-parul
+		    - vprashar2929
 		    - KaiyiLiu1234
 		    - sthaha
 		    - vimalk78

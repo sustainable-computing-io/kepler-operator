@@ -250,6 +250,8 @@ spec:
     name: Huamin Chen
   - email: sthaha@redhat.com
     name: Sunil Thaha
+  - email: vprashar@redhat.com
+    name: Vibhu Prashar
   maturity: alpha
   minKubeVersion: 1.24.0
   provider:
