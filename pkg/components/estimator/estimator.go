@@ -28,7 +28,7 @@ import (
 
 const (
 	// NOTE: update tests/images.yaml when changing this image
-	StableImage          = "quay.io/sustainable_computing_io/kepler_model_server:v0.7.11-2"
+	StableImage          = "quay.io/sustainable_computing_io/kepler_model_server:v0.7.12"
 	waitForSocketCommand = "until [ -e /tmp/estimator.sock ]; do sleep 1; done && %s"
 )
 
