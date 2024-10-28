@@ -25,6 +25,7 @@ declare -r CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-kind}
 declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-true}
 declare -r KIND_WORKER_NODES=${KIND_WORKER_NODES:-2}
 declare -r CERTMANAGER_VERSION=${CERT_MANAGER_VERSION:-1.15.0}
+declare -r OLM_VERSION=${OLM_VERSION:-v0.28.0}
 
 # constants
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
@@ -77,7 +78,7 @@ cluster_prereqs() {
 		return 0
 	}
 	info "setup OLM"
-	operator-sdk olm install --verbose --timeout 5m
+	operator-sdk olm install --version "$OLM_VERSION" --verbose --timeout 5m
 
 	info "Ensure openshift namespace for dashboard exists"
 	run kubectl create namespace openshift-config-managed
