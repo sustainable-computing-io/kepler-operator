@@ -39,7 +39,7 @@ const (
 
 const (
 	defaultModelServer        = "http://%s.%s.svc.cluster.local:%d"
-	StableImage               = "quay.io/sustainable_computing_io/kepler_model_server:v0.7.11-2"
+	StableImage               = "quay.io/sustainable_computing_io/kepler_model_server:v0.7.12"
 	waitForModelServerCommand = "until [[ \"$(curl -s -o /dev/null -w %%{http_code} %s/best-models)\" -eq 200 ]]; do sleep 1; done"
 )
 
@@ -71,7 +71,7 @@ func NewDeployment(deployName string, ms *v1alpha1.InternalModelServerSpec, name
 	volumes := []corev1.Volume{
 		storage,
 		k8s.VolumeFromConfigMap("cfm", configMapName),
-		k8s.VolumeFromEmptyDir("resource"),
+		k8s.VolumeFromEmptyDir("data"),
 	}
 
 	mounts := []corev1.VolumeMount{{
@@ -82,8 +82,8 @@ func NewDeployment(deployName string, ms *v1alpha1.InternalModelServerSpec, name
 		Name:      "mnt",
 		MountPath: "/mnt",
 	}, {
-		Name:      "resource",
-		MountPath: "/usr/local/lib/python3.10/site-packages/resource",
+		Name:      "data",
+		MountPath: "/data",
 	}}
 
 	port := ms.Port
@@ -179,7 +179,8 @@ func NewConfigMap(deployName string, d components.Detail, ms *v1alpha1.InternalM
 		}
 	}
 	msConfig := k8s.StringMap{
-		"MODEL_PATH": defaultIfEmpty(ms.Path, "/mnt/models"),
+		"MODEL_PATH":   defaultIfEmpty(ms.Path, "/mnt/models"),
+		"RESOURCE_DIR": "/data/resource",
 	}
 	msConfig = msConfig.AddIfNotEmpty("MODEL_SERVER_REQ_PATH", ms.RequestPath)
 	msConfig = msConfig.AddIfNotEmpty("MODEL_SERVER_MODEL_LIST_PATH", ms.ListPath)
