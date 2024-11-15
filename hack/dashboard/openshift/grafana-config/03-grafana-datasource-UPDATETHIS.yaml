@@ -2,13 +2,13 @@
 #  oc adm policy add-cluster-role-to-user cluster-monitoring-view -z grafana-serviceaccount
 # 2. Get bearer token for `grafana-serviceaccount`. Update manifest.
 #  oc serviceaccounts get-token grafana-serviceaccount -n kepler
-apiVersion: integreatly.org/v1alpha1
-kind: GrafanaDataSource
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
 metadata:
   name: prometheus-grafanadatasource
 spec:
-  datasources:
-    - access: proxy
+  datasource:
+      access: proxy
       editable: true
       isDefault: true
       jsonData:
@@ -22,3 +22,7 @@ spec:
       type: prometheus
       url: 'https://thanos-querier.openshift-monitoring.svc.cluster.local:9091'
   name: prometheus-grafanadatasource.yaml
+  # The spec.instanceSelectors field is used to tell the operator which Grafana instance the resource applies to.
+  instanceSelector:
+    matchLabels:
+      dashboards: kepler-grafana

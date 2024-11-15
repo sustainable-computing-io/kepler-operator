@@ -10,8 +10,8 @@ declare -r MON_NS=openshift-monitoring
 declare -r UWM_NS=openshift-user-workload-monitoring
 declare -r CMO_CM=cluster-monitoring-config
 declare -r BACKUP_CMO_CFG="$BACKUP_DIR/cmo-cm.yaml"
-declare -r UWM_URL="https://docs.openshift.com/container-platform/latest/monitoring/enabling-monitoring-for-user-defined-projects.html"
-declare -r UWM_CONFIG_URL="https://docs.openshift.com/container-platform/latest/monitoring/configuring-the-monitoring-stack.html#configuring-the-monitoring-stack_configuring-the-monitoring-stack"
+declare -r UWM_URL="https://docs.openshift.com/container-platform/latest/observability/monitoring/enabling-monitoring-for-user-defined-projects.html"
+declare -r UWM_CONFIG_URL="https://docs.openshift.com/container-platform/latest/observability/monitoring/configuring-the-monitoring-stack.html#configuring-the-monitoring-stack_configuring-the-monitoring-stack"
 
 declare -r GRAFANA_NS=kepler-grafana
 declare -r GRAFANA_SA=grafana
@@ -45,7 +45,7 @@ validate_cluster() {
 		fail "No oc command found in PATH"
 		info "Please install oc"
 		cat <<-EOF
-			curl -sNL https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.13.0/openshift-client-linux.tar.gz |
+			curl -sNL https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.16.0/openshift-client-linux.tar.gz |
 			  tar -xzf - -C <install/path>
 		EOF
 		# NOTE: do not proceed without oc installed
@@ -236,9 +236,9 @@ setup_grafana() {
 		oc get grafana,grafanadatasource
 
 	wait_until 10 10 "Grafana CRDs to be Established" \
-		oc wait --for=condition=Established crd grafanas.integreatly.org
+		oc wait --for=condition=Established crd grafanas.grafana.integreatly.org
 	wait_until 10 10 "Grafana Datasource CRDs to be Established" \
-		oc wait --for=condition=Established crd grafanadatasources.integreatly.org
+		oc wait --for=condition=Established crd grafanadatasources.grafana.integreatly.org
 	ok "grafana crds created\n"
 
 	info "Creating a grafana instance"
@@ -290,14 +290,14 @@ setup_grafana_dashboard() {
 
 	# NOTE: route name is dependent on the grafana instance
 	wait_until 20 2 "Grafana dashboard" \
-		oc_get_grafana_ns route grafana-route
+		oc_get_grafana_ns route kepler-grafana-route
 
 	ok "created grafana dashboard\n"
 }
 
 grafana_login_url() {
 	local grafana_url=""
-	echo "https://$(oc_get_grafana_ns route grafana-route -o jsonpath='{.spec.host}')/login"
+	echo "https://$(oc_get_grafana_ns route kepler-grafana-route -o jsonpath='{.spec.host}')/login"
 
 }
 
