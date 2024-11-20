@@ -28,7 +28,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.15.0
-    createdAt: "2024-10-28T06:13:46Z"
+    createdAt: "2024-11-20T05:58:45Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.36.1
     operators.operatorframework.io/internal-objects: |-
@@ -72,19 +72,6 @@ spec:
     ### Introduction
     Kepler (Kubernetes Efficient Power Level Exporter) uses eBPF to probe
     energy-related system stats and exports them as Prometheus metrics.
-
-    ### API Backward Compatibility
-    **NOTE:**  Until Operator supports **seamless upgrades**, a new version of
-    the operator may introduce a change that is **NOT** backwards compatible with
-    the previous version. Thus, to upgrade the operator, uninstall the already
-    installed version completely (including CRDs) and install the new version.
-    For example to upgrade from 0.1.0 to 0.2.0, you must uninstall `0.1.0` by
-    following [uninstall operator section](https://github.com/sustainable-computing-io/kepler-operator#uninstall-the-operator)
-    and install the new version.
-
-    Changes to patch version (major.minor.patch) indicates that no breaking changes
-    are introduced, thus upgrade can be done without uninstalling and reinstalling
-    the operator.
 
     ### NOTE
     To view the metrics exposed by kepler, ensure that
