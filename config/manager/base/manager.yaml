@@ -72,8 +72,8 @@ spec:
           - name: RELATED_IMAGE_KEPLER
             value: '<KEPLER_IMG>'
         args:
-        # TODO: move --openshift and deployment-namespace to openshift specific kustomize directory
         - --leader-elect
+        - --health-probe-bind-address=:8081
         - --kepler.image=$(RELATED_IMAGE_KEPLER)
         - --zap-log-level=5
         image: '<OPERATOR_IMG>'
@@ -105,9 +105,5 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
-        ports:
-        - containerPort: 8080
-          protocol: TCP
-          name: metrics
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
