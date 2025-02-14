@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	keplerImage = `quay.io/sustainable_computing_io/kepler:release-0.7.11`
+	keplerImage = `quay.io/sustainable_computing_io/kepler:release-0.7.12`
 )
 
 func TestKeplerInternal_Reconciliation(t *testing.T) {
