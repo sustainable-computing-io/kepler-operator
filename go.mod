@@ -1,8 +1,6 @@
 module github.com/sustainable.computing.io/kepler-operator
 
-go 1.23
-
-toolchain go1.23.3
+go 1.22
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
