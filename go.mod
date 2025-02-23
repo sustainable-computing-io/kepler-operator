@@ -101,3 +101,5 @@ require (
 )
 
 replace golang.org/x/crypto => golang.org/x/crypto v0.33.0
+
+replace github.com/golang/glog => github.com/golang/glog v1.2.4
