@@ -34,10 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	keplerImage = `quay.io/sustainable_computing_io/kepler:release-0.7.12`
-)
-
 func TestKeplerInternal_Reconciliation(t *testing.T) {
 	f := test.NewFramework(t)
 	name := "e2e-ki"
@@ -52,7 +48,7 @@ func TestKeplerInternal_Reconciliation(t *testing.T) {
 	b := test.InternalBuilder{}
 	ki := f.CreateInternal(name,
 		b.WithNamespace(testNs),
-		b.WithExporterImage(keplerImage),
+		b.WithExporterImage(testKeplerImage),
 		b.WithExporterPort(9108),
 		b.WithCluster(Cluster),
 	)
@@ -85,7 +81,7 @@ func TestKeplerInternal_ReconciliationWithRedfish(t *testing.T) {
 	b := test.InternalBuilder{}
 	ki := f.CreateInternal(name,
 		b.WithNamespace(testNs),
-		b.WithExporterImage(keplerImage),
+		b.WithExporterImage(testKeplerImage),
 		b.WithExporterPort(9108),
 		b.WithCluster(Cluster),
 		b.WithRedfish(Cluster, secretName),
@@ -172,7 +168,7 @@ func TestKeplerInternal_WithEstimator(t *testing.T) {
 	b := test.InternalBuilder{}
 	ki := f.CreateInternal(name,
 		b.WithNamespace(testNs),
-		b.WithExporterImage(keplerImage),
+		b.WithExporterImage(testKeplerImage),
 		b.WithEstimator(),
 		b.WithCluster(Cluster),
 	)
@@ -205,7 +201,7 @@ func TestKeplerInternal_WithModelServer(t *testing.T) {
 	b := test.InternalBuilder{}
 	ki := f.CreateInternal(name,
 		b.WithNamespace(testNs),
-		b.WithExporterImage(keplerImage),
+		b.WithExporterImage(testKeplerImage),
 		b.WithModelServer(),
 		b.WithCluster(Cluster),
 	)
@@ -243,7 +239,7 @@ func TestKeplerInternal_WithEstimatorAndModelServer(t *testing.T) {
 	b := test.InternalBuilder{}
 	ki := f.CreateInternal(name,
 		b.WithNamespace(testNs),
-		b.WithExporterImage(keplerImage),
+		b.WithExporterImage(testKeplerImage),
 		b.WithEstimator(),
 		b.WithModelServer(),
 		b.WithCluster(Cluster),
