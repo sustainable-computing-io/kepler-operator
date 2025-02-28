@@ -71,11 +71,13 @@ func assertOption(fns ...AssertOptionFn) AssertOption {
 	return option
 }
 
-func (f Framework) WaitUntil(msg string, fn wait.ConditionFunc, fns ...AssertOptionFn) {
+func (f Framework) WaitUntil(msg string, fn wait.ConditionWithContextFunc, fns ...AssertOptionFn) {
 	f.T.Helper()
 	opt := assertOption(fns...)
+	ctx, cancel := context.WithTimeout(context.Background(), opt.WaitTimeout)
+	defer cancel()
 
-	err := wait.PollImmediate(opt.PollInterval, opt.WaitTimeout, fn)
+	err := wait.PollUntilContextTimeout(ctx, opt.PollInterval, opt.WaitTimeout, true, fn)
 	assert.NoError(f.T, err, "failed waiting for %s (timeout %v)", msg, opt.WaitTimeout)
 }
 
@@ -85,8 +87,11 @@ func (f Framework) AssertResourceExists(name, ns string, obj client.Object, fns 
 	key := types.NamespacedName{Name: name, Namespace: ns}
 
 	var getErr error
-	wait.PollImmediate(opt.PollInterval, opt.WaitTimeout, func() (bool, error) {
-		getErr = f.client.Get(context.Background(), key, obj)
+	ctx, cancel := context.WithTimeout(context.Background(), opt.WaitTimeout)
+	defer cancel()
+
+	wait.PollUntilContextTimeout(ctx, opt.PollInterval, opt.WaitTimeout, true, func(ctx context.Context) (bool, error) {
+		getErr = f.client.Get(ctx, key, obj)
 		// NOTE: return true (stop loop) if resource exists
 		return getErr == nil, nil
 	})
@@ -99,13 +104,15 @@ func (f Framework) AssertNoResourceExists(name, ns string, obj client.Object, fn
 	opt := assertOption(fns...)
 	key := types.NamespacedName{Name: name, Namespace: ns}
 
-	err := wait.PollImmediate(opt.PollInterval, opt.WaitTimeout, func() (bool, error) {
-		getErr := f.client.Get(context.Background(), key, obj)
+	ctx, cancel := context.WithTimeout(context.Background(), opt.WaitTimeout)
+	defer cancel()
+
+	err := wait.PollUntilContextTimeout(ctx, opt.PollInterval, opt.WaitTimeout, true, func(ctx context.Context) (bool, error) {
+		getErr := f.client.Get(ctx, key, obj)
 		// NOTE: return true (stop loop) if resource does not exist
 		return errors.IsNotFound(getErr), nil
 	})
-
-	if wait.Interrupted(err) {
+	if err != nil {
 		f.T.Errorf("%s (%v) exists after %v", k8s.GVKName(obj), key, opt.WaitTimeout)
 	}
 }
