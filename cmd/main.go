@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"os"
@@ -82,7 +83,7 @@ func main() {
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
-	// var tlsOpts []func(*tls.Config)
+	var tlsOpts []func(*tls.Config)
 	var additionalNamespaces stringList
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to."+
@@ -126,14 +127,14 @@ func main() {
 	// Rapid Reset CVEs. For more information see:
 	// - https://github.com/advisories/GHSA-qppj-fm5r-hxr3
 	// - https://github.com/advisories/GHSA-4374-p667-p6c8
-	// disableHTTP2 := func(c *tls.Config) {
-	// 	setupLog.Info("disabling http/2")
-	// 	c.NextProtos = []string{"http/1.1"}
-	// }
+	disableHTTP2 := func(c *tls.Config) {
+		setupLog.Info("disabling http/2")
+		c.NextProtos = []string{"http/1.1"}
+	}
 
-	// if !enableHTTP2 {
-	// 	tlsOpts = append(tlsOpts, disableHTTP2)
-	// }
+	if !enableHTTP2 {
+		tlsOpts = append(tlsOpts, disableHTTP2)
+	}
 
 	if openshift {
 		controller.Config.Cluster = k8s.OpenShift
@@ -152,7 +153,7 @@ func main() {
 		// as certificates issued by a trusted Certificate Authority (CA). The primary risk is potentially allowing
 		// unauthorized access to sensitive metrics data. Consider replacing with CertDir, CertName, and KeyName
 		// to provide certificates, ensuring the server communicates using trusted and secure certificates.
-		// TLSOpts: tlsOpts,
+		TLSOpts: tlsOpts,
 	}
 
 	if secureMetrics {
