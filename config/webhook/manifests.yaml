@@ -24,6 +24,26 @@ webhooks:
     resources:
     - keplers
   sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-kepler-system-sustainable-computing-io-v1alpha1-powermonitor
+  failurePolicy: Fail
+  name: mpowermonitor.kb.io
+  rules:
+  - apiGroups:
+    - kepler.system.sustainable.computing.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - powermonitors
+  sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -49,4 +69,25 @@ webhooks:
     - UPDATE
     resources:
     - keplers
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-kepler-system-sustainable-computing-io-v1alpha1-powermonitor
+  failurePolicy: Fail
+  name: vpowermonitor.kb.io
+  rules:
+  - apiGroups:
+    - kepler.system.sustainable.computing.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - powermonitors
   sideEffects: None
