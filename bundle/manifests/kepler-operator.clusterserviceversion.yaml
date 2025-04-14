@@ -23,12 +23,33 @@ metadata:
               "redfish": null
             }
           }
+        },
+        {
+          "apiVersion": "kepler.system.sustainable.computing.io/v1alpha1",
+          "kind": "KeplerX",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/instance": "keplerx",
+              "app.kubernetes.io/name": "keplerx",
+              "app.kubernetes.io/part-of": "kepler-operator"
+            },
+            "name": "keplerx"
+          },
+          "spec": {
+            "configuration": {
+              "monitorInterval": 3
+            },
+            "deployment": {
+              "image": "quay.io/sustainable_computing_io/kepler-reboot:v0.0.1",
+              "namespace": "kepler-operator"
+            }
+          }
         }
       ]
     capabilities: Seamless Upgrades
     categories: Monitoring
-    containerImage: quay.io/sustainable_computing_io/kepler-operator:0.15.0
-    createdAt: "2025-02-14T06:23:56Z"
+    containerImage: localhost:5001/kepler-operator:0.0.0-dev
+    createdAt: "2025-04-14T17:23:35Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.36.1
     operators.operatorframework.io/internal-objects: |-
@@ -38,7 +59,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     repository: https://github.com/sustainable-computing-io/kepler-operator
     support: https://github.com/sustainable-computing-io/kepler-operator/issues
-  name: kepler-operator.v0.15.0
+  name: kepler-operator.v0.0.0-dev
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -67,6 +88,9 @@ spec:
         path: exporter.conditions
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:conditions
+      version: v1alpha1
+    - kind: KeplerX
+      name: keplerxs.kepler.system.sustainable.computing.io
       version: v1alpha1
   description: |-
     ### Introduction
@@ -240,7 +264,7 @@ spec:
                 env:
                 - name: RELATED_IMAGE_KEPLER
                   value: quay.io/sustainable_computing_io/kepler:release-0.7.12
-                image: quay.io/sustainable_computing_io/kepler-operator:0.15.0
+                image: localhost:5001/kepler-operator:0.0.0-dev
                 imagePullPolicy: IfNotPresent
                 livenessProbe:
                   httpGet:
@@ -349,8 +373,8 @@ spec:
   relatedImages:
   - image: quay.io/sustainable_computing_io/kepler:release-0.7.12
     name: kepler
-  replaces: kepler-operator.v0.14.0
-  version: 0.15.0
+  replaces: kepler-operator.v0.15.0
+  version: 0.0.0-dev
   webhookdefinitions:
   - admissionReviewVersions:
     - v1

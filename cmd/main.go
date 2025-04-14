@@ -170,6 +170,13 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "kepler-internal")
 		os.Exit(1)
 	}
+	if err = (&controller.KeplerXReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "kepler-x")
+		os.Exit(1)
+	}
 
 	// Setup webhooks
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {

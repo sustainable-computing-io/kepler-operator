@@ -19,6 +19,8 @@ import "github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 
 // Config holds configuration shared across all controllers. This struct
 // should be initialized in main
+
+// Insert Image type of Kepler X Config
 var (
 	Config = struct {
 		Image   string
@@ -26,6 +28,12 @@ var (
 	}{
 		Image:   "",
 		Cluster: k8s.Kubernetes,
+	}
+
+	KeplerXConfig = struct {
+		Image string
+	}{
+		Image: "quay.io/sustainable_computing_io/kepler-reboot:v0.01",
 	}
 
 	InternalConfig = struct {
