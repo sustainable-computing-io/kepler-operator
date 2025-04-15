@@ -28,9 +28,9 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.15.0
-    createdAt: "2025-02-14T06:23:56Z"
+    createdAt: "2025-02-19T04:59:32Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
-    operators.operatorframework.io/builder: operator-sdk-v1.36.1
+    operators.operatorframework.io/builder: operator-sdk-v1.39.1
     operators.operatorframework.io/internal-objects: |-
       [
         "keplerinternals.kepler.system.sustainable.computing.io"
@@ -75,7 +75,7 @@ spec:
 
     ### NOTE
     To view the metrics exposed by kepler, ensure that
-    [User Project Monitoring](https://docs.openshift.com/container-platform/latest/monitoring/enabling-monitoring-for-user-defined-projects.html)
+    [User Project Monitoring](https://docs.redhat.com/documentation/openshift_container_platform/latest/html/monitoring/configuring-user-workload-monitoring)
     is enabled in your cluster.
 
     ### Documentation
@@ -233,6 +233,7 @@ spec:
                 - --openshift
                 - --deployment-namespace=kepler-operator
                 - --leader-elect
+                - --health-probe-bind-address=:8081
                 - --kepler.image=$(RELATED_IMAGE_KEPLER)
                 - --zap-log-level=5
                 command:
@@ -252,9 +253,6 @@ spec:
                 ports:
                 - containerPort: 9443
                   name: webhook-server
-                  protocol: TCP
-                - containerPort: 8080
-                  name: metrics
                   protocol: TCP
                 readinessProbe:
                   httpGet:

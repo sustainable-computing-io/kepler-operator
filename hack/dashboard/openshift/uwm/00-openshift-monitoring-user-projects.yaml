@@ -1,5 +1,5 @@
 ---
-# https://docs.openshift.com/container-platform/latest/observability/monitoring/enabling-monitoring-for-user-defined-projects.html
+# https://docs.redhat.com/documentation/openshift_container_platform/latest/html/monitoring/configuring-user-workload-monitoring
 apiVersion: v1
 kind: ConfigMap
 metadata:

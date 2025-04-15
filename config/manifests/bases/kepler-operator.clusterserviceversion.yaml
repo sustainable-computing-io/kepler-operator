@@ -52,7 +52,7 @@ spec:
 
     ### NOTE
     To view the metrics exposed by kepler, ensure that
-    [User Project Monitoring](https://docs.openshift.com/container-platform/latest/monitoring/enabling-monitoring-for-user-defined-projects.html)
+    [User Project Monitoring](https://docs.redhat.com/documentation/openshift_container_platform/latest/html/monitoring/configuring-user-workload-monitoring)
     is enabled in your cluster.
 
     ### Documentation
@@ -116,29 +116,6 @@ spec:
                         values:
                         - linux
               containers:
-              - args:
-                - --secure-listen-address=0.0.0.0:8443
-                - --upstream=http://127.0.0.1:8080/
-                - --logtostderr=true
-                - --v=0
-                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.0
-                name: kube-rbac-proxy
-                ports:
-                - containerPort: 8443
-                  name: https
-                  protocol: TCP
-                resources:
-                  limits:
-                    cpu: 500m
-                    memory: 128Mi
-                  requests:
-                    cpu: 5m
-                    memory: 64Mi
-                securityContext:
-                  allowPrivilegeEscalation: false
-                  capabilities:
-                    drop:
-                    - ALL
               - args:
                 - --health-probe-bind-address=:8081
                 - --metrics-bind-address=127.0.0.1:8080

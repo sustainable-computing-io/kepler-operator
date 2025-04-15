@@ -10,8 +10,8 @@ declare -r MON_NS=openshift-monitoring
 declare -r UWM_NS=openshift-user-workload-monitoring
 declare -r CMO_CM=cluster-monitoring-config
 declare -r BACKUP_CMO_CFG="$BACKUP_DIR/cmo-cm.yaml"
-declare -r UWM_URL="https://docs.openshift.com/container-platform/latest/observability/monitoring/enabling-monitoring-for-user-defined-projects.html"
-declare -r UWM_CONFIG_URL="https://docs.openshift.com/container-platform/latest/observability/monitoring/configuring-the-monitoring-stack.html#configuring-the-monitoring-stack_configuring-the-monitoring-stack"
+declare -r UWM_URL="https://docs.redhat.com/documentation/openshift_container_platform/latest/html/monitoring/configuring-user-workload-monitoring"
+declare -r UWM_CONFIG_URL="https://docs.redhat.com/documentation/openshift_container_platform/latest/html/monitoring/configuring-user-workload-monitoring#preparing-to-configure-the-monitoring-stack-uwm"
 
 declare -r GRAFANA_NS=kepler-grafana
 declare -r GRAFANA_SA=grafana
