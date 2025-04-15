@@ -52,7 +52,7 @@ spec:
 
     ### NOTE
     To view the metrics exposed by kepler, ensure that
-    [User Project Monitoring](https://docs.openshift.com/container-platform/latest/monitoring/enabling-monitoring-for-user-defined-projects.html)
+    [User Project Monitoring](https://docs.redhat.com/documentation/openshift_container_platform/latest/html/monitoring/configuring-user-workload-monitoring)
     is enabled in your cluster.
 
     ### Documentation
