@@ -30,7 +30,7 @@ metadata:
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.15.0
     createdAt: "2025-02-14T06:23:56Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
-    operators.operatorframework.io/builder: operator-sdk-v1.36.1
+    operators.operatorframework.io/builder: operator-sdk-v1.39.1
     operators.operatorframework.io/internal-objects: |-
       [
         "keplerinternals.kepler.system.sustainable.computing.io"
@@ -233,6 +233,7 @@ spec:
                 - --openshift
                 - --deployment-namespace=kepler-operator
                 - --leader-elect
+                - --health-probe-bind-address=:8081
                 - --kepler.image=$(RELATED_IMAGE_KEPLER)
                 - --zap-log-level=5
                 command:
@@ -252,9 +253,6 @@ spec:
                 ports:
                 - containerPort: 9443
                   name: webhook-server
-                  protocol: TCP
-                - containerPort: 8080
-                  name: metrics
                   protocol: TCP
                 readinessProbe:
                   httpGet:
