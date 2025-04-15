@@ -46,7 +46,7 @@ func TestKeplerInternal_Reconciliation(t *testing.T) {
 	testNs := controller.KeplerDeploymentNS
 
 	// pre-condition
-	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
+	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{})
 
 	// when
 	b := test.InternalBuilder{}
@@ -79,7 +79,7 @@ func TestKeplerInternal_ReconciliationWithRedfish(t *testing.T) {
 	testNs := controller.KeplerDeploymentNS
 
 	// pre-condition
-	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
+	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{})
 
 	// when
 	b := test.InternalBuilder{}
@@ -141,8 +141,8 @@ func TestKeplerInternal_ReconciliationWithRedfish(t *testing.T) {
 
 	// wait for DaemonSet to restart
 	ds = appsv1.DaemonSet{}
-	f.WaitUntil("Daemonset to restart", func() (bool, error) {
-		err := f.Client().Get(context.TODO(),
+	f.WaitUntil("Daemonset to restart", func(ctx context.Context) (bool, error) {
+		err := f.Client().Get(ctx,
 			client.ObjectKey{Namespace: controller.KeplerDeploymentNS, Name: ki.Name}, &ds)
 		if errors.IsNotFound(err) {
 			return false, nil
@@ -160,14 +160,14 @@ func TestKeplerInternal_WithEstimator(t *testing.T) {
 	f := test.NewFramework(t)
 	name := "e2e-ki-with-estimator"
 	// Ensure Kepler is not deployed (by any chance)
-	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
+	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{})
 
 	// test namespace must be the deployment namespace for controller
 	// to watch the deployments / daemonsets etc
 	testNs := controller.KeplerDeploymentNS
 
 	// pre-condition
-	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
+	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{})
 	// when
 	b := test.InternalBuilder{}
 	ki := f.CreateInternal(name,
@@ -193,14 +193,14 @@ func TestKeplerInternal_WithModelServer(t *testing.T) {
 	f := test.NewFramework(t)
 	name := "e2e-ki-with-modelserver"
 	// Ensure Kepler is not deployed (by any chance)
-	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
+	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{})
 
 	// test namespace must be the deployment namespace for controller
 	// to watch the deployments / daemonsets etc
 	testNs := controller.KeplerDeploymentNS
 
 	// pre-condition
-	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
+	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{})
 	// when
 	b := test.InternalBuilder{}
 	ki := f.CreateInternal(name,
@@ -231,14 +231,14 @@ func TestKeplerInternal_WithEstimatorAndModelServer(t *testing.T) {
 	f := test.NewFramework(t)
 	name := "e2e-ki-est-mserver"
 	// Ensure Kepler is not deployed (by any chance)
-	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
+	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{})
 
 	// test namespace must be the deployment namespace for controller
 	// to watch the deployments / daemonsets etc
 	testNs := controller.KeplerDeploymentNS
 
 	// pre-condition
-	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{}, test.NoWait())
+	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{})
 	// when
 	b := test.InternalBuilder{}
 	ki := f.CreateInternal(name,
