@@ -512,21 +512,6 @@
                 }
               }
             ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*GPU.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "semi-dark-green",
-                  "mode": "fixed"
-                }
-              }
-            ]
           }
         ]
       },
@@ -597,19 +582,6 @@
           "legendFormat": "OTHER",
           "range": true,
           "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(kepler:kepler:container_gpu_watts:1m:by_ns_pod{container_namespace=~\"$namespace\"})",
-          "hide": false,
-          "interval": "5m",
-          "legendFormat": " GPU",
-          "range": true,
-          "refId": "D"
         }
       ],
       "title": "Total Power Consumption (W) in $namespace",
@@ -712,21 +684,6 @@
                 }
               }
             ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*GPU.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "semi-dark-green",
-                  "mode": "fixed"
-                }
-              }
-            ]
           }
         ]
       },
@@ -799,19 +756,6 @@
           "legendFormat": "OTHER",
           "range": true,
           "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "kepler:kepler:container_gpu_joules_total:consumed:1h:by_ns{container_namespace=~\"$namespace\"} * $watt_per_second_to_kWh",
-          "hide": false,
-          "interval": "5m",
-          "legendFormat": " GPU",
-          "range": true,
-          "refId": "D"
         }
       ],
       "title": "Total Energy Consumption in $namespace (kWh) - Last 1 hour",
@@ -1109,104 +1053,6 @@
         }
       ],
       "title": "OTHER Power Consumption (W) by Pods in $namespace",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "The total energy spent in GPU by a container.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "left",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "graph": false,
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "watt"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 39
-      },
-      "id": 27,
-      "links": [
-        {
-          "targetBlank": true,
-          "title": "Kepler metrics for Container Energy Consumption",
-          "url": "https://github.com/sustainable-computing-io/kepler-doc/blob/84e3e01a0110829937cd40f9634dd8d0c92540a4/docs/design/metrics.md#kepler-metrics-for-container-energy-consumption"
-        }
-      ],
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "right",
-          "sortBy": "Mean",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": "prometheus",
-          "editorMode": "code",
-          "expr": "sum by (pod_name) (kepler:kepler:container_gpu_watts:1m:by_ns_pod{container_namespace=~\"$namespace\", pod_name=~\"$pod\"})",
-          "hide": false,
-          "interval": "5m",
-          "legendFormat": "{{pod_name}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "GPU Power Consumption (W) by Pods in $namespace",
       "type": "timeseries"
     }
   ],
