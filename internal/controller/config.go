@@ -30,10 +30,10 @@ var (
 		Cluster: k8s.Kubernetes,
 	}
 
-	KeplerXConfig = struct {
+	PowerMonitorInternalConfig = struct {
 		Image string
 	}{
-		Image: "quay.io/sustainable_computing_io/kepler-reboot:v0.01",
+		Image: "quay.io/sustainable_computing_io/kepler-reboot:v0.0.3",
 	}
 
 	InternalConfig = struct {

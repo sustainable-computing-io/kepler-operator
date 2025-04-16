@@ -9,6 +9,6 @@ metadata:
 spec:
   exporter:
     deployment:
-      port: 9103
+      port: 9108
     redfish: null
 

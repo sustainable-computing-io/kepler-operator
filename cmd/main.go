@@ -170,11 +170,18 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "kepler-internal")
 		os.Exit(1)
 	}
-	if err = (&controller.KeplerXReconciler{
+	if err = (&controller.PowerMonitorReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "kepler-x")
+		setupLog.Error(err, "unable to create controller", "controller", "power-monitor")
+		os.Exit(1)
+	}
+	if err = (&controller.PowerMonitorInternalReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "power-monitor-internal")
 		os.Exit(1)
 	}
 
@@ -206,6 +213,9 @@ func main() {
 
 func setupWebhooks(mgr ctrl.Manager) error {
 	if err := (&keplersystemv1alpha1.Kepler{}).SetupWebhookWithManager(mgr); err != nil {
+		return fmt.Errorf("unable to create webhook: %v", err)
+	}
+	if err := (&keplersystemv1alpha1.PowerMonitor{}).SetupWebhookWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create webhook: %v", err)
 	}
 	return nil

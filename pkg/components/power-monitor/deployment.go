@@ -18,6 +18,8 @@ package powermonitor
 
 import (
 	_ "embed"
+	"fmt"
+	"path/filepath"
 
 	secv1 "github.com/openshift/api/security/v1"
 	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -38,8 +40,14 @@ import (
 
 const (
 	PowerMonitorServicePortName = "http"
-	PowerMonitorDSPort          = 28282
 	DashboardNs                 = "openshift-config-managed"
+	PowerMonitorDSPort          = 28282
+	// SysPath                     = "/host/sys"
+	// ProcPath                    = "/host/proc"
+	SysPath             = "/sys"
+	ProcPath            = "/proc"
+	KeplerConfigMapPath = "/etc/kepler"
+	KeplerConfigFile    = "kepler-config.yaml"
 )
 
 var (
@@ -48,7 +56,7 @@ var (
 	}
 )
 
-func NewPowerMonitorDaemonSet(detail components.Detail, kx *v1alpha1.KeplerX) *appsv1.DaemonSet {
+func NewPowerMonitorDaemonSet(detail components.Detail, pmi *v1alpha1.PowerMonitorInternal) *appsv1.DaemonSet {
 	if detail == components.Metadata {
 		return &appsv1.DaemonSet{
 			TypeMeta: metav1.TypeMeta{
@@ -56,24 +64,23 @@ func NewPowerMonitorDaemonSet(detail components.Detail, kx *v1alpha1.KeplerX) *a
 				Kind:       "DaemonSet",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      kx.DaemonsetName(),
-				Namespace: kx.Namespace(),
-				Labels:    labels(kx),
+				Name:      pmi.DaemonsetName(),
+				Namespace: pmi.Namespace(),
+				Labels:    labels(pmi),
 			},
 		}
 	}
-	deployment := kx.Spec.Deployment
+	deployment := pmi.Spec.Kepler.Deployment
 	nodeSelector := deployment.NodeSelector
 	tolerations := deployment.Tolerations
 
-	pmContainer := newPowerMonitorContainer(kx)
+	pmContainer := newPowerMonitorContainer(pmi)
 	pmContainers := []corev1.Container{pmContainer}
 
 	var volumes = []corev1.Volume{
-		k8s.VolumeFromHost("lib-modules", "/lib/modules"),
 		k8s.VolumeFromHost("tracing", "/sys"),
 		k8s.VolumeFromHost("proc", "/proc"),
-		k8s.VolumeFromConfigMap("cfm", kx.Name),
+		k8s.VolumeFromConfigMap("cfm", pmi.Name),
 	}
 
 	return &appsv1.DaemonSet{
@@ -82,22 +89,22 @@ func NewPowerMonitorDaemonSet(detail components.Detail, kx *v1alpha1.KeplerX) *a
 			Kind:       "DaemonSet",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kx.Name,
-			Namespace: kx.Namespace(),
-			Labels:    labels(kx),
+			Name:      pmi.Name,
+			Namespace: pmi.Namespace(),
+			Labels:    labels(pmi),
 		},
 		Spec: appsv1.DaemonSetSpec{
-			Selector: &metav1.LabelSelector{MatchLabels: podSelector(kx)},
+			Selector: &metav1.LabelSelector{MatchLabels: podSelector(pmi)},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      kx.DaemonsetName(),
-					Namespace: kx.Namespace(),
-					Labels:    podSelector(kx),
+					Name:      pmi.DaemonsetName(),
+					Namespace: pmi.Namespace(),
+					Labels:    podSelector(pmi),
 				},
 				Spec: corev1.PodSpec{
 					HostPID:            true,
 					NodeSelector:       linuxNodeSelector.Merge(nodeSelector),
-					ServiceAccountName: kx.Name,
+					ServiceAccountName: pmi.Name,
 					DNSPolicy:          corev1.DNSPolicy(corev1.DNSClusterFirstWithHostNet),
 					Tolerations:        tolerations,
 					Containers:         pmContainers,
@@ -108,21 +115,21 @@ func NewPowerMonitorDaemonSet(detail components.Detail, kx *v1alpha1.KeplerX) *a
 	}
 }
 
-func NewPowerMonitorService(kx *v1alpha1.KeplerX) *corev1.Service {
+func NewPowerMonitorService(pmi *v1alpha1.PowerMonitorInternal) *corev1.Service {
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
 			Kind:       "Service",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kx.Name,
-			Namespace: kx.Namespace(),
-			Labels:    labels(kx).ToMap(),
+			Name:      pmi.Name,
+			Namespace: pmi.Namespace(),
+			Labels:    labels(pmi).ToMap(),
 		},
 		Spec: corev1.ServiceSpec{
 
 			ClusterIP: "None",
-			Selector:  podSelector(kx),
+			Selector:  podSelector(pmi),
 			Ports: []corev1.ServicePort{{
 				Name: PowerMonitorServicePortName,
 				Port: int32(PowerMonitorDSPort),
@@ -135,7 +142,7 @@ func NewPowerMonitorService(kx *v1alpha1.KeplerX) *corev1.Service {
 	}
 }
 
-func NewPowerMonitorConfigMap(d components.Detail, kx *v1alpha1.KeplerX) *corev1.ConfigMap {
+func NewPowerMonitorConfigMap(d components.Detail, pmi *v1alpha1.PowerMonitorInternal) *corev1.ConfigMap {
 	if d == components.Metadata {
 		return &corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
@@ -143,14 +150,14 @@ func NewPowerMonitorConfigMap(d components.Detail, kx *v1alpha1.KeplerX) *corev1
 				Kind:       "ConfigMap",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      kx.Name,
-				Namespace: kx.Namespace(),
-				Labels:    labels(kx).ToMap(),
+				Name:      pmi.Name,
+				Namespace: pmi.Namespace(),
+				Labels:    labels(pmi).ToMap(),
 			},
 		}
 	}
 
-	config, _ := keplerConfig(&kx.Spec.Configuration)
+	config, _ := keplerConfig(&pmi.Spec.Kepler.Config)
 
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
@@ -158,17 +165,17 @@ func NewPowerMonitorConfigMap(d components.Detail, kx *v1alpha1.KeplerX) *corev1
 			Kind:       "ConfigMap",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kx.Name,
-			Namespace: kx.Namespace(),
-			Labels:    labels(kx).ToMap(),
+			Name:      pmi.Name,
+			Namespace: pmi.Namespace(),
+			Labels:    labels(pmi).ToMap(),
 		},
 		Data: k8s.StringMap{
-			"kepler-config.yaml": config,
+			KeplerConfigFile: config,
 		},
 	}
 }
 
-func NewPowerMonitorClusterRole(c components.Detail, kx *v1alpha1.KeplerX) *rbacv1.ClusterRole {
+func NewPowerMonitorClusterRole(c components.Detail, pmi *v1alpha1.PowerMonitorInternal) *rbacv1.ClusterRole {
 	if c == components.Metadata {
 		return &rbacv1.ClusterRole{
 			TypeMeta: metav1.TypeMeta{
@@ -176,8 +183,8 @@ func NewPowerMonitorClusterRole(c components.Detail, kx *v1alpha1.KeplerX) *rbac
 				Kind:       "ClusterRole",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:   kx.Name,
-				Labels: labels(kx),
+				Name:   pmi.Name,
+				Labels: labels(pmi),
 			},
 		}
 	}
@@ -188,8 +195,8 @@ func NewPowerMonitorClusterRole(c components.Detail, kx *v1alpha1.KeplerX) *rbac
 			Kind:       "ClusterRole",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   kx.Name,
-			Labels: labels(kx),
+			Name:   pmi.Name,
+			Labels: labels(pmi),
 		},
 		Rules: []rbacv1.PolicyRule{{
 			APIGroups: []string{""},
@@ -199,7 +206,7 @@ func NewPowerMonitorClusterRole(c components.Detail, kx *v1alpha1.KeplerX) *rbac
 	}
 }
 
-func NewPowerMonitorClusterRoleBinding(c components.Detail, kx *v1alpha1.KeplerX) *rbacv1.ClusterRoleBinding {
+func NewPowerMonitorClusterRoleBinding(c components.Detail, pmi *v1alpha1.PowerMonitorInternal) *rbacv1.ClusterRoleBinding {
 	if c == components.Metadata {
 		return &rbacv1.ClusterRoleBinding{
 			TypeMeta: metav1.TypeMeta{
@@ -207,8 +214,8 @@ func NewPowerMonitorClusterRoleBinding(c components.Detail, kx *v1alpha1.KeplerX
 				Kind:       "ClusterRoleBinding",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:   kx.Name,
-				Labels: labels(kx),
+				Name:   pmi.Name,
+				Labels: labels(pmi),
 			},
 		}
 	}
@@ -219,23 +226,23 @@ func NewPowerMonitorClusterRoleBinding(c components.Detail, kx *v1alpha1.KeplerX
 			Kind:       "ClusterRoleBinding",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   kx.Name,
-			Labels: labels(kx),
+			Name:   pmi.Name,
+			Labels: labels(pmi),
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "ClusterRole",
-			Name:     kx.Name,
+			Name:     pmi.Name,
 		},
 		Subjects: []rbacv1.Subject{{
 			Kind:      "ServiceAccount",
-			Name:      kx.Name,
-			Namespace: kx.Namespace(),
+			Name:      pmi.Name,
+			Namespace: pmi.Namespace(),
 		}},
 	}
 }
 
-func NewPowerMonitorSCC(d components.Detail, kx *v1alpha1.KeplerX) *secv1.SecurityContextConstraints {
+func NewPowerMonitorSCC(d components.Detail, pmi *v1alpha1.PowerMonitorInternal) *secv1.SecurityContextConstraints {
 	if d == components.Metadata {
 		return &secv1.SecurityContextConstraints{
 			TypeMeta: metav1.TypeMeta{
@@ -244,8 +251,8 @@ func NewPowerMonitorSCC(d components.Detail, kx *v1alpha1.KeplerX) *secv1.Securi
 			},
 
 			ObjectMeta: metav1.ObjectMeta{
-				Name:   kx.Name,
-				Labels: labels(kx),
+				Name:   pmi.Name,
+				Labels: labels(pmi),
 			},
 		}
 	}
@@ -257,8 +264,8 @@ func NewPowerMonitorSCC(d components.Detail, kx *v1alpha1.KeplerX) *secv1.Securi
 		},
 
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   kx.Name,
-			Labels: labels(kx),
+			Name:   pmi.Name,
+			Labels: labels(pmi),
 		},
 
 		AllowPrivilegedContainer: true,
@@ -279,7 +286,7 @@ func NewPowerMonitorSCC(d components.Detail, kx *v1alpha1.KeplerX) *secv1.Securi
 		SELinuxContext: secv1.SELinuxContextStrategyOptions{
 			Type: secv1.SELinuxStrategyRunAsAny,
 		},
-		Users: []string{kx.FQServiceAccountName()},
+		Users: []string{pmi.FQServiceAccountName()},
 		Volumes: []secv1.FSType{
 			secv1.FSType("configMap"),
 			secv1.FSType("secret"),
@@ -289,21 +296,21 @@ func NewPowerMonitorSCC(d components.Detail, kx *v1alpha1.KeplerX) *secv1.Securi
 	}
 }
 
-func NewPowerMonitorServiceAccount(kx *v1alpha1.KeplerX) *corev1.ServiceAccount {
+func NewPowerMonitorServiceAccount(pmi *v1alpha1.PowerMonitorInternal) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
 			Kind:       "ServiceAccount",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kx.Name,
-			Namespace: kx.Namespace(),
-			Labels:    labels(kx).ToMap(),
+			Name:      pmi.Name,
+			Namespace: pmi.Namespace(),
+			Labels:    labels(pmi).ToMap(),
 		},
 	}
 }
 
-func NewPowerMonitorServiceMonitor(kx *v1alpha1.KeplerX) *monv1.ServiceMonitor {
+func NewPowerMonitorServiceMonitor(pmi *v1alpha1.PowerMonitorInternal) *monv1.ServiceMonitor {
 	relabelings := []*monv1.RelabelConfig{{
 		Action:      "replace",
 		Regex:       "(.*)",
@@ -320,9 +327,9 @@ func NewPowerMonitorServiceMonitor(kx *v1alpha1.KeplerX) *monv1.ServiceMonitor {
 			Kind:       "ServiceMonitor",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kx.Name,
-			Namespace: kx.Namespace(),
-			Labels:    labels(kx).ToMap(),
+			Name:      pmi.Name,
+			Namespace: pmi.Namespace(),
+			Labels:    labels(pmi).ToMap(),
 		},
 		Spec: monv1.ServiceMonitorSpec{
 			Endpoints: []monv1.Endpoint{{
@@ -333,41 +340,38 @@ func NewPowerMonitorServiceMonitor(kx *v1alpha1.KeplerX) *monv1.ServiceMonitor {
 			}},
 			JobLabel: "app.kubernetes.io/name",
 			Selector: metav1.LabelSelector{
-				MatchLabels: labels(kx),
+				MatchLabels: labels(pmi),
 			},
 		},
 	}
 }
 
-func labels(kx *v1alpha1.KeplerX) k8s.StringMap {
+func labels(pmi *v1alpha1.PowerMonitorInternal) k8s.StringMap {
 	return components.CommonLabels.Merge(k8s.StringMap{
 		"app.kubernetes.io/component":                "exporter",
-		"operator.sustainable-computing.io/internal": kx.Name,
-		"app.kubernetes.io/part-of":                  kx.Name,
+		"operator.sustainable-computing.io/internal": pmi.Name,
+		"app.kubernetes.io/part-of":                  pmi.Name,
 	})
 }
 
-func podSelector(kx *v1alpha1.KeplerX) k8s.StringMap {
-	return labels(kx).Merge(k8s.StringMap{
+func podSelector(pmi *v1alpha1.PowerMonitorInternal) k8s.StringMap {
+	return labels(pmi).Merge(k8s.StringMap{
 		"app.kubernetes.io/name":      "power-monitor-exporter",
 		"app.kubernetes.io/component": "exporter",
 	})
 }
 
-func keplerCommand() []string {
-	return []string{
-		"/usr/bin/kepler",
-		"--config.file=/etc/kepler/kepler-config.yaml",
-	}
-}
-
-func newPowerMonitorContainer(kx *v1alpha1.KeplerX) corev1.Container {
-	deployment := kx.Spec.Deployment
+func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Container {
+	deployment := pmi.Spec.Kepler.Deployment
+	configMapPath := filepath.Join(KeplerConfigMapPath, KeplerConfigFile)
 	return corev1.Container{
-		Name:            kx.DaemonsetName(),
+		Name:            pmi.DaemonsetName(),
 		SecurityContext: &corev1.SecurityContext{Privileged: ptr.To(true)},
 		Image:           deployment.Image,
-		Command:         keplerCommand(),
+		Command: []string{
+			"/usr/bin/kepler",
+			fmt.Sprintf("--config.file=%s", configMapPath),
+		},
 		Ports: []corev1.ContainerPort{{
 			ContainerPort: int32(PowerMonitorDSPort),
 			Name:          PowerMonitorServicePortName,
@@ -386,18 +390,17 @@ func newPowerMonitorContainer(kx *v1alpha1.KeplerX) corev1.Container {
 			SuccessThreshold:    1,
 			TimeoutSeconds:      10},
 		VolumeMounts: []corev1.VolumeMount{
-			{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
-			{Name: "tracing", MountPath: "/sys", ReadOnly: true},
-			{Name: "proc", MountPath: "/proc"},
-			{Name: "cfm", MountPath: "/etc/kepler"}, // TODO: Modify configmap mountpath
+			{Name: "tracing", MountPath: SysPath, ReadOnly: true},
+			{Name: "proc", MountPath: ProcPath},
+			{Name: "cfm", MountPath: KeplerConfigMapPath},
 		},
 	}
 }
 
-func keplerConfig(kxConfig *v1alpha1.KeplerXConfigSpec) (string, error) {
+func keplerConfig(kxConfig *v1alpha1.PowerMonitorInternalKeplerConfigSpec) (string, error) {
 	// Generate DefaultConfig
 	cf := config.DefaultConfig()
-	cf.Log.Level = "debug"
+	cf.Log.Level = kxConfig.LogLevel
 	// Modify DefaultFields according to KeplerXConfigSpec
 	// 	"MONITOR_INTERVAL":                 strconv.FormatInt(int64(config.MonitorInterval), 10),
 	// 	"EXPORTER_INTERVAL":                strconv.FormatInt(int64(config.ExporterInterval), 10),

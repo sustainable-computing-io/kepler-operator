@@ -157,7 +157,7 @@ func (r *KeplerInternalReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return result, updateErr
 }
 
-func (r KeplerInternalReconciler) runReconcilers(ctx context.Context, ki *v1alpha1.KeplerInternal) (ctrl.Result, error) {
+func (r *KeplerInternalReconciler) runReconcilers(ctx context.Context, ki *v1alpha1.KeplerInternal) (ctrl.Result, error) {
 	reconcilers := r.reconcilersForInternal(ki)
 	r.logger.V(6).Info("reconcilers ...", "count", len(reconcilers))
 
@@ -169,7 +169,7 @@ func (r KeplerInternalReconciler) runReconcilers(ctx context.Context, ki *v1alph
 	}.Run(ctx)
 }
 
-func (r KeplerInternalReconciler) getInternal(ctx context.Context, req ctrl.Request) (*v1alpha1.KeplerInternal, error) {
+func (r *KeplerInternalReconciler) getInternal(ctx context.Context, req ctrl.Request) (*v1alpha1.KeplerInternal, error) {
 	logger := r.logger.WithValues("keplerinternal", req.Name)
 	ki := v1alpha1.KeplerInternal{}
 
@@ -185,7 +185,7 @@ func (r KeplerInternalReconciler) getInternal(ctx context.Context, req ctrl.Requ
 	return &ki, nil
 }
 
-func (r KeplerInternalReconciler) updateStatus(ctx context.Context, req ctrl.Request, recErr error) error {
+func (r *KeplerInternalReconciler) updateStatus(ctx context.Context, req ctrl.Request, recErr error) error {
 	logger := r.logger.WithValues("keplerinternal", req.Name, "action", "update-status")
 	logger.V(3).Info("Start of status update")
 	defer logger.V(3).Info("End of status update")
@@ -253,7 +253,7 @@ func sanitizeConditions(conditions []v1alpha1.Condition) []v1alpha1.Condition {
 	return conditions
 }
 
-func (r KeplerInternalReconciler) updateReconciledStatus(ctx context.Context, ki *v1alpha1.KeplerInternal, recErr error, time metav1.Time) bool {
+func (r *KeplerInternalReconciler) updateReconciledStatus(ctx context.Context, ki *v1alpha1.KeplerInternal, recErr error, time metav1.Time) bool {
 	reconciled := v1alpha1.Condition{
 		Type:               v1alpha1.Reconciled,
 		Status:             v1alpha1.ConditionTrue,
@@ -303,7 +303,7 @@ func updateCondition(conditions []v1alpha1.Condition, latest v1alpha1.Condition,
 	return true
 }
 
-func (r KeplerInternalReconciler) updateAvailableStatus(ctx context.Context, ki *v1alpha1.KeplerInternal, recErr error, time metav1.Time) bool {
+func (r *KeplerInternalReconciler) updateAvailableStatus(ctx context.Context, ki *v1alpha1.KeplerInternal, recErr error, time metav1.Time) bool {
 	// get daemonset owned by kepler
 	dset := appsv1.DaemonSet{}
 	key := types.NamespacedName{Name: ki.DaemonsetName(), Namespace: ki.Namespace()}
@@ -453,7 +453,7 @@ func availableCondition(dset *appsv1.DaemonSet) v1alpha1.Condition {
 	return c
 }
 
-func (r KeplerInternalReconciler) reconcilersForInternal(ki *v1alpha1.KeplerInternal) []reconciler.Reconciler {
+func (r *KeplerInternalReconciler) reconcilersForInternal(ki *v1alpha1.KeplerInternal) []reconciler.Reconciler {
 	rs := []reconciler.Reconciler{}
 
 	cleanup := !ki.DeletionTimestamp.IsZero()

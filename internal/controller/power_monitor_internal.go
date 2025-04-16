@@ -28,7 +28,7 @@ import (
 )
 
 // KeplerInternalReconciler reconciles a Kepler object
-type KeplerXReconciler struct {
+type PowerMonitorInternalReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 	logger logr.Logger
@@ -49,7 +49,7 @@ type KeplerXReconciler struct {
 //+kubebuilder:rbac:groups=core,resources=nodes/metrics;nodes/proxy;nodes/stats,verbs=get;list;watch
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *KeplerXReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *PowerMonitorInternalReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// We only want to trigger a reconciliation when the generation
 	// of a child changes. Until we need to update our the status for our own objects,
 	// we can save CPU cycles by avoiding reconciliations triggered by
@@ -58,7 +58,7 @@ func (r *KeplerXReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	genChanged := builder.WithPredicates(predicate.GenerationChangedPredicate{})
 
 	c := ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.KeplerX{}).
+		For(&v1alpha1.PowerMonitorInternal{}).
 		Owns(&corev1.ConfigMap{}, genChanged).
 		Owns(&corev1.ServiceAccount{}, genChanged).
 		Owns(&corev1.Service{}, genChanged).
@@ -81,29 +81,29 @@ func (r *KeplerXReconciler) SetupWithManager(mgr ctrl.Manager) error {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
-func (r *KeplerXReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *PowerMonitorInternalReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	r.logger = logger
 
 	logger.Info("Start of reconcile")
 	defer logger.Info("End of reconcile")
 
-	kx, err := r.getKeplerX(ctx, req)
+	pmi, err := r.getPowerMonitorInternal(ctx, req)
 	if err != nil {
 		// retry since some error has occurred
 		logger.V(6).Info("Get Error ", "error", err)
 		return ctrl.Result{}, err
 	}
 
-	if kx == nil {
+	if pmi == nil {
 		// no kepler-x found , so stop here
-		logger.V(6).Info("KeplerX Nil")
+		logger.V(6).Info("power-monitor-internal Nil")
 		return ctrl.Result{}, nil
 	}
 
-	logger.V(6).Info("Running sub reconcilers", "kepler-x", kx.Spec)
+	logger.V(6).Info("Running sub reconcilers", "power-monitor-internal", pmi.Spec)
 
-	result, recErr := r.runPowerMonitorReconcilers(ctx, kx)
+	result, recErr := r.runPowerMonitorReconcilers(ctx, pmi)
 	updateErr := r.updatePowerMonitorStatus(ctx, req, recErr)
 	if recErr != nil {
 		return result, recErr
@@ -111,25 +111,24 @@ func (r *KeplerXReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	return result, updateErr
 }
 
-// KeplerX will be replaced with PowerMonitorInternal
-func (r *KeplerXReconciler) getKeplerX(ctx context.Context, req ctrl.Request) (*v1alpha1.KeplerX, error) {
-	logger := r.logger.WithValues("keplerx", req.Name)
-	kx := v1alpha1.KeplerX{}
+func (r PowerMonitorInternalReconciler) getPowerMonitorInternal(ctx context.Context, req ctrl.Request) (*v1alpha1.PowerMonitorInternal, error) {
+	logger := r.logger.WithValues("power-monitor-internal", req.Name)
+	pmi := v1alpha1.PowerMonitorInternal{}
 
-	if err := r.Client.Get(ctx, req.NamespacedName, &kx); err != nil {
+	if err := r.Client.Get(ctx, req.NamespacedName, &pmi); err != nil {
 		if errors.IsNotFound(err) {
-			logger.V(3).Info("keplerx could not be found; may be marked for deletion")
+			logger.V(3).Info("power-monitor-internal could not be found; may be marked for deletion")
 			return nil, nil
 		}
-		logger.Error(err, "failed to get keplerx")
+		logger.Error(err, "failed to get power-monitor-internal")
 		return nil, err
 	}
 
-	return &kx, nil
+	return &pmi, nil
 }
 
-func (r *KeplerXReconciler) runPowerMonitorReconcilers(ctx context.Context, kx *v1alpha1.KeplerX) (ctrl.Result, error) {
-	reconcilers := r.reconcilersForPowerMonitor(kx)
+func (r PowerMonitorInternalReconciler) runPowerMonitorReconcilers(ctx context.Context, pmi *v1alpha1.PowerMonitorInternal) (ctrl.Result, error) {
+	reconcilers := r.reconcilersForPowerMonitor(pmi)
 	r.logger.V(6).Info("reconcilers ...", "count", len(reconcilers))
 
 	return reconciler.Runner{
@@ -140,66 +139,66 @@ func (r *KeplerXReconciler) runPowerMonitorReconcilers(ctx context.Context, kx *
 	}.Run(ctx)
 }
 
-func openshiftPowerMonitorClusterResources(kx *v1alpha1.KeplerX, cluster k8s.Cluster) []client.Object {
-	oshift := kx.Spec.OpenShift
+func openshiftPowerMonitorClusterResources(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Cluster) []client.Object {
+	oshift := pmi.Spec.OpenShift
 	if cluster != k8s.OpenShift || !oshift.Enabled {
 		return nil
 	}
 	// NOTE: SCC is required for kepler deployment even if openshift is not enabled
 	return []client.Object{
-		powermonitor.NewPowerMonitorSCC(components.Full, kx),
+		powermonitor.NewPowerMonitorSCC(components.Full, pmi),
 	}
 }
 
-func powerMonitorExporters(kx *v1alpha1.KeplerX, cluster k8s.Cluster) []reconciler.Reconciler {
-	if cleanup := !kx.DeletionTimestamp.IsZero(); cleanup {
+func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Cluster) []reconciler.Reconciler {
+	if cleanup := !pmi.DeletionTimestamp.IsZero(); cleanup {
 		rs := resourceReconcilers(
 			deleteResource,
 			// cluster-scoped
 			// remove cluster role binding first, then remove cluster role
-			powermonitor.NewPowerMonitorClusterRoleBinding(components.Metadata, kx),
-			powermonitor.NewPowerMonitorClusterRole(components.Metadata, kx),
+			powermonitor.NewPowerMonitorClusterRoleBinding(components.Metadata, pmi),
+			powermonitor.NewPowerMonitorClusterRole(components.Metadata, pmi),
 		)
 		// no openshift namespaced resources for now
 		// rs = append(rs, resourceReconcilers(deleteResource, openshiftNamespacedResources(ki, cluster)...)...)
 		return rs
 	}
 
-	updateResource := newUpdaterWithOwner(kx)
+	updateResource := newUpdaterWithOwner(pmi)
 	// cluster-scoped resources first
 	// update cluster role before cluster role binding
 	rs := resourceReconcilers(updateResource,
-		powermonitor.NewPowerMonitorClusterRole(components.Full, kx),
-		powermonitor.NewPowerMonitorClusterRoleBinding(components.Full, kx),
+		powermonitor.NewPowerMonitorClusterRole(components.Full, pmi),
+		powermonitor.NewPowerMonitorClusterRoleBinding(components.Full, pmi),
 	)
-	rs = append(rs, resourceReconcilers(updateResource, openshiftPowerMonitorClusterResources(kx, cluster)...)...)
+	rs = append(rs, resourceReconcilers(updateResource, openshiftPowerMonitorClusterResources(pmi, cluster)...)...)
 
 	// namespace scoped
 	rs = append(rs, resourceReconcilers(updateResource,
-		powermonitor.NewPowerMonitorServiceAccount(kx),
-		powermonitor.NewPowerMonitorService(kx),
-		powermonitor.NewPowerMonitorServiceMonitor(kx),
+		powermonitor.NewPowerMonitorServiceAccount(pmi),
+		powermonitor.NewPowerMonitorService(pmi),
+		powermonitor.NewPowerMonitorServiceMonitor(pmi),
 		// powermonitor.NewPowerMonitorPrometheusRule(kx), do not include until metrics are made available
 	)...)
 
 	rs = append(rs, resourceReconcilers(updateResource,
 		// deploy configmap before daemonset
-		powermonitor.NewPowerMonitorConfigMap(components.Full, kx), // will regenerate logs from spec
-		powermonitor.NewPowerMonitorDaemonSet(components.Full, kx),
+		powermonitor.NewPowerMonitorConfigMap(components.Full, pmi), // will regenerate logs from spec
+		powermonitor.NewPowerMonitorDaemonSet(components.Full, pmi),
 	)...)
 	// rs = append(rs, resourceReconcilers(updateResource, openshiftNamespacedResources(ki, cluster)...)...)
 	return rs
 }
 
-func (r *KeplerXReconciler) reconcilersForPowerMonitor(kx *v1alpha1.KeplerX) []reconciler.Reconciler {
+func (r PowerMonitorInternalReconciler) reconcilersForPowerMonitor(pmi *v1alpha1.PowerMonitorInternal) []reconciler.Reconciler {
 	rs := []reconciler.Reconciler{}
 
-	cleanup := !kx.DeletionTimestamp.IsZero()
+	cleanup := !pmi.DeletionTimestamp.IsZero()
 	// not set for deletion
 	if !cleanup {
 		rs = append(rs, reconciler.Updater{
-			Owner:    kx,
-			Resource: components.NewNamespace(kx.Namespace()),
+			Owner:    pmi,
+			Resource: components.NewNamespace(pmi.Namespace()),
 			OnError:  reconciler.Requeue,
 			Logger:   r.logger,
 		})
@@ -207,12 +206,12 @@ func (r *KeplerXReconciler) reconcilersForPowerMonitor(kx *v1alpha1.KeplerX) []r
 
 	// update with image to be used (initial setup for testing then fix to be top level)
 
-	rs = append(rs, powerMonitorExporters(kx, Config.Cluster)...)
+	rs = append(rs, powerMonitorExporters(pmi, Config.Cluster)...)
 
 	if cleanup {
 		rs = append(rs, reconciler.Deleter{
 			OnError:     reconciler.Requeue,
-			Resource:    components.NewNamespace(kx.Namespace()),
+			Resource:    components.NewNamespace(pmi.Namespace()),
 			WaitTimeout: 2 * time.Minute,
 		})
 	}
@@ -220,34 +219,33 @@ func (r *KeplerXReconciler) reconcilersForPowerMonitor(kx *v1alpha1.KeplerX) []r
 	// WARN: only run finalizer if theren't any errors
 	// this bug 🐛 must be FIXED
 	rs = append(rs, reconciler.Finalizer{
-		Resource:  kx,
+		Resource:  pmi,
 		Finalizer: Finalizer,
 		Logger:    r.logger,
 	})
 	return rs
 }
 
-func (r *KeplerXReconciler) updatePowerMonitorStatus(ctx context.Context, req ctrl.Request, recErr error) error {
-	logger := r.logger.WithValues("keplerx", req.Name, "action", "update-status")
+func (r PowerMonitorInternalReconciler) updatePowerMonitorStatus(ctx context.Context, req ctrl.Request, recErr error) error {
+	logger := r.logger.WithValues("power-monitor-internal", req.Name, "action", "update-status")
 	logger.V(3).Info("Start of status update")
 	defer logger.V(3).Info("End of status update")
 
 	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		kx, _ := r.getKeplerX(ctx, req)
+		pmi, _ := r.getPowerMonitorInternal(ctx, req)
 		// may be deleted
-		if kx == nil || !kx.GetDeletionTimestamp().IsZero() {
+		if pmi == nil || !pmi.GetDeletionTimestamp().IsZero() {
 			// retry since some error has occurred
-			r.logger.V(6).Info("Reconcile has deleted kepler-x; skipping status update")
+			r.logger.V(6).Info("Reconcile has deleted power-monitor-internal; skipping status update")
 			return nil
 		}
-
 		// sanitize the conditions so that all types are present and the order is predictable
-		kx.Status.Conditions = sanitizePowerMonitorConditions(kx.Status.Conditions)
+		pmi.Status.Kepler.Conditions = sanitizePowerMonitorConditions(pmi.Status.Kepler.Conditions)
 
 		{
 			now := metav1.Now()
-			reconciledChanged := r.updatePowerMonitorReconciledStatus(ctx, kx, recErr, now)
-			availableChanged := r.updatePowerMonitorAvailableStatus(ctx, kx, recErr, now)
+			reconciledChanged := r.updatePowerMonitorReconciledStatus(ctx, pmi, recErr, now)
+			availableChanged := r.updatePowerMonitorAvailableStatus(ctx, pmi, recErr, now)
 			logger.V(6).Info("conditions updated", "reconciled", reconciledChanged, "available", availableChanged)
 
 			if !reconciledChanged && !availableChanged {
@@ -256,7 +254,7 @@ func (r *KeplerXReconciler) updatePowerMonitorStatus(ctx context.Context, req ct
 			}
 		}
 
-		return r.Client.Status().Update(ctx, kx)
+		return r.Client.Status().Update(ctx, pmi)
 	})
 }
 
@@ -295,11 +293,11 @@ func sanitizePowerMonitorConditions(conditions []v1alpha1.Condition) []v1alpha1.
 	return conditions
 }
 
-func (r *KeplerXReconciler) updatePowerMonitorReconciledStatus(ctx context.Context, kx *v1alpha1.KeplerX, recErr error, time metav1.Time) bool {
+func (r PowerMonitorInternalReconciler) updatePowerMonitorReconciledStatus(ctx context.Context, pmi *v1alpha1.PowerMonitorInternal, recErr error, time metav1.Time) bool {
 	reconciled := v1alpha1.Condition{
 		Type:               v1alpha1.Reconciled,
 		Status:             v1alpha1.ConditionTrue,
-		ObservedGeneration: kx.Generation,
+		ObservedGeneration: pmi.Generation,
 		Reason:             v1alpha1.ReconcileComplete,
 		Message:            "Reconcile succeeded",
 	}
@@ -310,7 +308,7 @@ func (r *KeplerXReconciler) updatePowerMonitorReconciledStatus(ctx context.Conte
 		reconciled.Message = recErr.Error()
 	}
 
-	return updatePowerMonitorCondition(kx.Status.Conditions, reconciled, time)
+	return updatePowerMonitorCondition(pmi.Status.Kepler.Conditions, reconciled, time)
 }
 
 func findPowerMonitorCondition(conditions []v1alpha1.Condition, t v1alpha1.ConditionType) *v1alpha1.Condition {
@@ -345,34 +343,34 @@ func updatePowerMonitorCondition(conditions []v1alpha1.Condition, latest v1alpha
 	return true
 }
 
-func (r *KeplerXReconciler) updatePowerMonitorAvailableStatus(ctx context.Context, kx *v1alpha1.KeplerX, recErr error, time metav1.Time) bool {
+func (r PowerMonitorInternalReconciler) updatePowerMonitorAvailableStatus(ctx context.Context, pmi *v1alpha1.PowerMonitorInternal, recErr error, time metav1.Time) bool {
 	// get daemonset owned by kepler
 	dset := appsv1.DaemonSet{}
-	key := types.NamespacedName{Name: kx.DaemonsetName(), Namespace: kx.Namespace()}
+	key := types.NamespacedName{Name: pmi.DaemonsetName(), Namespace: pmi.Namespace()}
 	if err := r.Client.Get(ctx, key, &dset); err != nil {
-		return updatePowerMonitorCondition(kx.Status.Conditions, availablePowerMonitorConditionForGetError(err), time)
+		return updatePowerMonitorCondition(pmi.Status.Kepler.Conditions, availablePowerMonitorConditionForGetError(err), time)
 	}
 
 	ds := dset.Status
-	kx.Status.NumberMisscheduled = ds.NumberMisscheduled
-	kx.Status.CurrentNumberScheduled = ds.CurrentNumberScheduled
-	kx.Status.DesiredNumberScheduled = ds.DesiredNumberScheduled
-	kx.Status.NumberReady = ds.NumberReady
-	kx.Status.UpdatedNumberScheduled = ds.UpdatedNumberScheduled
-	kx.Status.NumberAvailable = ds.NumberAvailable
-	kx.Status.NumberUnavailable = ds.NumberUnavailable
+	pmi.Status.Kepler.NumberMisscheduled = ds.NumberMisscheduled
+	pmi.Status.Kepler.CurrentNumberScheduled = ds.CurrentNumberScheduled
+	pmi.Status.Kepler.DesiredNumberScheduled = ds.DesiredNumberScheduled
+	pmi.Status.Kepler.NumberReady = ds.NumberReady
+	pmi.Status.Kepler.UpdatedNumberScheduled = ds.UpdatedNumberScheduled
+	pmi.Status.Kepler.NumberAvailable = ds.NumberAvailable
+	pmi.Status.Kepler.NumberUnavailable = ds.NumberUnavailable
 
 	available := availablePowerMonitorCondition(&dset)
 
 	if recErr == nil {
-		available.ObservedGeneration = kx.Generation
+		available.ObservedGeneration = pmi.Generation
 	} else {
 		// failure to reconcile is a Degraded condition
 		available.Status = v1alpha1.ConditionDegraded
 		available.Reason = v1alpha1.ReconcileError
 	}
 
-	updated := updatePowerMonitorCondition(kx.Status.Conditions, available, time)
+	updated := updatePowerMonitorCondition(pmi.Status.Kepler.Conditions, available, time)
 	return updated
 }
 
