@@ -10,7 +10,8 @@ metadata:
     operators.operatorframework.io/builder: operator-sdk-v1.27.0
     operators.operatorframework.io/internal-objects: |-
       [
-        "keplerinternals.kepler.system.sustainable.computing.io"
+        "keplerinternals.kepler.system.sustainable.computing.io",
+        "powermonitorinternals.kepler.system.sustainable.computing.io"
       ]
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/sustainable-computing-io/kepler-operator

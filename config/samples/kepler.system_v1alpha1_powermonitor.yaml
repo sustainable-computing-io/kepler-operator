@@ -1,0 +1,12 @@
+apiVersion: kepler.system.sustainable.computing.io/v1alpha1
+kind: PowerMonitor
+metadata:
+  labels:
+    app.kubernetes.io/name: powermonitor
+    app.kubernetes.io/instance: powermonitor
+    app.kubernetes.io/part-of: kepler-operator
+  name: power-monitor
+spec:
+  kepler:
+    config:
+      logLevel: debug

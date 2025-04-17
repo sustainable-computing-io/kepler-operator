@@ -27,6 +27,7 @@ GOARCH := $(shell go env GOARCH)
 VERSION ?= $(shell cat VERSION)
 
 KEPLER_VERSION ?=release-0.7.12
+KEPLER_REBOOT_VERSION ?=v0.0.4
 
 # IMG_BASE and KEPLER_IMG_BASE are set to distinguish between Operator-specific images and Kepler-Specific images.
 # IMG_BASE is used for building and pushing operator related images.
@@ -34,6 +35,7 @@ KEPLER_VERSION ?=release-0.7.12
 # This separation ensures that local development and deployment of operator images do not interfere with Kepler images.
 IMG_BASE ?= quay.io/sustainable_computing_io
 KEPLER_IMG_BASE ?= quay.io/sustainable_computing_io/kepler
+KEPLER_REBOOT_IMG_BASE ?= quay.io/sustainable_computing_io/kepler-reboot
 
 # OPERATOR_IMG define the image:tag used for the operator
 # You can use it as an arg. (E.g make operator-build OPERATOR_IMG=<some-registry>:<version>)
@@ -41,6 +43,7 @@ OPERATOR_IMG ?= $(IMG_BASE)/kepler-operator:$(VERSION)
 ADDITIONAL_TAGS ?=
 
 KEPLER_IMG ?= $(KEPLER_IMG_BASE):$(KEPLER_VERSION)
+KEPLER_REBOOT_IMG ?= $(KEPLER_REBOOT_IMG_BASE):$(KEPLER_REBOOT_VERSION)
 
 # E2E_TEST_IMG defines the image:tag used for the e2e test image
 E2E_TEST_IMG ?=$(IMG_BASE)/kepler-operator-e2e:$(VERSION)
@@ -162,6 +165,7 @@ RUN_ARGS ?=
 run: install fmt vet ## Run a controller from your host against openshift cluster
 	go run ./cmd/... \
 		--kepler.image=$(KEPLER_IMG) \
+		--kepler-reboot.image=$(KEPLER_REBOOT_IMG) \
 		--zap-devel --zap-log-level=8 \
 		--openshift=$(OPENSHIFT) \
 		$(RUN_ARGS) \
@@ -249,6 +253,7 @@ deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/con
 	$(KUSTOMIZE) build config/default/k8s | \
 		sed  -e "s|<OPERATOR_IMG>|$(OPERATOR_IMG)|g" \
 		     -e "s|<KEPLER_IMG>|$(KEPLER_IMG)|g" \
+		     -e "s|<KEPLER_REBOOT_IMG>|$(KEPLER_REBOOT_IMG)|g" \
 		| tee tmp/deploy.yaml | \
 		kubectl apply --server-side --force-conflicts -f -
 
@@ -342,6 +347,7 @@ VERSION_REPLACED ?=
 bundle: generate manifests kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
 	OPERATOR_IMG=$(OPERATOR_IMG) \
 	KEPLER_IMG=$(KEPLER_IMG) \
+	KEPLER_REBOOT_IMG=$(KEPLER_REBOOT_IMG) \
 	VERSION=$(VERSION) \
 	VERSION_REPLACED=$(VERSION_REPLACED) \
 	BUNDLE_GEN_FLAGS='$(BUNDLE_GEN_FLAGS)' \

@@ -23,17 +23,37 @@ metadata:
               "redfish": null
             }
           }
+        },
+        {
+          "apiVersion": "kepler.system.sustainable.computing.io/v1alpha1",
+          "kind": "PowerMonitor",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/instance": "powermonitor",
+              "app.kubernetes.io/name": "powermonitor",
+              "app.kubernetes.io/part-of": "kepler-operator"
+            },
+            "name": "power-monitor"
+          },
+          "spec": {
+            "kepler": {
+              "config": {
+                "logLevel": "debug"
+              }
+            }
+          }
         }
       ]
     capabilities: Seamless Upgrades
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.15.0
-    createdAt: "2025-02-19T04:59:32Z"
+    createdAt: "2025-04-17T13:00:02Z"
     description: 'Deploys and Manages Kepler on Kubernetes '
     operators.operatorframework.io/builder: operator-sdk-v1.39.1
     operators.operatorframework.io/internal-objects: |-
       [
-        "keplerinternals.kepler.system.sustainable.computing.io"
+        "keplerinternals.kepler.system.sustainable.computing.io",
+        "powermonitorinternals.kepler.system.sustainable.computing.io"
       ]
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     repository: https://github.com/sustainable-computing-io/kepler-operator
@@ -67,6 +87,12 @@ spec:
         path: exporter.conditions
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:conditions
+      version: v1alpha1
+    - kind: PowerMonitorInternal
+      name: powermonitorinternals.kepler.system.sustainable.computing.io
+      version: v1alpha1
+    - kind: PowerMonitor
+      name: powermonitors.kepler.system.sustainable.computing.io
       version: v1alpha1
   description: |-
     ### Introduction
@@ -233,14 +259,16 @@ spec:
                 - --openshift
                 - --deployment-namespace=kepler-operator
                 - --leader-elect
-                - --health-probe-bind-address=:8081
                 - --kepler.image=$(RELATED_IMAGE_KEPLER)
+                - --kepler-reboot.image=$(RELATED_IMAGE_KEPLER_REBOOT)
                 - --zap-log-level=5
                 command:
                 - /manager
                 env:
                 - name: RELATED_IMAGE_KEPLER
                   value: quay.io/sustainable_computing_io/kepler:release-0.7.12
+                - name: RELATED_IMAGE_KEPLER_REBOOT
+                  value: quay.io/sustainable_computing_io/kepler-reboot:v0.0.4
                 image: quay.io/sustainable_computing_io/kepler-operator:0.15.0
                 imagePullPolicy: IfNotPresent
                 livenessProbe:
@@ -253,6 +281,9 @@ spec:
                 ports:
                 - containerPort: 9443
                   name: webhook-server
+                  protocol: TCP
+                - containerPort: 8080
+                  name: metrics
                   protocol: TCP
                 readinessProbe:
                   httpGet:
@@ -347,6 +378,8 @@ spec:
   relatedImages:
   - image: quay.io/sustainable_computing_io/kepler:release-0.7.12
     name: kepler
+  - image: quay.io/sustainable_computing_io/kepler-reboot:v0.0.4
+    name: kepler-reboot
   replaces: kepler-operator.v0.14.0
   version: 0.15.0
   webhookdefinitions:
@@ -355,8 +388,9 @@ spec:
     containerPort: 443
     conversionCRDs:
     - keplers.kepler.system.sustainable.computing.io
+    - powermonitors.kepler.system.sustainable.computing.io
     deploymentName: kepler-operator-controller
-    generateName: ckeplers.kb.io
+    generateName: ckeplerspowermonitors.kb.io
     sideEffects: None
     targetPort: 9443
     type: ConversionWebhook
@@ -386,6 +420,26 @@ spec:
     containerPort: 443
     deploymentName: kepler-operator-controller
     failurePolicy: Fail
+    generateName: mpowermonitor.kb.io
+    rules:
+    - apiGroups:
+      - kepler.system.sustainable.computing.io
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - powermonitors
+    sideEffects: None
+    targetPort: 9443
+    type: MutatingAdmissionWebhook
+    webhookPath: /mutate-kepler-system-sustainable-computing-io-v1alpha1-powermonitor
+  - admissionReviewVersions:
+    - v1
+    containerPort: 443
+    deploymentName: kepler-operator-controller
+    failurePolicy: Fail
     generateName: vkepler.kb.io
     rules:
     - apiGroups:
@@ -401,3 +455,24 @@ spec:
     targetPort: 9443
     type: ValidatingAdmissionWebhook
     webhookPath: /validate-kepler-system-sustainable-computing-io-v1alpha1-kepler
+  - admissionReviewVersions:
+    - v1
+    containerPort: 443
+    deploymentName: kepler-operator-controller
+    failurePolicy: Fail
+    generateName: vpowermonitor.kb.io
+    rules:
+    - apiGroups:
+      - kepler.system.sustainable.computing.io
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      - DELETE
+      resources:
+      - powermonitors
+    sideEffects: None
+    targetPort: 9443
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate-kepler-system-sustainable-computing-io-v1alpha1-powermonitor

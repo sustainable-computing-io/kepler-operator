@@ -97,6 +97,8 @@ func main() {
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 
+	flag.StringVar(&controller.PowerMonitorDeploymentNS, "power-monitor.deployment-namespace", controller.PowerMonitorDeploymentNS,
+		"Namespace where power monitoring components are deployed.")
 	flag.StringVar(&controller.KeplerDeploymentNS, "deployment-namespace", controller.KeplerDeploymentNS,
 		"Namespace where kepler and its components are deployed.")
 
@@ -109,7 +111,8 @@ func main() {
 	// NOTE: RELATED_IMAGE_KEPLER can be set as env or flag, flag takes precedence over env
 	keplerImage := os.Getenv("RELATED_IMAGE_KEPLER")
 	flag.StringVar(&controller.Config.Image, "kepler.image", keplerImage, "kepler image")
-
+	keplerRebootImg := os.Getenv("RELATED_IMAGE_KEPLER_REBOOT")
+	flag.StringVar(&controller.Config.RebootImage, "kepler-reboot.image", keplerRebootImg, "kepler reboot image")
 	flag.StringVar(&controller.InternalConfig.ModelServerImage, "estimator.image", estimator.StableImage, "kepler estimator image")
 	flag.StringVar(&controller.InternalConfig.EstimatorImage, "model-server.image", modelserver.StableImage, "kepler model server image")
 
@@ -170,7 +173,8 @@ func main() {
 		// TODO: add new introduced namespace from KeplerInternal.Spec.Deployment.Namespace
 		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
 			cacheNs := map[string]cache.Config{
-				controller.KeplerDeploymentNS: {},
+				controller.KeplerDeploymentNS:       {},
+				controller.PowerMonitorDeploymentNS: {},
 			}
 			if openshift {
 				cacheNs[exporter.DashboardNs] = cache.Config{}
@@ -217,6 +221,20 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "kepler-internal")
 		os.Exit(1)
 	}
+	if err = (&controller.PowerMonitorReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "power-monitor")
+		os.Exit(1)
+	}
+	if err = (&controller.PowerMonitorInternalReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "power-monitor-internal")
+		os.Exit(1)
+	}
 
 	// Setup webhooks
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
@@ -246,6 +264,9 @@ func main() {
 
 func setupWebhooks(mgr ctrl.Manager) error {
 	if err := (&keplersystemv1alpha1.Kepler{}).SetupWebhookWithManager(mgr); err != nil {
+		return fmt.Errorf("unable to create webhook: %v", err)
+	}
+	if err := (&keplersystemv1alpha1.PowerMonitor{}).SetupWebhookWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create webhook: %v", err)
 	}
 	return nil
