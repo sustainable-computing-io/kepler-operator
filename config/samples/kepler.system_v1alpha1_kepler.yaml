@@ -11,4 +11,3 @@ spec:
     deployment:
       port: 9103
     redfish: null
-

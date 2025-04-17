@@ -157,9 +157,9 @@ check_images() {
 	local expected_image=""
 	actual_image=$(kubectl get keplerinternals -o \
 		jsonpath="{.items[*].spec.exporter.deployment.image}")
-	expected_image=$(yq -r .spec.relatedImages[].image "$OPERATOR_CSV")
+	expected_image=$(yq -r .spec.relatedImages[0].image "$OPERATOR_CSV")
 	[[ "$actual_image" != "$expected_image" ]] && {
-		fail "Kepler images are not up to date"
+		fail "Kepler images are not up to date: actual: $actual_image != $expected_image"
 		return 1
 	}
 	ok "Kepler images are up to date"

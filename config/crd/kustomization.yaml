@@ -4,17 +4,21 @@
 resources:
 - bases/kepler.system.sustainable.computing.io_keplers.yaml
 - bases/kepler.system.sustainable.computing.io_keplerinternals.yaml
+- bases/kepler.system.sustainable.computing.io_powermonitors.yaml
+- bases/kepler.system.sustainable.computing.io_powermonitorinternals.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patches:
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
 # patches here are for enabling the conversion webhook for each CRD
 - path: patches/webhook_in_keplers.yaml
+- path: patches/webhook_in_powermonitors.yaml
 #+kubebuilder:scaffold:crdkustomizewebhookpatch
 
 # [CERTMANAGER] To enable cert-manager, uncomment all the sections with [CERTMANAGER] prefix.
 # patches here are for enabling the CA injection for each CRD
 #- path: patches/cainjection_in_keplers.yaml
+#- path: patches/cainjection_in_powermonitors.yaml
 #+kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # [WEBHOOK] To enable webhook, uncomment the following section

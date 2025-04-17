@@ -186,9 +186,9 @@ func (f Framework) DeleteKepler(name string) {
 		f.T.Errorf("failed to delete kepler:%s :%v", name, err)
 	}
 
-	f.WaitUntil(fmt.Sprintf("kepler %s is deleted", name), func() (bool, error) {
+	f.WaitUntil(fmt.Sprintf("kepler %s is deleted", name), func(ctx context.Context) (bool, error) {
 		k := v1alpha1.Kepler{}
-		err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
+		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &k)
 		return errors.IsNotFound(err), nil
 	})
 }
@@ -246,9 +246,9 @@ func (f Framework) DeleteInternal(name string, fns ...AssertOptionFn) {
 		f.T.Errorf("failed to delete kepler-internal:%s :%v", name, err)
 	}
 
-	f.WaitUntil(fmt.Sprintf("kepler-internal %s is deleted", name), func() (bool, error) {
+	f.WaitUntil(fmt.Sprintf("kepler-internal %s is deleted", name), func(ctx context.Context) (bool, error) {
 		k := v1alpha1.KeplerInternal{}
-		err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
+		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &k)
 		return errors.IsNotFound(err), nil
 	}, fns...)
 }
@@ -257,8 +257,8 @@ func (f Framework) WaitUntilInternalCondition(name string, t v1alpha1.ConditionT
 	f.T.Helper()
 	k := v1alpha1.KeplerInternal{}
 	f.WaitUntil(fmt.Sprintf("kepler-internal %s is %s", name, t),
-		func() (bool, error) {
-			err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
+		func(ctx context.Context) (bool, error) {
+			err := f.client.Get(ctx, client.ObjectKey{Name: name}, &k)
 			if errors.IsNotFound(err) {
 				return true, fmt.Errorf("kepler-internal %s is not found", name)
 			}
@@ -273,8 +273,8 @@ func (f Framework) AssertEstimatorStatus(name string, fns ...AssertOptionFn) *v1
 	f.T.Helper()
 	k := v1alpha1.KeplerInternal{}
 
-	f.WaitUntil(fmt.Sprintf("estimator for %s has expected status", name), func() (bool, error) {
-		err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
+	f.WaitUntil(fmt.Sprintf("estimator for %s has expected status", name), func(ctx context.Context) (bool, error) {
+		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &k)
 		if errors.IsNotFound(err) {
 			return true, fmt.Errorf("kepler-internal %s is not found", name)
 		}
@@ -296,8 +296,8 @@ func (f Framework) AssertModelServerStatus(name string, fns ...AssertOptionFn) *
 	f.T.Helper()
 	k := v1alpha1.KeplerInternal{}
 
-	f.WaitUntil(fmt.Sprintf("model-server for %s has expected status", name), func() (bool, error) {
-		err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
+	f.WaitUntil(fmt.Sprintf("model-server for %s has expected status", name), func(ctx context.Context) (bool, error) {
+		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &k)
 		if errors.IsNotFound(err) {
 			return true, fmt.Errorf("kepler-internal %s is not found", name)
 		}
@@ -319,8 +319,8 @@ func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionTyp
 	f.T.Helper()
 	k := v1alpha1.Kepler{}
 	f.WaitUntil(fmt.Sprintf("kepler %s is %s", name, t),
-		func() (bool, error) {
-			err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
+		func(ctx context.Context) (bool, error) {
+			err := f.client.Get(ctx, client.ObjectKey{Name: name}, &k)
 			if errors.IsNotFound(err) {
 				return true, fmt.Errorf("kepler %s is not found", name)
 			}
