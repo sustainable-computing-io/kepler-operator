@@ -142,8 +142,19 @@ func (c *Config) sanitize() {
 	c.Host.ProcFS = strings.TrimSpace(c.Host.ProcFS)
 }
 
+type SkipValidation int
+
+const (
+	SkipHostValidation SkipValidation = 1
+)
+
 // Validate checks for configuration errors
-func (c *Config) Validate() error {
+func (c *Config) Validate(skips ...SkipValidation) error {
+	validationsSkipped := make(map[SkipValidation]bool, len(skips))
+	for _, v := range skips {
+		validationsSkipped[v] = true
+	}
+
 	var errs []string
 	{ // log level
 
@@ -170,11 +181,13 @@ func (c *Config) Validate() error {
 	}
 
 	{ // Validate host settings
-		if err := canReadDir(c.Host.SysFS); err != nil {
-			errs = append(errs, fmt.Sprintf("invalid sysfs path: %s: %s ", c.Host.SysFS, err.Error()))
-		}
-		if err := canReadDir(c.Host.ProcFS); err != nil {
-			errs = append(errs, fmt.Sprintf("invalid procfs path: %s: %s ", c.Host.ProcFS, err.Error()))
+		if _, skip := validationsSkipped[SkipHostValidation]; !skip {
+			if err := canReadDir(c.Host.SysFS); err != nil {
+				errs = append(errs, fmt.Sprintf("invalid sysfs path: %s: %s ", c.Host.SysFS, err.Error()))
+			}
+			if err := canReadDir(c.Host.ProcFS); err != nil {
+				errs = append(errs, fmt.Sprintf("invalid procfs path: %s: %s ", c.Host.ProcFS, err.Error()))
+			}
 		}
 	}
 
