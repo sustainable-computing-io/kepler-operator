@@ -43,9 +43,7 @@ import (
 
 	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/internal/controller"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/components/estimator"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/components/modelserver"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	//+kubebuilder:scaffold:imports
 )
@@ -113,8 +111,6 @@ func main() {
 	flag.StringVar(&controller.Config.Image, "kepler.image", keplerImage, "kepler image")
 	keplerRebootImg := os.Getenv("RELATED_IMAGE_KEPLER_REBOOT")
 	flag.StringVar(&controller.Config.RebootImage, "kepler-reboot.image", keplerRebootImg, "kepler reboot image")
-	flag.StringVar(&controller.InternalConfig.ModelServerImage, "estimator.image", estimator.StableImage, "kepler estimator image")
-	flag.StringVar(&controller.InternalConfig.EstimatorImage, "model-server.image", modelserver.StableImage, "kepler model server image")
 
 	opts := zap.Options{
 		Development: true,

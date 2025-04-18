@@ -132,7 +132,4 @@ func (f Framework) AssertInternalStatus(name string, fns ...AssertOptionFn) {
 	assert.NoError(f.T, err, "unable to get available condition")
 	assert.Equal(f.T, available.ObservedGeneration, ki.Generation)
 	assert.Equal(f.T, available.Status, v1alpha1.ConditionTrue)
-
-	f.AssertModelServerStatus(name, fns...)
-	f.AssertEstimatorStatus(name, fns...)
 }

@@ -1,3 +1,0 @@
-images:
-- component: 'model-server'
-  image: 'quay.io/sustainable_computing_io/kepler_model_server:v0.7.12'
