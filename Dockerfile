@@ -28,7 +28,7 @@ COPY internal/ internal/
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} \
   go build -a -o manager cmd/main.go
 
-FROM quay.io/openshift/origin-cli:4.13 AS origincli
+FROM quay.io/openshift/origin-cli:4.18 AS origincli
 
 FROM registry.access.redhat.com/ubi9-minimal:9.2
 RUN INSTALL_PKGS=" \
