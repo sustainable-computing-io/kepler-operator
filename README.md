@@ -1,34 +1,37 @@
-# kepler-operator
+# Kepler Operator
 
-Kepler Operator installs Kepler and all required manifests on Kubernetes/OpenShift
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-## Description
+Kepler Operator is a Kubernetes operator that automates the deployment and management of [Kepler](https://github.com/sustainable-computing-io/kepler) on Kubernetes and OpenShift clusters.
 
-[Kepler][kepler] (Kubernetes-based Efficient Power Level Exporter) is a Prometheus
+## What is Kepler?
+
+[Kepler](https://github.com/sustainable-computing-io/kepler) (Kubernetes-based Efficient Power Level Exporter) is a Prometheus
 exporter. It uses eBPF to probe CPU performance counters and Linux kernel
 tracepoints.
 
 These data and stats from cgroup and sysfs can then be fed into ML models to
 estimate energy consumption by Pods.
 
-Check out the project on GitHub ➡️ [Kepler][kepler]
+Check out the project on GitHub ➡️ [Kepler](https://github.com/sustainable-computing-io/kepler)
 
 ## Getting Started
 
-You’ll need a Kubernetes/OpenShift cluster to run against. You can use
-[KIND](https://sigs.k8s.io/kind) to get a local cluster for
-testing, or run against a remote cluster.
+You’ll need a Kubernetes or OpenShift cluster. For local testing, use [KIND](https://sigs.k8s.io/kind). Otherwise, connect to a remote cluster.
 
-**Note:** Your controller will automatically use the current context in your
-kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
+**Note:** The operator uses the current kubeconfig context (check with `kubectl cluster-info`).
 
-### To run a kind cluster locally
+### Using Kind Cluster
+
+To quickly set up a local environment with Kind:
 
 ```sh
 make cluster-up
 ```
 
-### Run kepler-operator locally out of cluster
+### Local Development
+
+To run the operator locally outside the cluster:
 
 ```sh
 make tools
@@ -36,7 +39,9 @@ make run
 kubectl apply -k config/samples/
 ```
 
-### Run kepler-operator on vanilla Kubernetes
+### On Vanilla Kubernetes
+
+Deploy the operator and its dependencies:
 
 ```sh
 make tools
@@ -46,63 +51,62 @@ make deploy
 kubectl apply -k config/samples/
 ```
 
-### Run using pre-published image
+### Using Pre-published Image
 
-You can use the image from [quay.io](https://quay.io/repository/sustainable_computing_io/kepler-operator?tab=tags) to deploy kepler-operator.
+You can use the pre-built image from quay.io:
 
 ```sh
-make deploy OPERATOR_IMG=quay.io/sustainable_computing_io/kepler-operator:latest
+make deploy OPERATOR_IMG=quay.io/sustainable_computing_io/kepler-operator:v1alpha1
 kubectl apply -k config/samples/
 ```
 
-Alternatively, if you like to build and use your own image,
+Alternatively, build and use your own image:
 
 ```sh
-make operator-build operator-push IMG_BASE=<some-registry>
-make deploy IMG=<some-registry>/kepler-operator:tag
+make operator-build operator-push IMG_BASE=<your-registry>
+make deploy IMG_BASE=<your-registry>/kepler-operator:<tag>
 kubectl apply -k config/samples/
 ```
 
-### Uninstall the operator
+### On OpenShift
 
-List the installed version and the related resources that will be
-deleted before uninstalling by running the uninstall script.
+Deploy the operator on OpenShift:
+
+```sh
+make tools
+make operator-build operator-push \
+     bundle bundle-build bundle-push \
+     IMG_BASE=<your-registry> VERSION=0.0.0-dev
+./tmp/bin/operator-sdk run bundle <your-registry>/kepler-operator-bundle:0.0.0-dev \
+  --install-mode AllNamespaces --namespace openshift-operators --skip-tls
+```
+
+## Uninstallation
+
+To list the installed resources before deletion:
 
 ```sh
 ./hack/uninstall-operator.sh
 ```
 
-Once the above is verified, uninstall the operator and all the related
-resources by specifying the `--delete` flag.
+To completely remove the operator and all related resources:
 
 ```sh
-./hack/uninstall-operator.sh  --delete
-
+./hack/uninstall-operator.sh --delete
 ```
 
-## Developer Docs
+## Developer Documentation
 
-[Developer Docs][dev-docs] can be found under [docs/developer][dev-docs]
-
-### Automated development environment
-
-If don't have a `go` development environment, or you just want a reproducible
-environment to start fresh, you can use [Docker Desktop](https://www.docker.com/products/docker-desktop/),
-[Visual Studio Code](https://code.visualstudio.com), and the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
-extension to bring up an environment with `go`, `docker`, `kind`, `kubectl`,
-`kustomize`, and `oc`.
-
-To activate this, open the project from the command line
-with `code .` and then press the **Reopen in Container** button when prompted.
-(See the [Developing inside a Container](https://code.visualstudio.com/docs/devcontainers/containers)
-documentation for more details).
+[Developer documentation](https://github.com/sustainable-computing-io/kepler-operator/tree/v1alpha1/docs/developer) is available for those who want to contribute to the codebase or understand its internals.
 
 ## Contributing
 
 You can contribute by:
 
-* Raising [issues](https://github.com/sustainable-computing-io/kepler-operator/issues) related to kepler-operator
+* Reporting [issues](https://github.com/sustainable-computing-io/kepler-operator/issues)
 * Fixing issues by opening [Pull Requests](https://github.com/sustainable-computing-io/kepler-operator/pulls)
+* Improving documentation
+* Sharing your success stories with Kepler
 
 ## License
 
@@ -112,13 +116,12 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+```text
+http://www.apache.org/licenses/LICENSE-2.0
+```
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
-[kepler]: https://github.com/sustainable-computing-io/kepler
-[dev-docs]: https://github.com/sustainable-computing-io/kepler-operator/tree/v1alpha1/docs/developer
