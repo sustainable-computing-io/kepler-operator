@@ -26,6 +26,10 @@ GOARCH := $(shell go env GOARCH)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= $(shell cat VERSION)
 
+BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
+GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null)
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null)
+
 KEPLER_VERSION ?=release-0.7.12
 KEPLER_REBOOT_VERSION ?=v0.0.4
 
@@ -47,6 +51,13 @@ KEPLER_REBOOT_IMG ?= $(KEPLER_REBOOT_IMG_BASE):$(KEPLER_REBOOT_VERSION)
 
 # E2E_TEST_IMG defines the image:tag used for the e2e test image
 E2E_TEST_IMG ?=$(IMG_BASE)/kepler-operator-e2e:$(VERSION)
+
+LDFLAGS=-ldflags "\
+	-X github.com/sustainable.computing.io/kepler-operator/pkg/version.version=$(VERSION) \
+	-X github.com/sustainable.computing.io/kepler-operator/pkg/version.buildTime=$(BUILD_TIME) \
+	-X github.com/sustainable.computing.io/kepler-operator/pkg/version.gitBranch=$(GIT_BRANCH) \
+	-X github.com/sustainable.computing.io/kepler-operator/pkg/version.gitCommit=$(GIT_COMMIT) \
+"
 
 .PHONY: fresh
 fresh: ## default target - sets up a k8s cluster with images ready for deployment
@@ -156,7 +167,7 @@ cluster-down: ## delete the local development cluster
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager ./cmd/...
+	CGO_ENABLED=0 go build $(LDFLAGS) -o bin/manager ./cmd/...
 
 OPENSHIFT ?= true
 RUN_ARGS ?=
@@ -215,8 +226,6 @@ endef
 operator-build: manifests generate test ## Build docker image with the manager.
 	go mod tidy
 	docker build -t $(OPERATOR_IMG) \
-		--build-arg TARGETOS=$(GOOS) \
-		--build-arg TARGETARCH=$(GOARCH) \
 		--platform=linux/$(GOARCH) .
 	$(call docker_tag,$(OPERATOR_IMG),$(ADDITIONAL_TAGS))
 

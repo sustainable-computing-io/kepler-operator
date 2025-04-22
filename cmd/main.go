@@ -45,6 +45,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/internal/controller"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/version"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -119,6 +120,13 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	// Log version info
+	v := version.Info()
+	setupLog.Info("Operator version info", "version",
+		v.Version, "buildTime", v.BuildTime, "gitBranch",
+		v.GitBranch, "gitCommit", v.GitCommit, "goVersion",
+		v.GoVersion, "goOS", v.GoOS, "goArch", v.GoArch)
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
