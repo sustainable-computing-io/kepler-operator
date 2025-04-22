@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -56,81 +55,8 @@ type OpenShiftSpec struct {
 
 // KeplerInternalSpec defines the desired state of KeplerInternal
 type KeplerInternalSpec struct {
-	Exporter    InternalExporterSpec     `json:"exporter"`
-	Estimator   *InternalEstimatorSpec   `json:"estimator,omitempty"`
-	ModelServer *InternalModelServerSpec `json:"modelServer,omitempty"`
-	OpenShift   OpenShiftSpec            `json:"openshift,omitempty"`
-}
-
-// Kepler Model Server Spec
-type InternalModelServerSpec struct {
-
-	// +kubebuilder:default=false
-	Enabled bool `json:"enabled,omitempty"`
-
-	Image string `json:"image,omitempty"`
-
-	// +kubebuilder:default=""
-	URL string `json:"url,omitempty"`
-
-	// +kubebuilder:default=8100
-	// +kubebuilder:validation:Maximum=65535
-	// +kubebuilder:validation:Minimum=1
-	Port int `json:"port,omitempty"`
-
-	// +kubebuilder:default=""
-	Path string `json:"path,omitempty"`
-
-	// +kubebuilder:default=""
-	RequestPath string `json:"requestPath,omitempty"`
-
-	// +kubebuilder:default=""
-	ListPath string `json:"listPath,omitempty"`
-
-	// +kubebuilder:default=""
-	PipelineURL string `json:"pipelineUrl,omitempty"`
-
-	// +kubebuilder:default=""
-	ErrorKey string `json:"errKey,omitempty"`
-
-	Storage ModelServerStorageSpec `json:"storage,omitempty"`
-}
-
-type ModelServerStorageSpec struct {
-	PersistentVolumeClaim *corev1.PersistentVolumeClaimSpec `json:"persistentVolumeClaim,omitempty"`
-}
-
-// Estimator Spec
-type InternalEstimatorSpec struct {
-	Image     string         `json:"image,omitempty"`
-	Node      EstimatorGroup `json:"node,omitempty"`
-	Container EstimatorGroup `json:"container,omitempty"`
-}
-
-func (e InternalEstimatorSpec) Enabled() bool {
-	return e.Node.Enabled() || e.Container.Enabled()
-}
-
-type EstimatorGroup struct {
-	Total      *EstimatorConfig `json:"total,omitempty"`
-	Components *EstimatorConfig `json:"components,omitempty"`
-}
-
-func (g EstimatorGroup) Enabled() bool {
-	return (g.Total != nil && g.Total.SidecarEnabled) || (g.Components != nil && g.Components.SidecarEnabled)
-}
-
-type EstimatorConfig struct {
-	// +kubebuilder:default=false
-	SidecarEnabled bool `json:"sidecar,omitempty"`
-
-	InitUrl  string             `json:"initUrl,omitempty"`
-	Selector *ModelSelectorSpec `json:"selector,omitempty"`
-}
-
-type ModelSelectorSpec struct {
-	ModelName        string `json:"modelName,omitempty"`
-	FilterConditions string `json:"filterConditions,omitempty"`
+	Exporter  InternalExporterSpec `json:"exporter"`
+	OpenShift OpenShiftSpec        `json:"openshift,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -147,8 +73,6 @@ type ModelSelectorSpec struct {
 // +kubebuilder:printcolumn:name="Image",type=string,JSONPath=`.spec.exporter.deployment.image`
 // +kubebuilder:printcolumn:name="Node-Selector",type=string,JSONPath=`.spec.exporter.deployment.nodeSelector`,priority=10
 // +kubebuilder:printcolumn:name="Tolerations",type=string,JSONPath=`.spec.exporter.deployment.tolerations`,priority=10
-// +kubebuilder:printcolumn:name="Estimator",type=string,JSONPath=`.status.estimator.status`
-// +kubebuilder:printcolumn:name="Model-Server",type=string,JSONPath=`.status.modelServer.status`
 //
 // KeplerInternal is the Schema for the keplers internal API
 type KeplerInternal struct {
@@ -169,17 +93,7 @@ const (
 
 // KeplerInternalStatus represents status of KeplerInternal
 type KeplerInternalStatus struct {
-	Exporter    ExporterStatus    `json:"exporter,omitempty"`
-	Estimator   EstimatorStatus   `json:"estimator,omitempty"`
-	ModelServer ModelServerStatus `json:"modelServer,omitempty"`
-}
-
-type EstimatorStatus struct {
-	Status DeploymentStatus `json:"status,omitempty"`
-}
-
-type ModelServerStatus struct {
-	Status DeploymentStatus `json:"status,omitempty"`
+	Exporter ExporterStatus `json:"exporter,omitempty"`
 }
 
 func (ki KeplerInternal) Namespace() string {
@@ -188,10 +102,6 @@ func (ki KeplerInternal) Namespace() string {
 
 func (ki KeplerInternal) DaemonsetName() string {
 	return ki.Name
-}
-
-func (ki KeplerInternal) ModelServerDeploymentName() string {
-	return ki.Name + "-model-server"
 }
 
 func (ki KeplerInternal) ServiceAccountName() string {

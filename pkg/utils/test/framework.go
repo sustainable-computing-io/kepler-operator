@@ -269,52 +269,6 @@ func (f Framework) WaitUntilInternalCondition(name string, t v1alpha1.ConditionT
 	return &k
 }
 
-func (f Framework) AssertEstimatorStatus(name string, fns ...AssertOptionFn) *v1alpha1.KeplerInternal {
-	f.T.Helper()
-	k := v1alpha1.KeplerInternal{}
-
-	f.WaitUntil(fmt.Sprintf("estimator for %s has expected status", name), func(ctx context.Context) (bool, error) {
-		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &k)
-		if errors.IsNotFound(err) {
-			return true, fmt.Errorf("kepler-internal %s is not found", name)
-		}
-
-		enabled := k.Spec.Estimator != nil && k.Spec.Estimator.Enabled()
-		expected := v1alpha1.DeploymentNotInstalled
-		if enabled {
-			expected = v1alpha1.DeploymentRunning
-		}
-
-		actual := k.Status.Estimator.Status
-		f.T.Logf("estimator is %t, expected: %s and actual %s", enabled, expected, actual)
-		return actual == expected, nil
-	}, fns...)
-	return &k
-}
-
-func (f Framework) AssertModelServerStatus(name string, fns ...AssertOptionFn) *v1alpha1.KeplerInternal {
-	f.T.Helper()
-	k := v1alpha1.KeplerInternal{}
-
-	f.WaitUntil(fmt.Sprintf("model-server for %s has expected status", name), func(ctx context.Context) (bool, error) {
-		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &k)
-		if errors.IsNotFound(err) {
-			return true, fmt.Errorf("kepler-internal %s is not found", name)
-		}
-
-		enabled := k.Spec.ModelServer != nil && k.Spec.ModelServer.Enabled
-		expected := v1alpha1.DeploymentNotInstalled
-		if enabled {
-			expected = v1alpha1.DeploymentRunning
-		}
-
-		actual := k.Status.ModelServer.Status
-		f.T.Logf("model-server is %t, expected: %s and actual %s", enabled, expected, actual)
-		return actual == expected, nil
-	}, fns...)
-	return &k
-}
-
 func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus) *v1alpha1.Kepler {
 	f.T.Helper()
 	k := v1alpha1.Kepler{}

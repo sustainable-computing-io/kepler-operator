@@ -24,8 +24,6 @@ import (
 
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/components/estimator"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/components/modelserver"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 
 	secv1 "github.com/openshift/api/security/v1"
@@ -95,23 +93,12 @@ func NewDaemonSet(detail components.Detail, k *v1alpha1.KeplerInternal) *appsv1.
 	exporterContainer := newExporterContainer(k.Name, k.DaemonsetName(), k.Spec.Exporter.Deployment)
 	containers := []corev1.Container{exporterContainer}
 
-	var volumes = []corev1.Volume{
+	volumes := []corev1.Volume{
 		k8s.VolumeFromHost("lib-modules", "/lib/modules"),
 		k8s.VolumeFromHost("tracing", "/sys"),
 		k8s.VolumeFromHost("proc", "/proc"),
 		k8s.VolumeFromConfigMap("cfm", k.Name),
 	} // exporter default Volumes
-
-	ms := k.Spec.ModelServer
-	if ms != nil && ms.Enabled {
-		addModelServerCommand(&exporterContainer, k.ModelServerDeploymentName(), k.Namespace(), ms)
-	}
-
-	if estimator.NeedsEstimatorSidecar(k.Spec.Estimator) {
-		// add sidecar container and update kepler-exporter container
-		// add shared volumes
-		containers, volumes = addEstimatorSidecar(k.Spec.Estimator.Image, &exporterContainer, volumes)
-	}
 
 	return &appsv1.DaemonSet{
 		TypeMeta: metav1.TypeMeta{
@@ -247,9 +234,6 @@ func NewConfigMap(d components.Detail, k *v1alpha1.KeplerInternal) *corev1.Confi
 	bindAddress := "0.0.0.0:" + strconv.Itoa(int(deployment.Port))
 
 	modelConfig := ""
-	if k.Spec.Estimator != nil {
-		modelConfig = estimator.ModelConfig(k.Spec.Estimator)
-	}
 
 	exporterConfigMap := k8s.StringMap{
 		"KEPLER_NAMESPACE":           k.Namespace(),
@@ -267,15 +251,6 @@ func NewConfigMap(d components.Detail, k *v1alpha1.KeplerInternal) *corev1.Confi
 		"CPU_ARCH_OVERRIDE":          "",
 		"CGROUP_METRICS":             "*",
 		"MODEL_CONFIG":               modelConfig,
-	}
-
-	ms := k.Spec.ModelServer
-	if ms != nil {
-		if ms.Enabled {
-			exporterConfigMap["MODEL_SERVER_ENABLE"] = "true"
-		}
-		modelServerConfig := modelserver.ConfigForClient(k.ModelServerDeploymentName(), k.Namespace(), k.Spec.ModelServer)
-		exporterConfigMap = exporterConfigMap.Merge(modelServerConfig)
 	}
 
 	return &corev1.ConfigMap{
@@ -409,7 +384,8 @@ func NewSCC(d components.Detail, ki *v1alpha1.KeplerInternal) *secv1.SecurityCon
 			secv1.FSType("secret"),
 			secv1.FSType("projected"),
 			secv1.FSType("emptyDir"),
-			secv1.FSType("hostPath")},
+			secv1.FSType("hostPath"),
+		},
 	}
 }
 
@@ -441,16 +417,17 @@ func NewService(k *v1alpha1.KeplerInternal) *corev1.Service {
 			Labels:    labels(k).ToMap(),
 		},
 		Spec: corev1.ServiceSpec{
-
 			ClusterIP: "None",
 			Selector:  podSelector(k),
-			Ports: []corev1.ServicePort{{
-				Name: ServicePortName,
-				Port: int32(deployment.Port),
-				TargetPort: intstr.IntOrString{
-					Type:   intstr.Int,
-					IntVal: int32(deployment.Port),
-				}},
+			Ports: []corev1.ServicePort{
+				{
+					Name: ServicePortName,
+					Port: int32(deployment.Port),
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: int32(deployment.Port),
+					},
+				},
 			},
 		},
 	}
@@ -492,9 +469,7 @@ func NewServiceMonitor(k *v1alpha1.KeplerInternal) *monv1.ServiceMonitor {
 	}
 }
 
-var (
-	promRuleInvalidChars = regexp.MustCompile(`[^a-zA-Z0-9]`)
-)
+var promRuleInvalidChars = regexp.MustCompile(`[^a-zA-Z0-9]`)
 
 func keplerRulePrefix(name string) string {
 	ruleName := promRuleInvalidChars.ReplaceAllString(name, "_")
@@ -642,13 +617,15 @@ func newExporterContainer(kiName, dsName string, deployment v1alpha1.InternalExp
 			InitialDelaySeconds: 10,
 			PeriodSeconds:       60,
 			SuccessThreshold:    1,
-			TimeoutSeconds:      10},
+			TimeoutSeconds:      10,
+		},
 		Env: []corev1.EnvVar{
 			{Name: "NODE_IP", ValueFrom: k8s.EnvFromField("status.hostIP")},
 			{Name: "NODE_NAME", ValueFrom: k8s.EnvFromField("spec.nodeName")},
 			{Name: "KEPLER_LOG_LEVEL", ValueFrom: k8s.EnvFromConfigMap("KEPLER_LOG_LEVEL", kiName)},
 			{Name: "ENABLE_GPU", ValueFrom: k8s.EnvFromConfigMap("ENABLE_GPU", kiName)},
-			{Name: "ENABLE_EBPF_CGROUPID", ValueFrom: k8s.EnvFromConfigMap("ENABLE_EBPF_CGROUPID", kiName)}},
+			{Name: "ENABLE_EBPF_CGROUPID", ValueFrom: k8s.EnvFromConfigMap("ENABLE_EBPF_CGROUPID", kiName)},
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "lib-modules", MountPath: "/lib/modules", ReadOnly: true},
 			{Name: "tracing", MountPath: "/sys", ReadOnly: true},
@@ -656,22 +633,4 @@ func newExporterContainer(kiName, dsName string, deployment v1alpha1.InternalExp
 			{Name: "cfm", MountPath: "/etc/kepler/kepler.config"},
 		},
 	}
-}
-
-func addEstimatorSidecar(estimatorImage string, exporterContainer *corev1.Container, volumes []corev1.Volume) ([]corev1.Container, []corev1.Volume) {
-	sidecarContainer := estimator.Container(estimatorImage)
-	volumes = append(volumes, estimator.Volumes()...)
-	// NOTE: if the exporter has arguments (e.g., for an estimator with model server deployment),
-	// update the exporter's container command with the arguments. This allows AddEstimatorDependency
-	// to append the necessary socket wait command to the arguments
-	if exporterContainer.Args != nil {
-		exporterContainer.Command = exporterContainer.Args
-	}
-	exporterContainer = estimator.AddEstimatorDependency(exporterContainer)
-	containers := []corev1.Container{*exporterContainer, sidecarContainer}
-	return containers, volumes
-}
-
-func addModelServerCommand(exporterContainer *corev1.Container, deployName, deployNamespace string, ms *v1alpha1.InternalModelServerSpec) {
-	modelserver.AddModelServerDependency(exporterContainer, deployName, deployNamespace, ms)
 }
