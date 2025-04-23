@@ -3,4 +3,4 @@ commonLabels:
   sustainable-computing.io/app: kepler
 
 resources:
-- 01-grafana-operator.yaml
+  - 01-grafana-operator.yaml

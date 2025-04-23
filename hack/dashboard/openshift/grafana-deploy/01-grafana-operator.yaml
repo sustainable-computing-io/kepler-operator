@@ -5,7 +5,7 @@ metadata:
   name: kepler-grafana
 spec:
   targetNamespaces:
-  - kepler-grafana
+    - kepler-grafana
   upgradeStrategy: Default
 ---
 apiVersion: operators.coreos.com/v1alpha1
@@ -19,4 +19,3 @@ spec:
   source: community-operators
   sourceNamespace: openshift-marketplace
   startingCSV: grafana-operator.v5.15.1
-  

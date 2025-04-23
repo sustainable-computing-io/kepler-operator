@@ -67,7 +67,7 @@ fresh: ## default target - sets up a k8s cluster with images ready for deploymen
 		bundle bundle-build \
 		bundle-push \
 		IMG_BASE=localhost:5001 VERSION=0.0.0-dev ;\
-	
+
 	@echo -e '\n        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
 	@echo -e ' 🎊  Operator has been successfully built and deployed! 🎊 \n'
 	@kubectl cluster-info

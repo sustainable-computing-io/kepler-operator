@@ -8,21 +8,21 @@ metadata:
   name: prometheus-grafanadatasource
 spec:
   datasource:
-      access: proxy
-      editable: true
-      isDefault: true
-      jsonData:
-        httpHeaderName1: 'Authorization'
-        timeInterval: 5s
-        tlsSkipVerify: true
-      name: prometheus
-      secureJsonData:
-        # Update bearer token to match your environment
-        httpHeaderValue1: 'Bearer ${BEARER_TOKEN}'
-      type: prometheus
-      url: 'https://thanos-querier.openshift-monitoring.svc.cluster.local:9091'
-  name: prometheus-grafanadatasource.yaml
-  # The spec.instanceSelectors field is used to tell the operator which Grafana instance the resource applies to.
-  instanceSelector:
-    matchLabels:
-      dashboards: kepler-grafana
+    access: proxy
+    editable: true
+    isDefault: true
+    jsonData:
+      httpHeaderName1: Authorization
+      timeInterval: 5s
+      tlsSkipVerify: true
+    name: prometheus
+    secureJsonData:
+      # Update bearer token to match your environment
+      httpHeaderValue1: Bearer ${BEARER_TOKEN}
+    type: prometheus
+    url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
+name: prometheus-grafanadatasource.yaml
+# The spec.instanceSelectors field is used to tell the operator which Grafana instance the resource applies to.
+instanceSelector:
+  matchLabels:
+    dashboards: kepler-grafana

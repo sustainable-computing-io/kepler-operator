@@ -181,8 +181,8 @@ show_restore_info() {
 	warn "😱 In the event cluster-monitoring-operator becomes 👉 degraded  😱"
 	cat <<-EOF
 
-		  * Restore the configuration $BACKUP_CMO_CFG 
-		  * Manually enable User Project Monitoring 
+		  * Restore the configuration $BACKUP_CMO_CFG
+		  * Manually enable User Project Monitoring
 			  💡 see: $UWM_URL
 		  * Rerun this script
 
@@ -310,7 +310,7 @@ show_key_info() {
 	# disable use find instead of ls
 	# shellcheck disable=SC2012
 	[[ -d "$BACKUP_DIR" ]] && cat <<-EOF
-		  📦 Cluster Monitoring Configuration 
+		  📦 Cluster Monitoring Configuration
 			    Backup Directory: $BACKUP_DIR
 			$(ls "$BACKUP_DIR" | sed -e "s|^|      • |g")
 	EOF

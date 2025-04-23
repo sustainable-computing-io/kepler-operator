@@ -12,4 +12,3 @@ patches:
       - op: add
         path: /spec/template/spec/containers/0/args/0
         value: --deployment-namespace=kepler
-

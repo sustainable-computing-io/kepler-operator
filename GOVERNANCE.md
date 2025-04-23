@@ -14,15 +14,16 @@ The current list of technical committee members is published and updated in [Con
 
 ### Becoming a Technical Committee Member
 
-Proficient in one or more of the following areas: 
+Proficient in one or more of the following areas:
+
 * Developing and maintaining Kepler Operator deployment and integration
 * Developing and maintaining test suites
 * Developing and maintaining CI infra
 * Maintaining documentation.
 
-# Responsibilities
+## Responsibilities
 
-## Maintainer's Responsibilities
+### Maintainer's Responsibilities
 
 Responsibilities include:
 
@@ -31,15 +32,15 @@ Responsibilities include:
 * Contribute non-trivial pull requests
 * Actively attend the community meetings
 * Perform code reviews on other's pull requests
-* Regularly triage GitHub issues. 
+* Regularly triage GitHub issues.
 * Make sure that ongoing PRs are moving forward at the right pace or closing them
 * Monitor Kepler Slack (delayed response is perfectly acceptable), particularly for the area of your expertise
 
-## Reviewer's Responsibilities
+### Reviewer's Responsibilities
 
 Responsibilities include:
 
 * Perform code reviews on other's pull requests
-* Regularly triage GitHub issues. 
+* Regularly triage GitHub issues.
 * Make sure that ongoing PRs are moving forward at the right pace or closing them
 * Monitor Kepler Slack (delayed response is perfectly acceptable), particularly for the area of your expertise

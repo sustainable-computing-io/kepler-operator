@@ -1,22 +1,22 @@
 name: Build and Publish Images
-description: "Publishes operator and bundle images to an Image Registry"
+description: Publishes operator and bundle images to an Image Registry
 inputs:
   image_registry:
-    description: "image registry"
+    description: image registry
     required: true
   registry_login:
-    description: "registry username"
+    description: registry username
     required: true
   registry_token:
-    description: "registry token"
+    description: registry token
     required: true
 
   version:
-    description: "operator version"
+    description: operator version
     required: true
 
   additional_tags:
-    description: "additional tags for container images"
+    description: additional tags for container images
     required: false
 runs:
   using: composite
@@ -32,7 +32,7 @@ runs:
 
     - name: Login to Image Registry
       uses: docker/login-action@v2
-      if: "!startsWith(inputs.image_registry, 'localhost')"
+      if: "!startsWith(inputs.image_registry, 'localhost')" # yamllint disable-line rule:quoted-strings
       with:
         registry: ${{ inputs.image_registry }}
         username: ${{ inputs.registry_login }}
@@ -69,7 +69,7 @@ runs:
 
     - name: Push Images
       shell: bash
-      if: "!startsWith(inputs.image_registry, 'localhost')"
+      if: "!startsWith(inputs.image_registry, 'localhost')" # yamllint disable-line rule:quoted-strings
       run: |
         make operator-push  bundle-push
       env:
