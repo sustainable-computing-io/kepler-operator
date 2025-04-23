@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 The Kepler Authors
+// SPDX-License-Identifier: Apache-2.0
+
 package exporter
 
 import (
@@ -12,7 +15,6 @@ import (
 )
 
 func TestNodeSelection(t *testing.T) {
-
 	tt := []struct {
 		spec     v1alpha1.InternalExporterSpec
 		selector map[string]string
@@ -52,7 +54,6 @@ func TestNodeSelection(t *testing.T) {
 }
 
 func TestTolerations(t *testing.T) {
-
 	tt := []struct {
 		spec        v1alpha1.InternalExporterSpec
 		tolerations []corev1.Toleration
