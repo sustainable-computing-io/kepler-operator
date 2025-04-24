@@ -20,7 +20,7 @@ declare -r OPERATOR_RELEASED_BUNDLE="quay.io/sustainable_computing_io/$OPERATOR-
 declare -r TEST_IMAGES_YAML="tests/images.yaml"
 
 declare IMG_BASE="${IMG_BASE:-localhost:5001/$OPERATOR}"
-# NOTE: this vars are iniitialized in init_operator_img
+# NOTE: this vars are initialized in init_operator_img
 declare OPERATOR_IMG=""
 declare BUNDLE_IMG=""
 
@@ -216,7 +216,7 @@ run_e2e() {
 	# terminate both log_events
 	{ jobs -p | xargs -I {} -- pkill -TERM -P {}; } || true
 	wait
-	sleep 1 #  wait for the Termiated logs to be written
+	sleep 1 #  wait for the Terminated logs to be written
 
 	if [[ "$ret" -ne 0 ]]; then
 		# logging of errors may not be immediate, so it is better to read logs again

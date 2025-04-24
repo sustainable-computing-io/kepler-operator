@@ -29,7 +29,7 @@ jobs:
       - name: Install all tools
         uses: ./.github/tools-cache
       - name: make fmt
-        run:  make fmt && git diff --exit-code
+        run: make fmt && git diff --exit-code
 
   escapes_detect:
     runs-on: ubuntu-latest
@@ -81,6 +81,18 @@ jobs:
       - name: run vulnerability detect
         run: make check-govuln
 
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v3
+
+      - name: Setup Pre-Commit
+        uses: pre-commit/action@v3.0.1
+
   bundle:
     needs: [docs, golangci, fmt, vulnerability_detect, escapes_detect]
     runs-on: ubuntu-latest
@@ -121,16 +133,16 @@ jobs:
       - name: build images for PR checks
         uses: ./.github/publish-images
         with:
-          image_registry: "localhost:5001"
+          image_registry: localhost:5001
           version: ${{ steps.version.outputs.version }}
           additional_tags: ${{ steps.additional_tags.outputs.result }}
 
   operator-upgrade:
-    needs: [build-images,bundle]
+    needs: [build-images, bundle]
     env:
-      KIND_VERSION: "0.15.0"
-      GO111MODULE: "on"
-      OPERATOR_IMAGE: "quay.io/sustainable_computing_io/kepler-operator"
+      KIND_VERSION: 0.15.0
+      GO111MODULE: on
+      OPERATOR_IMAGE: quay.io/sustainable_computing_io/kepler-operator
       KUBECONFIG: /tmp/.kube/config
       KIND_WORKER_NODES: 2
 
@@ -191,9 +203,9 @@ jobs:
   e2e:
     needs: [operator-upgrade]
     env:
-      KIND_VERSION: "0.15.0"
-      GO111MODULE: "on"
-      OPERATOR_IMAGE: "quay.io/sustainable_computing_io/kepler-operator"
+      KIND_VERSION: 0.15.0
+      GO111MODULE: on
+      OPERATOR_IMAGE: quay.io/sustainable_computing_io/kepler-operator
       KUBECONFIG: /tmp/.kube/config
       KIND_WORKER_NODES: 2
     name: e2e

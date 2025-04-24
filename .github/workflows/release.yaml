@@ -4,12 +4,12 @@ on:
     # Inputs the workflow accepts.
     inputs:
       tag:
-        description: "Tag name, e.g. 0.8.0"
-        default: ""
+        description: Tag name, e.g. 0.8.0
+        default:
         required: true
       version-replace:
-        description: "Version to be replaced in bundle, e.g. 0.7.3"
-        default: ""
+        description: Version to be replaced in bundle, e.g. 0.7.3
+        default:
         required: true
 
 jobs:
@@ -88,8 +88,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: "v${{ github.event.inputs.tag }}"
-          release_name: "release-${{github.event.inputs.tag}}"
+          tag_name: v${{ github.event.inputs.tag }}
+          release_name: release-${{github.event.inputs.tag}}
           draft: false
           prerelease: false
 
@@ -105,5 +105,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          branch: "release-${{github.event.inputs.tag}}"
-          sha: "${{ github.event.pull_request.head.sha }}"
+          branch: release-${{github.event.inputs.tag}}
+          sha: ${{ github.event.pull_request.head.sha }}

@@ -1,7 +1,7 @@
 
 # Code Organization
 
-```
+```sh
 🏠 kepler-operator
 │
 ├── automation       👈  ⚙️  CI related scripts
@@ -13,7 +13,7 @@
 │   └── tests
 │
 ├── docs
-│   ├── developer    👈 developer / contributor (design) docs 
+│   ├── developer    👈 developer / contributor (design) docs
 │   └── user-guides
 │
 ├── config           👈 configuration is used to generate the bundle
@@ -53,14 +53,12 @@
     └── bin          👈  all binaries are installed to `tmp/bin` (make tools)
 ```
 
-
 # How do I get started ?
 
 * Knowledge of Kubernetes
-	- API
-	- Controller Generator
+  * API
+  * Controller Generator
 
-* Kube Builder Book: https://book.kubebuilder.io/
-* Operator SDK Getting Started: https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/
-* Kubernetes Programming Book: https://www.oreilly.com/library/view/programming-kubernetes/9781492047094/
-
+* Kube Builder Book: <https://book.kubebuilder.io/>
+* Operator SDK Getting Started: <https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/>
+* Kubernetes Programming Book: <https://www.oreilly.com/library/view/programming-kubernetes/9781492047094/>

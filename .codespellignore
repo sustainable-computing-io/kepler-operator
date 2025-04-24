@@ -1,0 +1,12 @@
+# Common Go terms that might be flagged incorrectly
+errcheck
+funcs
+gofmt
+golint
+govet
+inout
+syscall
+thay
+showIn
+NotIn
+Bu

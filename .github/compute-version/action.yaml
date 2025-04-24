@@ -2,7 +2,7 @@ name: Compute Version
 description: computes version of the operator
 outputs:
   version:
-    description: "operator version"
+    description: operator version
     value: ${{ steps.version.outputs.version }}
 runs:
   using: composite

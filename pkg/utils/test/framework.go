@@ -58,12 +58,6 @@ func NewFramework(t *testing.T, fns ...frameworkFn) *Framework {
 	return &f
 }
 
-func (f Framework) WithT(t *testing.T) Framework {
-	dup := f
-	dup.T = t
-	return dup
-}
-
 func WithClient(c client.Client) frameworkFn {
 	return func(f *Framework) {
 		f.client = c

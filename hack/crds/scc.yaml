@@ -295,7 +295,7 @@ spec:
           seccompProfiles:
             description: "SeccompProfiles lists the allowed profiles that may be set
               for the pod or container's seccomp annotations.  An unset (nil) or empty
-              value means that no profiles may be specifid by the pod or container.\tThe
+              value means that no profiles may be specified by the pod or container.\tThe
               wildcard '*' may be used to allow all profiles.  When used to generate
               a value for a pod the first non-wildcard profile will be used as the
               default."
