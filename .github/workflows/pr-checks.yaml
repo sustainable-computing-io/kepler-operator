@@ -93,6 +93,22 @@ jobs:
       - name: Setup Pre-Commit
         uses: pre-commit/action@v3.0.1
 
+  codecov-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+
+      - uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+      - name: Install all tools
+        uses: ./.github/tools-cache
+
+      - name: Run codecov-upload
+        uses: ./.github/codecov-upload
+        with:
+          codecov_token: ${{ secrets.CODECOV_TOKEN }}
+
   bundle:
     needs: [docs, golangci, fmt, vulnerability_detect, escapes_detect]
     runs-on: ubuntu-latest
