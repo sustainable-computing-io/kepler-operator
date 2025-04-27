@@ -15,5 +15,5 @@ runs:
       uses: codecov/codecov-action@v5.4.0
       with:
         fail_ci_if_error: true
-        files: ./cov.out
+        files: ./cover.out
         token: ${{ inputs.codecov_token }}
