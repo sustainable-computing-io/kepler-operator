@@ -124,6 +124,10 @@ vet: ## Run go vet against code.
 test:  fmt vet  ## Run tests.
 		go test ./pkg/... -coverprofile cover.out
 
+.PHONY: coverage
+coverage: test ## Run tests and generate coverage report.
+	go tool cover -html=cover.out -o cover.html
+
 .PHONY: docs
 docs: crdoc manifests ## Generate docs.
 	$(CRDOC) --resources config/crd/bases --output docs/api.md
