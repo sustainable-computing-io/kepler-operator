@@ -188,3 +188,15 @@ func AllowsFromSCC(SCC *secv1.SecurityContextConstraints) SCCAllows {
 		AllowHostPorts:           SCC.AllowHostPorts,
 	}
 }
+
+func PortsFromService(s *corev1.Service) []corev1.ServicePort {
+	return s.Spec.Ports
+}
+
+func DataFromConfigMap(cm *corev1.ConfigMap) map[string]string {
+	return cm.Data
+}
+
+func LabelsFromConfigMap(cm *corev1.ConfigMap) map[string]string {
+	return cm.Labels
+}
