@@ -31,7 +31,7 @@ GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null)
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null)
 
 KEPLER_VERSION ?=release-0.7.12
-KEPLER_REBOOT_VERSION ?=v0.0.5
+KEPLER_REBOOT_VERSION ?=v0.0.4
 
 # IMG_BASE and KEPLER_IMG_BASE are set to distinguish between Operator-specific images and Kepler-Specific images.
 # IMG_BASE is used for building and pushing operator related images.
@@ -170,7 +170,7 @@ cluster-down: ## delete the local development cluster
 ##@ Build
 
 .PHONY: build
-build: manifests generate ## Build manager binary.
+build: manifests generate fmt vet ## Build manager binary.
 	CGO_ENABLED=0 go build $(LDFLAGS) -o bin/manager ./cmd/...
 
 OPENSHIFT ?= true

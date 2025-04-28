@@ -1,0 +1,312 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Power Monitor Info",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 8,
+  "iteration": 1695643949328,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "dark-blue"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 19,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+              "desc": true,
+              "displayName": "Instance"
+          }
+        ]
+      },
+      "pluginVersion": "8.5.1",
+      "span": 6,
+      "styles": [
+        {
+          "alias": "Time",
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "format": "table",
+          "pattern": "Time",
+          "type": "hidden"
+        },
+        {
+          "alias": "Architecture",
+          "colors": [],
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "arch",
+          "thresholds": [],
+          "type": "string",
+          "unit": "short"
+        },
+        {
+          "alias": "Go Version",
+          "colors": [],
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "goversion",
+          "thresholds": [],
+          "type": "string",
+          "unit": "short"
+        },
+        {
+          "alias": "Revision",
+          "colors": [],
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "revision",
+          "thresholds": [],
+          "type": "string",
+          "unit": "short"
+        },
+        {
+          "alias": "Version",
+          "colors": [],
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "version",
+          "thresholds": [],
+          "type": "string",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "To6-2So4k"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max(kepler_build_info{container=~\"power-monitor\"}) by (arch, goversion, revision, version)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Node - Kepler Build Info",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "dark-blue"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 15,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Core ID"
+          }
+        ]
+      },
+      "pluginVersion": "8.5.1",
+      "styles": [
+        {
+          "alias": "Time",
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "format": "table",
+          "pattern": "Time",
+          "type": "hidden"
+        },
+        {
+          "alias": "Core ID",
+          "colors": [],
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "core_id",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "Instance",
+          "colors": [],
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "instance",
+          "thresholds": [],
+          "type": "string",
+          "unit": "short"
+        },
+        {
+          "alias": "Model Name",
+          "colors": [],
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "model_name",
+          "thresholds": [],
+          "type": "string",
+          "unit": "short"
+        },
+        {
+          "alias": "Vendor ID",
+          "colors": [],
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "vendor_id",
+          "thresholds": [],
+          "type": "string",
+          "unit": "short"
+        },
+        {
+          "alias": "Count",
+          "colors": [],
+          "decimals": 0,
+          "link": true,
+          "linkTargetBlank": false,
+          "pattern": "Value #A",
+          "thresholds": [],
+          "type": "hidden",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "group(kepler_cpu_info{container=~\"power-monitor\"}) by (core_id, instance, model_name, vendor_id)",
+          "format": "table",
+          "interval": "",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Node - Kepler CPU Info",
+      "type": "table"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": [
+    "power-monitor-mixin"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "prometheus",
+          "value": "prometheus"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Power Monitor / Info",
+  "uid": "125cb5f5fdbea19c3067b2b34e897ad5d2b40a52",
+  "version": 4,
+  "weekStart": ""
+}

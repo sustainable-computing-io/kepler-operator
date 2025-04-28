@@ -153,6 +153,23 @@ func openshiftPowerMonitorClusterResources(pmi *v1alpha1.PowerMonitorInternal, c
 	}
 }
 
+func openshiftPowerMonitorNamespacedResources(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Cluster) []client.Object {
+	oshift := pmi.Spec.OpenShift
+
+	if cluster != k8s.OpenShift || !oshift.Enabled {
+		return nil
+	}
+
+	res := []client.Object{}
+	if oshift.Dashboard.Enabled {
+		res = append(res,
+			powermonitor.NewPowerMonitorNodeDashboard(components.Full),
+			powermonitor.NewPowerMonitorInfoDashboard(components.Full),
+		)
+	}
+	return res
+}
+
 func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Cluster) []reconciler.Reconciler {
 	if cleanup := !pmi.DeletionTimestamp.IsZero(); cleanup {
 		rs := resourceReconcilers(
@@ -162,8 +179,7 @@ func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Clust
 			powermonitor.NewPowerMonitorClusterRoleBinding(components.Metadata, pmi),
 			powermonitor.NewPowerMonitorClusterRole(components.Metadata, pmi),
 		)
-		// no openshift namespaced resources for now
-		// rs = append(rs, resourceReconcilers(deleteResource, openshiftNamespacedResources(ki, cluster)...)...)
+		rs = append(rs, resourceReconcilers(deleteResource, openshiftPowerMonitorNamespacedResources(pmi, cluster)...)...)
 		return rs
 	}
 
@@ -181,7 +197,7 @@ func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Clust
 		powermonitor.NewPowerMonitorServiceAccount(pmi),
 		powermonitor.NewPowerMonitorService(pmi),
 		powermonitor.NewPowerMonitorServiceMonitor(pmi),
-		// powermonitor.NewPowerMonitorPrometheusRule(kx), do not include until metrics are made available
+		// powermonitor.NewPowerMonitorPrometheusRule(kx), prometheus rule is not necessary at the moment
 	)...)
 
 	rs = append(rs, resourceReconcilers(updateResource,
@@ -189,7 +205,7 @@ func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Clust
 		powermonitor.NewPowerMonitorConfigMap(components.Full, pmi), // will regenerate logs from spec
 		powermonitor.NewPowerMonitorDaemonSet(components.Full, pmi),
 	)...)
-	// rs = append(rs, resourceReconcilers(updateResource, openshiftNamespacedResources(ki, cluster)...)...)
+	rs = append(rs, resourceReconcilers(updateResource, openshiftPowerMonitorNamespacedResources(pmi, cluster)...)...)
 	return rs
 }
 
@@ -347,7 +363,7 @@ func updatePowerMonitorCondition(conditions []v1alpha1.Condition, latest v1alpha
 }
 
 func (r PowerMonitorInternalReconciler) updatePowerMonitorAvailableStatus(ctx context.Context, pmi *v1alpha1.PowerMonitorInternal, recErr error, time metav1.Time) bool {
-	// get daemonset owned by kepler
+	// get daemonset owned by powermonitor
 	dset := appsv1.DaemonSet{}
 	key := types.NamespacedName{Name: pmi.DaemonsetName(), Namespace: pmi.Namespace()}
 	if err := r.Client.Get(ctx, key, &dset); err != nil {
