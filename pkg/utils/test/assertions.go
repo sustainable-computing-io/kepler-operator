@@ -120,3 +120,19 @@ func (f Framework) AssertInternalStatus(name string, fns ...AssertOptionFn) {
 	assert.Equal(f.T, available.ObservedGeneration, ki.Generation)
 	assert.Equal(f.T, available.Status, v1alpha1.ConditionTrue)
 }
+
+func (f Framework) AssertPowerMonitorInternalStatus(name string, fns ...AssertOptionFn) {
+	pmi := f.WaitUntilPowerMonitorInternalCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionTrue, fns...)
+	assert.Equal(f.T, []corev1.Toleration{{Operator: "Exists"}}, pmi.Spec.Kepler.Deployment.Tolerations)
+
+	reconciled, err := k8s.FindCondition(pmi.Status.Kepler.Conditions, v1alpha1.Reconciled)
+	assert.NoError(f.T, err, "unable to get reconciled condition")
+	assert.Equal(f.T, reconciled.ObservedGeneration, pmi.Generation)
+	assert.Equal(f.T, reconciled.Status, v1alpha1.ConditionTrue)
+
+	pmi = f.WaitUntilPowerMonitorInternalCondition(name, v1alpha1.Available, v1alpha1.ConditionTrue, fns...)
+	available, err := k8s.FindCondition(pmi.Status.Kepler.Conditions, v1alpha1.Available)
+	assert.NoError(f.T, err, "unable to get available condition")
+	assert.Equal(f.T, available.ObservedGeneration, pmi.Generation)
+	assert.Equal(f.T, available.Status, v1alpha1.ConditionTrue)
+}

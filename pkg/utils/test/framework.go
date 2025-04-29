@@ -93,8 +93,10 @@ func (f Framework) NewClient(scheme *runtime.Scheme) client.Client {
 }
 
 type (
-	internalFn func(*v1alpha1.KeplerInternal)
-	keplerFn   func(*v1alpha1.Kepler)
+	internalFn             func(*v1alpha1.KeplerInternal)
+	powermonitorinternalFn func(*v1alpha1.PowerMonitorInternal)
+	keplerFn               func(*v1alpha1.Kepler)
+	powermonitorFn         func(*v1alpha1.PowerMonitor)
 )
 
 func WithExporterPort(port int32) keplerFn {
@@ -266,6 +268,162 @@ func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionTyp
 	return &k
 }
 
+func (f Framework) GetPowerMonitor(name string) *v1alpha1.PowerMonitor {
+	pm := v1alpha1.PowerMonitor{}
+	f.AssertResourceExists(name, "", &pm)
+	return &pm
+}
+
+func (f Framework) NewPowerMonitor(name string, fns ...powermonitorFn) v1alpha1.PowerMonitor {
+	pm := v1alpha1.PowerMonitor{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1alpha1.GroupVersion.String(),
+			Kind:       "PowerMonitor",
+		},
+
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1alpha1.PowerMonitorSpec{},
+	}
+
+	for _, fn := range fns {
+		fn(&pm)
+	}
+	return pm
+}
+
+func (f Framework) CreatePowerMonitor(name string, fns ...powermonitorFn) *v1alpha1.PowerMonitor {
+	pm := f.NewPowerMonitor(name, fns...)
+	f.T.Logf("%s: creating/updating powermonitor %s", time.Now().UTC().Format(time.RFC3339), name)
+	err := f.client.Patch(context.TODO(), &pm, client.Apply,
+		client.ForceOwnership, client.FieldOwner("e2e-test"),
+	)
+	assert.NoError(f.T, err, "failed to create powermonitor")
+
+	f.T.Cleanup(func() {
+		f.DeletePowerMonitor(name)
+	})
+
+	return &pm
+}
+
+func (f Framework) DeletePowerMonitor(name string) {
+	f.T.Helper()
+
+	pm := v1alpha1.PowerMonitor{}
+	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &pm)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get powermonitor :%s", name)
+
+	f.T.Logf("%s: deleting powermonitor %s", time.Now().UTC().Format(time.RFC3339), name)
+
+	err = f.client.Delete(context.Background(), &pm)
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete powermonitor:%s :%v", name, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("powermonitor %s is deleted", name), func(ctx context.Context) (bool, error) {
+		pm := v1alpha1.PowerMonitor{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &pm)
+		return errors.IsNotFound(err), nil
+	})
+}
+
+func (f Framework) GetPowerMonitorInternal(name string) *v1alpha1.PowerMonitorInternal {
+	pmi := v1alpha1.PowerMonitorInternal{}
+	f.AssertResourceExists(name, "", &pmi)
+	return &pmi
+}
+
+func (f Framework) CreatePowerMonitorInternal(name string, fns ...powermonitorinternalFn) *v1alpha1.PowerMonitorInternal {
+	pmi := v1alpha1.PowerMonitorInternal{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1alpha1.GroupVersion.String(),
+			Kind:       "PowerMonitorInternal",
+		},
+
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1alpha1.PowerMonitorInternalSpec{},
+	}
+
+	for _, fn := range fns {
+		fn(&pmi)
+	}
+
+	f.T.Logf("%s: creating/updating power-monitor-internal %s", time.Now().UTC().Format(time.RFC3339), name)
+	err := f.client.Patch(context.TODO(), &pmi, client.Apply,
+		client.ForceOwnership, client.FieldOwner("e2e-test"),
+	)
+	assert.NoError(f.T, err, "failed to create power-monitor-internal")
+
+	f.T.Cleanup(func() {
+		f.DeletePowerMonitorInternal(name, Timeout(5*time.Minute))
+	})
+
+	return &pmi
+}
+
+func (f Framework) DeletePowerMonitorInternal(name string, fns ...AssertOptionFn) {
+	f.T.Helper()
+
+	pmi := v1alpha1.PowerMonitorInternal{}
+	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &pmi)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get power-monitor-internal :%s", name)
+
+	f.T.Logf("%s: deleting power-monitor-internal %s", time.Now().UTC().Format(time.RFC3339), name)
+
+	err = f.client.Delete(context.Background(), &pmi)
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete power-monitor-internal:%s :%v", name, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("power-monitor-internal %s is deleted", name), func(ctx context.Context) (bool, error) {
+		pmi := v1alpha1.PowerMonitorInternal{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &pmi)
+		return errors.IsNotFound(err), nil
+	}, fns...)
+}
+
+func (f Framework) WaitUntilPowerMonitorInternalCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus, fns ...AssertOptionFn) *v1alpha1.PowerMonitorInternal {
+	f.T.Helper()
+	pmi := v1alpha1.PowerMonitorInternal{}
+	f.WaitUntil(fmt.Sprintf("power-monitor-internal %s is %s", name, t),
+		func(ctx context.Context) (bool, error) {
+			err := f.client.Get(ctx, client.ObjectKey{Name: name}, &pmi)
+			if errors.IsNotFound(err) {
+				return true, fmt.Errorf("power-monitor-internal %s is not found", name)
+			}
+
+			condition, _ := k8s.FindCondition(pmi.Status.Kepler.Conditions, t)
+			return condition.Status == s, nil
+		}, fns...)
+	return &pmi
+}
+
+func (f Framework) WaitUntilPowerMonitorCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus) *v1alpha1.PowerMonitor {
+	f.T.Helper()
+	pm := v1alpha1.PowerMonitor{}
+	f.WaitUntil(fmt.Sprintf("powermonitor %s is %s", name, t),
+		func(ctx context.Context) (bool, error) {
+			err := f.client.Get(ctx, client.ObjectKey{Name: name}, &pm)
+			if errors.IsNotFound(err) {
+				return true, fmt.Errorf("powermonitor %s is not found", name)
+			}
+
+			condition, _ := k8s.FindCondition(pm.Status.Kepler.Conditions, t)
+			return condition.Status == s, nil
+		})
+	return &pm
+}
+
 func (f Framework) AddResourceLabels(kind, name string, l map[string]string) error {
 	f.T.Helper()
 	b := new(bytes.Buffer)
@@ -301,6 +459,12 @@ func (f Framework) WithNodeSelector(label map[string]string) func(k *v1alpha1.Ke
 	}
 }
 
+func (f Framework) WithPowerMonitorNodeSelector(label map[string]string) func(k *v1alpha1.PowerMonitor) {
+	return func(pm *v1alpha1.PowerMonitor) {
+		pm.Spec.Kepler.Deployment.NodeSelector = label
+	}
+}
+
 func (f Framework) TaintNode(node, taintStr string) error {
 	f.T.Helper()
 	_, err := oc.Literal().From("oc adm taint node %s %s", node, taintStr).Run()
@@ -315,6 +479,12 @@ func (f Framework) TaintNode(node, taintStr string) error {
 func (f Framework) WithTolerations(taints []corev1.Taint) func(k *v1alpha1.Kepler) {
 	return func(k *v1alpha1.Kepler) {
 		k.Spec.Exporter.Deployment.Tolerations = tolerateTaints(taints)
+	}
+}
+
+func (f Framework) WithPowerMonitorTolerations(taints []corev1.Taint) func(k *v1alpha1.PowerMonitor) {
+	return func(pm *v1alpha1.PowerMonitor) {
+		pm.Spec.Kepler.Deployment.Tolerations = tolerateTaints(taints)
 	}
 }
 
