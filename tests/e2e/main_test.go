@@ -13,12 +13,14 @@ import (
 )
 
 const (
-	keplerImage = `quay.io/sustainable_computing_io/kepler:release-0.7.12`
+	keplerImage       = `quay.io/sustainable_computing_io/kepler:release-0.7.12`
+	keplerRebootImage = `quay.io/sustainable_computing_io/kepler-reboot:v0.0.4`
 )
 
 var (
-	Cluster         k8s.Cluster = k8s.Kubernetes
-	testKeplerImage string
+	Cluster               k8s.Cluster = k8s.Kubernetes
+	testKeplerImage       string
+	testKeplerRebootImage string
 )
 
 func TestMain(m *testing.M) {
@@ -26,6 +28,7 @@ func TestMain(m *testing.M) {
 	flag.StringVar(&controller.KeplerDeploymentNS, "deployment-namespace", controller.KeplerDeploymentNS,
 		"Namespace where kepler and its components are deployed.")
 	flag.StringVar(&testKeplerImage, "kepler-image", keplerImage, "Kepler image to use when running Internal tests")
+	flag.StringVar(&testKeplerRebootImage, "kepler-reboot-image", keplerRebootImage, "Kepler image to use when running PowerMonitorInternal tests")
 	flag.Parse()
 
 	if *openshift {
