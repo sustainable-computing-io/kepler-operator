@@ -31,7 +31,7 @@ GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null)
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null)
 
 KEPLER_VERSION ?=release-0.7.12
-KEPLER_REBOOT_VERSION ?=v0.0.4
+KEPLER_REBOOT_VERSION ?=v0.0.5
 
 # IMG_BASE and KEPLER_IMG_BASE are set to distinguish between Operator-specific images and Kepler-Specific images.
 # IMG_BASE is used for building and pushing operator related images.
