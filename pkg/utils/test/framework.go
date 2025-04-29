@@ -459,6 +459,12 @@ func (f Framework) WithNodeSelector(label map[string]string) func(k *v1alpha1.Ke
 	}
 }
 
+func (f Framework) WithPowerMonitorNodeSelector(label map[string]string) func(k *v1alpha1.PowerMonitor) {
+	return func(pm *v1alpha1.PowerMonitor) {
+		pm.Spec.Kepler.Deployment.NodeSelector = label
+	}
+}
+
 func (f Framework) TaintNode(node, taintStr string) error {
 	f.T.Helper()
 	_, err := oc.Literal().From("oc adm taint node %s %s", node, taintStr).Run()
@@ -473,6 +479,12 @@ func (f Framework) TaintNode(node, taintStr string) error {
 func (f Framework) WithTolerations(taints []corev1.Taint) func(k *v1alpha1.Kepler) {
 	return func(k *v1alpha1.Kepler) {
 		k.Spec.Exporter.Deployment.Tolerations = tolerateTaints(taints)
+	}
+}
+
+func (f Framework) WithPowerMonitorTolerations(taints []corev1.Taint) func(k *v1alpha1.PowerMonitor) {
+	return func(pm *v1alpha1.PowerMonitor) {
+		pm.Spec.Kepler.Deployment.Tolerations = tolerateTaints(taints)
 	}
 }
 

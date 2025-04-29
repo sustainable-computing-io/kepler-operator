@@ -42,7 +42,6 @@ func TestPowerMonitorInternal_Reconciliation(t *testing.T) {
 	assert.Equal(t, 1, len(containers))
 	assert.Equal(t, 1, len(containers[0].Ports))
 	assert.EqualValues(t, 28282, containers[0].Ports[0].ContainerPort)
-	// test expected status
-	f.AssertInternalStatus(pmi.Name, test.Timeout(5*time.Minute))
-	// check if other resource exists namely the dashboards
+	// test expected status (PowerMonitor)
+	f.AssertPowerMonitorInternalStatus(pmi.Name, test.Timeout(5*time.Minute))
 }
