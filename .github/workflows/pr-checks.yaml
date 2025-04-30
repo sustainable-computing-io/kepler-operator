@@ -4,6 +4,19 @@ on:
   pull_request:
 
 jobs:
+  label-pr:
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout source
+        uses: actions/checkout@v4
+
+      - uses: grafana/pr-labeler-action@v0.1.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
   docs:
     runs-on: ubuntu-latest-8-cores
     steps:

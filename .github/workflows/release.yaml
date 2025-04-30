@@ -17,6 +17,8 @@ jobs:
     name: Upload Release Asset
     permissions:
       contents: write
+      pull-requests: write
+      issues: write
 
     runs-on: ubuntu-latest-8-cores
     steps:
@@ -33,13 +35,6 @@ jobs:
           registry: quay.io/sustainable_computing_io
           username: ${{ secrets.BOT_NAME }}
           password: ${{ secrets.BOT_TOKEN }}
-
-      - name: Git set user
-        run: |
-          git config  user.name "$USERNAME"
-          git config  user.email "$USERNAME-[bot]@users.noreply.github.com"
-        env:
-          USERNAME: ${{ github.actor }}
 
       - name: Update the VERSION
         run: |
@@ -63,14 +58,41 @@ jobs:
           IMG_BASE: ${{ vars.IMG_BASE }}
           VERSION_REPLACED: ${{ github.event.inputs.version-replace }}
 
-      - name: Commit bundle changes and tag it
+      - name: Git set user
         run: |
-          git add VERSION bundle
-          git commit -m "ci: update VERSION to $VERSION"
-          git tag -a "v$VERSION" -m "$VERSION"
-          git show --stat
+          git config  user.name "$USERNAME"
+          git config  user.email "$USERNAME-[bot]@users.noreply.github.com"
         env:
-          VERSION: ${{ github.event.inputs.tag }}
+          USERNAME: ${{ github.actor }}
+
+      - name: Tag the release
+        run: |
+          git tag -a "v${{ github.event.inputs.tag }}" -m "v${{ github.event.inputs.tag }}"
+          git show --stat
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update VERSION to ${{ github.event.inputs.tag }}"
+          committer: github-actions[bot] <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+          author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+          signoff: true
+          branch: chore-version-${{ github.event.inputs.tag }}
+          delete-branch: true
+          title: 'chore: update VERSION to ${{ github.event.inputs.tag }}'
+          body: |
+            Update VERSION to ${{ github.event.inputs.tag }}
+
+            This is an automated PR to update the VERSION to ${{ github.event.inputs.tag }}
+          labels: |
+            chore
+          reviewers: |
+            vprashar2929
+            sthaha
+            vimalk78
+            KaiyiLiu1234
+          draft: false
 
       - name: Push Images
         run: |
@@ -80,30 +102,15 @@ jobs:
 
       - name: Push Release tag
         run: |
-          git push --follow-tags
+          git push --tags
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ github.event.inputs.tag }}
-          release_name: release-${{github.event.inputs.tag}}
+          name: release-${{github.event.inputs.tag}}
+          generate_release_notes: true
           draft: false
           prerelease: false
-
-  create-release-branch:
-    name: Create release branch
-    permissions:
-      contents: write
-    needs: [build]
-    runs-on: ubuntu-latest-8-cores
-    steps:
-      - name: Create release branch
-        uses: peterjgrainger/action-create-branch@v2.2.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          branch: release-${{github.event.inputs.tag}}
-          sha: ${{ github.event.pull_request.head.sha }}
