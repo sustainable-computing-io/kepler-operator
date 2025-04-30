@@ -4,6 +4,7 @@
 package e2e
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/internal/controller"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/test"
+	"gopkg.in/yaml.v3"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -42,6 +44,18 @@ func TestPowerMonitorInternal_Reconciliation(t *testing.T) {
 	assert.Equal(t, 1, len(containers))
 	assert.Equal(t, 1, len(containers[0].Ports))
 	assert.EqualValues(t, 28282, containers[0].Ports[0].ContainerPort)
+	fmt.Println("----------------- Before fail --------------------------")
+	{
+		yamlStr, err := yaml.Marshal(ds)
+		fmt.Println(string(yamlStr), "err", err)
+	}
+	fmt.Println("----------------- Before fail --------------------------")
 	// test expected status (PowerMonitor)
 	f.AssertPowerMonitorInternalStatus(pmi.Name, test.Timeout(5*time.Minute))
+	fmt.Println("-----------------After fail --------------------------")
+	{
+		yamlStr, err := yaml.Marshal(ds)
+		fmt.Println(string(yamlStr), "err", err)
+	}
+	fmt.Println("-----------------After fail --------------------------")
 }
