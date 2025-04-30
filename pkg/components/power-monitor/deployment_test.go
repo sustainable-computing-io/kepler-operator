@@ -70,7 +70,8 @@ func TestPowerMonitorTolerations(t *testing.T) {
 			Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
 				PowerMonitorKeplerDeploymentSpec: v1alpha1.PowerMonitorKeplerDeploymentSpec{
 					Tolerations: []corev1.Toleration{{
-						Effect: corev1.TaintEffectNoSchedule, Key: "key1"}},
+						Effect: corev1.TaintEffectNoSchedule, Key: "key1",
+					}},
 				},
 			},
 		},
@@ -106,7 +107,7 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 	}{
 		{
 			spec:    v1alpha1.PowerMonitorInternalKeplerSpec{},
-			hostPID: true,
+			hostPID: false,
 			exporterCommand: []string{
 				"/usr/bin/kepler",
 				fmt.Sprintf("--config.file=%s", filepath.Join(KeplerConfigMapPath, KeplerConfigFile)),

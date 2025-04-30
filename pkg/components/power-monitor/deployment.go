@@ -87,7 +87,6 @@ func NewPowerMonitorDaemonSet(detail components.Detail, pmi *v1alpha1.PowerMonit
 					Labels:    podSelector(pmi),
 				},
 				Spec: corev1.PodSpec{
-					HostPID:            true,
 					NodeSelector:       linuxNodeSelector.Merge(nodeSelector),
 					ServiceAccountName: pmi.Name,
 					DNSPolicy:          corev1.DNSPolicy(corev1.DNSClusterFirstWithHostNet),
