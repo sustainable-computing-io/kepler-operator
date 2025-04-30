@@ -206,10 +206,11 @@ run_e2e() {
 
 	log_events "$OPERATORS_NS" &
 	log_events "kepler-operator" &
+	log_events "power-monitor" &
 	watch_operator_errors "$error_log" &
 
 	local ret=0
-	run go test -v -failfast -timeout $TEST_TIMEOUT \
+	run go test -v -failfast -timeout $TEST_TIMEOUT -count=1 \
 		./tests/e2e/... "$@" \
 		2>&1 | tee "$LOGS_DIR/e2e.log" || ret=1
 
