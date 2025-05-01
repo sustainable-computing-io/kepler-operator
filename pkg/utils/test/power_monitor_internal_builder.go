@@ -33,3 +33,12 @@ func (PowerMonitorInternalBuilder) WithCluster(c k8s.Cluster) func(pmi *v1alpha1
 		}
 	}
 }
+
+func (PowerMonitorInternalBuilder) WithAnnotation(key, val string) func(pmi *v1alpha1.PowerMonitorInternal) {
+	return func(pmi *v1alpha1.PowerMonitorInternal) {
+		if pmi.Annotations == nil {
+			pmi.Annotations = make(map[string]string)
+		}
+		pmi.Annotations[key] = val
+	}
+}

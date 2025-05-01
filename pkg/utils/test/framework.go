@@ -488,6 +488,14 @@ func (f Framework) WithPowerMonitorTolerations(taints []corev1.Taint) func(k *v1
 	}
 }
 
+func (f Framework) WithPowerMonitorAnnotation(key, val string) func(k *v1alpha1.PowerMonitor) {
+	return func(pm *v1alpha1.PowerMonitor) {
+		if pm.Annotations == nil {
+			pm.Annotations = make(map[string]string)
+		}
+		pm.Annotations[key] = val
+	}
+}
 func (f Framework) GetSchedulableNodes() []corev1.Node {
 	f.T.Helper()
 	var nodes corev1.NodeList

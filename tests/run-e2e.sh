@@ -18,6 +18,7 @@ declare -r OPERATOR_CSV="bundle/manifests/$OPERATOR.clusterserviceversion.yaml"
 declare -r OPERATOR_DEPLOY_NAME="kepler-operator-controller"
 declare -r OPERATOR_RELEASED_BUNDLE="quay.io/sustainable_computing_io/$OPERATOR-bundle"
 declare -r TEST_IMAGES_YAML="tests/images.yaml"
+declare ENABLE_VM_TEST
 
 declare IMG_BASE="${IMG_BASE:-localhost:5001/$OPERATOR}"
 # NOTE: this vars are initialized in init_operator_img
@@ -206,6 +207,7 @@ run_e2e() {
 
 	log_events "$OPERATORS_NS" &
 	log_events "kepler-operator" &
+	log_events "power-monitor" &
 	watch_operator_errors "$error_log" &
 
 	local ret=0
@@ -262,6 +264,11 @@ parse_args() {
 			CI_MODE=true
 			shift
 			;;
+		--enable-vm-test)
+			ENABLE_VM_TEST="true"
+			export ENABLE_VM_TEST # export vm test results
+			shift
+			;;
 		--image-base)
 			shift
 			IMG_BASE="$1"
@@ -313,6 +320,7 @@ print_usage() {
 		⚙️ Options :
 		  -h|--help        show this help
 		  --ci             run in CI mode
+		  --enable-vm-test run tests in vm environment
 		  --no-deploy      do not build and deploy Operator; useful for rerunning tests
 		  --no-builds      skip building operator images; useful when operator image is already
 		                   built and pushed
@@ -510,7 +518,6 @@ main() {
 	parse_args "$@" || die "parse args failed"
 	# eat up all the parsed args so that the rest can be passed to go test
 	shift $ARGS_PARSED
-
 	$SHOW_USAGE && {
 		print_usage
 		exit 0

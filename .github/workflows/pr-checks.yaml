@@ -254,7 +254,7 @@ jobs:
 
       - name: Run e2e tests
         run: |
-          ./tests/run-e2e.sh --ci --no-upgrade
+          ./tests/run-e2e.sh --ci --no-upgrade --enable-vm-test
         env:
           VERSION: ${{ steps.version.outputs.version }}
 
