@@ -35,6 +35,7 @@ const (
 	ProcFSMountPath     = "/host/proc"
 	KeplerConfigMapPath = "/etc/kepler"
 	KeplerConfigFile    = "kepler-config.yaml"
+	EnableVMTestKey     = "powermonitor.sustainable.computing.io/test-env-vm"
 )
 
 var linuxNodeSelector = k8s.StringMap{
@@ -141,7 +142,7 @@ func NewPowerMonitorConfigMap(d components.Detail, pmi *v1alpha1.PowerMonitorInt
 		}
 	}
 
-	config, _ := keplerConfig(&pmi.Spec.Kepler.Config)
+	config, _ := keplerConfig(pmi)
 
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
@@ -383,10 +384,13 @@ func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Contain
 	}
 }
 
-func keplerConfig(keplerConfig *v1alpha1.PowerMonitorInternalKeplerConfigSpec) (string, error) {
+func keplerConfig(pmi *v1alpha1.PowerMonitorInternal) (string, error) {
 	cf := config.DefaultConfig()
-
-	cf.Log.Level = keplerConfig.LogLevel
+	val, ok := pmi.Annotations[EnableVMTestKey]
+	if ok {
+		cf.Dev.FakeCpuMeter.Enabled = val == "true"
+	}
+	cf.Log.Level = pmi.Spec.Kepler.Config.LogLevel
 	cf.Host.SysFS = SysFSMountPath
 	cf.Host.ProcFS = ProcFSMountPath
 
