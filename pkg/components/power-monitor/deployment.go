@@ -389,10 +389,23 @@ func keplerConfig(keplerConfig *v1alpha1.PowerMonitorInternalKeplerConfigSpec) (
 	cf.Host.SysFS = SysFSMountPath
 	cf.Host.ProcFS = ProcFSMountPath
 
+	fmt.Printf(
+		`
+		### Config: ####
+%s
+		`, cf.String(),
+	)
+
 	if err := cf.Validate(config.SkipHostValidation); err != nil {
 		// TODO: use builder pattern and pass logger to builder
 		return config.DefaultConfig().String(), err
 	}
+	fmt.Printf(
+		`
+		### Config After Validation: ####
+%s
+		`, cf.String(),
+	)
 
 	return cf.String(), nil
 }

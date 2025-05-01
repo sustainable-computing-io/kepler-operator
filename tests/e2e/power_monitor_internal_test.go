@@ -54,6 +54,8 @@ func TestPowerMonitorInternal_Reconciliation(t *testing.T) {
 	f.AssertPowerMonitorInternalStatus(pmi.Name, test.Timeout(5*time.Minute))
 	fmt.Println("-----------------After fail --------------------------")
 	{
+		ds := appsv1.DaemonSet{}
+		f.AssertResourceExists(pmi.Name, testNs, &ds)
 		yamlStr, err := yaml.Marshal(ds)
 		fmt.Println(string(yamlStr), "err", err)
 	}
