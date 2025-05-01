@@ -217,7 +217,7 @@ jobs:
           path: cluster-state
 
   e2e:
-    needs: [operator-upgrade]
+    needs: [build-images, bundle]
     env:
       KIND_VERSION: 0.15.0
       GO111MODULE: on
