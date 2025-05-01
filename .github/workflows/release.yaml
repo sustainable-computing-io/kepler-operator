@@ -18,7 +18,7 @@ jobs:
     permissions:
       contents: write
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - name: Get current date
         id: date
@@ -98,7 +98,7 @@ jobs:
     permissions:
       contents: write
     needs: [build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - name: Create release branch
         uses: peterjgrainger/action-create-branch@v2.2.0

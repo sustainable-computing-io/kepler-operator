@@ -7,7 +7,7 @@ on:
 jobs:
   codecov-upload:
     name: Upload coverage to Codecov
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
 
@@ -25,7 +25,7 @@ jobs:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
   publish:
     name: Publish operator container images
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
