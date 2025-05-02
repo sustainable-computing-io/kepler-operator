@@ -1,6 +1,6 @@
 name: Publish Images
 
-on:
+on: # yamllint disable-line rule:truthy
   push:
     branches: [v1alpha1]
 
