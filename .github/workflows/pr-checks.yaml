@@ -8,12 +8,14 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
+
       - uses: actions/setup-go@main
         with:
           go-version-file: go.mod
 
       - name: Install all tools
         uses: ./.github/tools-cache
+
       - name: make docs
         run: |
           make docs
@@ -23,18 +25,37 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
+
       - uses: actions/setup-go@main
         with:
           go-version-file: go.mod
+
       - name: Install all tools
         uses: ./.github/tools-cache
+
       - name: make fmt
         run: make fmt && git diff --exit-code
+
+  vet:
+    runs-on: ubuntu-latest-8-cores
+    steps:
+      - uses: actions/checkout@main
+
+      - uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+
+      - name: Install all tools
+        uses: ./.github/tools-cache
+
+      - name: make vet
+        run: make vet && git diff --exit-code
 
   escapes_detect:
     runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
+
       - uses: actions/setup-go@main
         with:
           go-version-file: go.mod
@@ -110,7 +131,6 @@ jobs:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
   bundle:
-    needs: [docs, golangci, fmt, vulnerability_detect, escapes_detect]
     runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
@@ -126,7 +146,6 @@ jobs:
           git diff --exit-code
 
   build-images:
-    needs: [docs, golangci, fmt, vulnerability_detect, escapes_detect]
     runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v3
