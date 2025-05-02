@@ -5,7 +5,7 @@ on:
 
 jobs:
   docs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
       - uses: actions/setup-go@main
@@ -20,7 +20,7 @@ jobs:
           git diff --exit-code
 
   fmt:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
       - uses: actions/setup-go@main
@@ -32,7 +32,7 @@ jobs:
         run: make fmt && git diff --exit-code
 
   escapes_detect:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
       - uses: actions/setup-go@main
@@ -51,7 +51,7 @@ jobs:
       # NOTE: allow read access to pull request. Use with `only-new-issues` option.
       pull-requests: read
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - name: code checkout
         uses: actions/checkout@v3
@@ -68,7 +68,7 @@ jobs:
           only-new-issues: true
 
   vulnerability_detect:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
       - uses: actions/setup-go@main
@@ -82,7 +82,7 @@ jobs:
         run: make check-govuln
 
   pre-commit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
@@ -94,7 +94,7 @@ jobs:
         uses: pre-commit/action@v3.0.1
 
   codecov-upload:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
 
@@ -111,7 +111,7 @@ jobs:
 
   bundle:
     needs: [docs, golangci, fmt, vulnerability_detect, escapes_detect]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
       - uses: actions/setup-go@main
@@ -127,7 +127,7 @@ jobs:
 
   build-images:
     needs: [docs, golangci, fmt, vulnerability_detect, escapes_detect]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@main
@@ -162,7 +162,7 @@ jobs:
       KUBECONFIG: /tmp/.kube/config
       KIND_WORKER_NODES: 2
 
-    runs-on: ubuntu-latest-8-cores
+    runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v3
         with:
@@ -217,7 +217,7 @@ jobs:
           path: cluster-state
 
   e2e:
-    needs: [operator-upgrade]
+    needs: [build-images, bundle]
     env:
       KIND_VERSION: 0.15.0
       GO111MODULE: on
@@ -225,7 +225,7 @@ jobs:
       KUBECONFIG: /tmp/.kube/config
       KIND_WORKER_NODES: 2
     name: e2e
-    runs-on: ubuntu-latest-8-cores
+    runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
