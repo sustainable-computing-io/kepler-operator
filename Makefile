@@ -170,7 +170,7 @@ cluster-down: ## delete the local development cluster
 ##@ Build
 
 .PHONY: build
-build: manifests generate fmt vet ## Build manager binary.
+build: manifests generate ## Build manager binary.
 	CGO_ENABLED=0 go build $(LDFLAGS) -o bin/manager ./cmd/...
 
 OPENSHIFT ?= true
