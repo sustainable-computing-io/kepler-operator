@@ -379,3 +379,47 @@ func TestConfigString(t *testing.T) {
 		})
 	}
 }
+
+func TestEnablePprof(t *testing.T) {
+	tt := []struct {
+		name    string
+		args    []string
+		enabled bool
+	}{{
+		name:    "enable pprof with flag",
+		args:    []string{"--enable.pprof"},
+		enabled: true,
+	}, {
+		name:    "disable pprof no flag",
+		args:    []string{"--log.level=debug"},
+		enabled: false,
+	}, {
+		name:    "disable pprof with flag",
+		args:    []string{"--no-enable.pprof"},
+		enabled: false,
+	}}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			app := kingpin.New("test", "Test application")
+			updateConfig := RegisterFlags(app)
+			_, parseErr := app.Parse(tc.args)
+			assert.NoError(t, parseErr, "unexpected flag parsing error")
+			cfg := DefaultConfig()
+			err := updateConfig(cfg)
+			assert.NoError(t, err, "unexpected config update error")
+			assert.Equal(t, cfg.EnablePprof, tc.enabled, "unexpected flag value")
+		})
+	}
+}
+
+func TestValidateWithSkip(t *testing.T) {
+	// Create a config with invalid host paths
+	cfg := DefaultConfig()
+	cfg.Host.SysFS = "/path/invalid"
+	cfg.Host.ProcFS = "/path/invalid"
+
+	// Validate with skipping host validation
+	err := cfg.Validate(SkipHostValidation)
+	assert.NoError(t, err, "Should pass when SkipHostValidation is provided")
+}

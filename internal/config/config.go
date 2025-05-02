@@ -24,6 +24,12 @@ type (
 		ProcFS string `yaml:"procfs"`
 	}
 
+	// Rapl configuration
+	Rapl struct {
+		Zones []string `yaml:"zones"`
+	}
+
+	// Development mode settings; disabled by default
 	Dev struct {
 		FakeCpuMeter struct {
 			Enabled bool     `yaml:"enabled"`
@@ -32,18 +38,31 @@ type (
 	}
 
 	Config struct {
-		Log  Log  `yaml:"log"`
-		Host Host `yaml:"host"`
-		Dev  Dev  `yaml:"dev"`
+		Log         Log  `yaml:"log"`
+		Host        Host `yaml:"host"`
+		Dev         Dev  `yaml:"dev"` // WARN: do not expose dev settings as flags
+		EnablePprof bool `yaml:"enable-pprof"`
+		Rapl        Rapl `yaml:"rapl"`
 	}
+)
+
+type SkipValidation int
+
+const (
+	SkipHostValidation SkipValidation = 1
 )
 
 const (
 	// Flags
-	LogLevelFlag   = "log.level"
-	LogFormatFlag  = "log.format"
+	LogLevelFlag  = "log.level"
+	LogFormatFlag = "log.format"
+
 	HostSysFSFlag  = "host.sysfs"
 	HostProcFSFlag = "host.procfs"
+
+	EnablePprofFlag = "enable.pprof"
+
+// WARN:  dev settings shouldn't be exposed as flags as flags are intended for end users
 )
 
 // DefaultConfig returns a Config with default values
@@ -56,6 +75,9 @@ func DefaultConfig() *Config {
 		Host: Host{
 			SysFS:  "/sys",
 			ProcFS: "/proc",
+		},
+		Rapl: Rapl{
+			Zones: []string{},
 		},
 	}
 
@@ -120,6 +142,8 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 	logFormat := app.Flag(LogFormatFlag, "Logging format: text or json").Default("text").Enum("text", "json")
 	hostSysFS := app.Flag(HostSysFSFlag, "Host sysfs path").Default("/sys").ExistingDir()
 	hostProcFS := app.Flag(HostProcFSFlag, "Host procfs path").Default("/proc").ExistingDir()
+	enablePprof := app.Flag(EnablePprofFlag, "Enable pprof").Default("false").Bool()
+
 	return func(cfg *Config) error {
 		// Logging settings
 		if flagsSet[LogLevelFlag] {
@@ -138,6 +162,10 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 			cfg.Host.ProcFS = *hostProcFS
 		}
 
+		if flagsSet[EnablePprofFlag] {
+			cfg.EnablePprof = *enablePprof
+		}
+
 		cfg.sanitize()
 		return cfg.Validate()
 	}
@@ -148,21 +176,18 @@ func (c *Config) sanitize() {
 	c.Log.Format = strings.TrimSpace(c.Log.Format)
 	c.Host.SysFS = strings.TrimSpace(c.Host.SysFS)
 	c.Host.ProcFS = strings.TrimSpace(c.Host.ProcFS)
+
+	for i := range c.Rapl.Zones {
+		c.Rapl.Zones[i] = strings.TrimSpace(c.Rapl.Zones[i])
+	}
 }
-
-type SkipValidation int
-
-const (
-	SkipHostValidation SkipValidation = 1
-)
 
 // Validate checks for configuration errors
 func (c *Config) Validate(skips ...SkipValidation) error {
-	validationsSkipped := make(map[SkipValidation]bool, len(skips))
+	validationSkipped := make(map[SkipValidation]bool, len(skips))
 	for _, v := range skips {
-		validationsSkipped[v] = true
+		validationSkipped[v] = true
 	}
-
 	var errs []string
 	{ // log level
 
@@ -189,7 +214,7 @@ func (c *Config) Validate(skips ...SkipValidation) error {
 	}
 
 	{ // Validate host settings
-		if _, skip := validationsSkipped[SkipHostValidation]; !skip {
+		if _, skip := validationSkipped[SkipHostValidation]; !skip {
 			if err := canReadDir(c.Host.SysFS); err != nil {
 				errs = append(errs, fmt.Sprintf("invalid sysfs path: %s: %s ", c.Host.SysFS, err.Error()))
 			}
@@ -244,6 +269,7 @@ func (c *Config) manualString() string {
 		{LogFormatFlag, c.Log.Format},
 		{HostSysFSFlag, c.Host.SysFS},
 		{HostProcFSFlag, c.Host.ProcFS},
+		{"rapl.zones", strings.Join(c.Rapl.Zones, ", ")},
 	}
 	sb := strings.Builder{}
 
