@@ -4,6 +4,23 @@ on: # yamllint disable-line rule:truthy
   pull_request:
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      changes: ${{ steps.filter.outputs.changes }}
+    steps:
+      - name: checkout source
+        uses: actions/checkout@v4
+
+      - name: filter changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            changes:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
   docs:
     runs-on: ubuntu-latest-8-cores
     steps:
@@ -52,6 +69,7 @@ jobs:
         run: make vet && git diff --exit-code
 
   escapes_detect:
+    if: needs.check-changes.outputs.changes == 'true'
     runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
@@ -67,6 +85,7 @@ jobs:
         run: make escapes_detect
 
   golangci:
+    if: needs.check-changes.outputs.changes == 'true'
     permissions:
       contents: read
       # NOTE: allow read access to pull request. Use with `only-new-issues` option.
@@ -89,6 +108,7 @@ jobs:
           only-new-issues: true
 
   vulnerability_detect:
+    if: needs.check-changes.outputs.changes == 'true'
     runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
@@ -115,6 +135,7 @@ jobs:
         uses: pre-commit/action@v3.0.1
 
   codecov-upload:
+    if: needs.check-changes.outputs.changes == 'true'
     runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
