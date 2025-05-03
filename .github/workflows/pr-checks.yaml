@@ -54,6 +54,7 @@ jobs:
         run: make fmt && git diff --exit-code
 
   vet:
+    if: needs.check-changes.outputs.changes == 'true'
     runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@main
