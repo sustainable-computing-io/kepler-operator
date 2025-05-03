@@ -4,6 +4,43 @@ on: # yamllint disable-line rule:truthy
   pull_request:
 
 jobs:
+  assign-labels:
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    runs-on: ubuntu-latest
+    name: Assign labels in pull request
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mauroalderete/action-assign-labels@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          conventional-commits: |
+            conventional-commits:
+              - type: 'fix'
+                nouns: ['FIX', 'Fix', 'fix', 'FIXED', 'Fixed', 'fixed']
+                labels: ['fix']
+              - type: 'ci'
+                nouns: [CI', 'ci']
+                labels: ['ci']
+              - type: 'chore'
+                nouns: ['CHORE', 'Chore', 'chore', 'CHORES', 'Chores', 'chores']
+                labels: ['chore']
+              - type: 'docs'
+                nouns: ['DOCS', 'Docs', 'docs', 'DOC', 'Doc', 'doc']
+                labels: ['docs']
+              - type: 'feat'
+                nouns: ['FEAT', 'Feat', 'feat', 'FEATURE', 'Feature', 'feature']
+                labels: ['feat']
+              - type: 'perf'
+                nouns: ['PERF', 'Perf', 'perf', 'PERFORMANCE', 'Performance', 'performance']
+                labels: ['perf']
+              - type: 'refactor'
+                nouns: ['REFACTOR', 'Refactor', 'refactor', 'REFACTORING', 'Refactoring', 'refactoring']
+                labels: ['refactor']
+          apply-changes: true
   check-changes:
     runs-on: ubuntu-latest
     outputs:
