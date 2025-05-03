@@ -28,8 +28,8 @@ declare BUNDLE_IMG=""
 declare CI_MODE=false
 declare NO_DEPLOY=false
 declare NO_BUILDS=false
-declare NO_UPGRADE=false
 declare SHOW_USAGE=false
+declare COMMAND=""
 declare LOGS_DIR="tmp/e2e"
 declare OPERATORS_NS="operators"
 declare TEST_TIMEOUT="15m"
@@ -107,6 +107,7 @@ run_bundle_upgrade() {
 
 	local replaced_version=""
 	replaced_version=$(yq ".spec.replaces| sub(\"$OPERATOR.v\"; \"\")" "$OPERATOR_CSV")
+	replaced_version=$(echo "$replaced_version" | tr -d '"')
 
 	local released_bundle="$OPERATOR_RELEASED_BUNDLE:$replaced_version"
 
@@ -239,6 +240,39 @@ run_e2e() {
 declare -i ARGS_PARSED=0
 
 parse_args() {
+	# Check if command was provided
+	if [[ -n "${1+xxx}" ]]; then
+		case $1 in
+		-h | --help)
+			SHOW_USAGE=true
+			ARGS_PARSED+=1
+			return 0
+			;;
+		upgrade-test)
+			# For upgrade-test, consume the command only and ignore all other arguments
+			COMMAND="$1"
+			ARGS_PARSED+=1
+			# Count all remaining arguments as parsed to effectively ignore them
+			while [[ -n "${2+xxx}" ]]; do
+				ARGS_PARSED+=1
+				shift
+			done
+			return 0
+			;;
+		e2e)
+			COMMAND="$1"
+			ARGS_PARSED+=1
+			shift
+			;;
+		*)
+			warn "Unknown command: $1"
+			SHOW_USAGE=true
+			ARGS_PARSED+=1
+			return 1
+			;;
+		esac
+	fi
+
 	### while there are args parse them
 	while [[ -n "${1+xxx}" ]]; do
 		ARGS_PARSED+=1
@@ -250,10 +284,6 @@ parse_args() {
 		--) break ;;
 		--no-deploy)
 			NO_DEPLOY=true
-			shift
-			;;
-		--no-upgrade)
-			NO_UPGRADE=true
 			shift
 			;;
 		--no-builds)
@@ -281,7 +311,9 @@ parse_args() {
 			shift
 			ARGS_PARSED+=1
 			;;
-		*) return 1 ;; # show usage on everything else
+		*)
+			return 1
+			;; # show usage on everything else
 		esac
 	done
 
@@ -300,35 +332,35 @@ print_usage() {
 
 	read -r -d '' help <<-EOF_HELP || true
 		🔆 Usage:
-		  $scr
-		  $scr  [OPTIONS] -- [GO TEST ARGS]
-		  $scr  -h|--help
+		  $scr <command> [OPTIONS] -- [GO TEST ARGS]
+		  $scr -h|--help
 
-		💡 Examples :
-		  # run all tests
-		  ❯   $scr
+		📋 Commands:
+		  e2e             run end-to-end tests
+		  upgrade-test    run bundle upgrade tests
 
-		  # run only invalid test
-		  ❯   $scr -- -run TestInvalid
+		💡 Examples:
+		  # run e2e tests
+		  ❯   $scr e2e
 
-		  # Do not run upgrade scenario
-		  ❯   $scr --no-upgrade
+		  # run upgrade tests (no additional options allowed)
+		  ❯   $scr upgrade-test
 
-		  # Do not redeploy operator and run only invalid test
-		  ❯   $scr --no-deploy  -- -run TestInvalid
+		  # run only invalid test with e2e
+		  ❯   $scr e2e -- -run TestInvalid
 
-		⚙️ Options :
+		  # do not redeploy operator and run only invalid test
+		  ❯   $scr e2e --no-deploy -- -run TestInvalid
+
+		⚙️ Options:
 		  -h|--help        show this help
 		  --ci             run in CI mode
 		  --enable-vm-test run tests in vm environment
 		  --no-deploy      do not build and deploy Operator; useful for rerunning tests
 		  --no-builds      skip building operator images; useful when operator image is already
 		                   built and pushed
-		  --no-upgrade     run the operator bundle instead of performing an upgrade test
 		  --ns NAMESPACE   namespace to deploy operators (default: $OPERATORS_NS)
 		                   E.g. running against openshift use --ns openshift-operators
-
-
 	EOF_HELP
 
 	echo -e "$help"
@@ -490,7 +522,6 @@ print_config() {
 		  CI Mode:         $CI_MODE
 		  Skip Builds:     $NO_BUILDS
 		  Skip Deploy:     $NO_DEPLOY
-		  Skip Upgrade:    $NO_UPGRADE
 		  Operator namespace: $OPERATORS_NS
 		  Logs directory: $LOGS_DIR
 
@@ -513,6 +544,28 @@ deploy_and_run_e2e() {
 	return $ret
 }
 
+run_command() {
+	local cmd=$1
+	shift 1
+
+	case $cmd in
+	e2e)
+		deploy_and_run_e2e "$@" || return 1
+		;;
+	upgrade-test)
+		# For upgrade-test, no arg checking needed as they were already consumed in parse_args
+		run_bundle_upgrade || return 1
+		;;
+	*)
+		warn "Unknown command: $cmd"
+		print_usage
+		return 1
+		;;
+	esac
+
+	return 0
+}
+
 main() {
 	export PATH="$LOCAL_BIN:$PATH"
 	parse_args "$@" || die "parse args failed"
@@ -529,11 +582,8 @@ main() {
 	init_logs_dir
 	print_config
 
-	if $NO_UPGRADE; then
-		deploy_and_run_e2e "$@" || return 1
-	else
-		run_bundle_upgrade || return 1
-	fi
+	run_command "$COMMAND" "$@" || return 1
+
 	return 0
 }
 

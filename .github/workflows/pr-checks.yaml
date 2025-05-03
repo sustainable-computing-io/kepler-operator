@@ -193,7 +193,7 @@ jobs:
       - name: Run Operator Upgrade
         shell: bash
         run: |
-          ./tests/run-e2e.sh --ci
+          ./tests/run-e2e.sh upgrade-test
         env:
           VERSION: ${{ steps.version.outputs.version }}
 
@@ -254,7 +254,7 @@ jobs:
 
       - name: Run e2e tests
         run: |
-          ./tests/run-e2e.sh --ci --no-upgrade --enable-vm-test
+          ./tests/run-e2e.sh e2e --ci --enable-vm-test
         env:
           VERSION: ${{ steps.version.outputs.version }}
 
