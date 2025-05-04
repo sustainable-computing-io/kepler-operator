@@ -5,7 +5,9 @@ package powermonitor
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -294,4 +296,71 @@ func TestPowerMonitorConfigMap(t *testing.T) {
 			assert.Contains(t, actualData[tc.configFileName], tc.logLevel)
 		})
 	}
+}
+
+func TestPowerMonitorDashboards(t *testing.T) {
+	tt := []struct {
+		createDashboard    func(d components.Detail) *corev1.ConfigMap
+		labels             k8s.StringMap
+		dashboardName      string
+		dashboardNamespace string
+		cmKey              string
+		scenario           string
+	}{
+		{
+			createDashboard: NewPowerMonitorNodeDashboard,
+			labels: k8s.StringMap{
+				"console.openshift.io/dashboard": "true",
+				"app.kubernetes.io/managed-by":   "kepler-operator",
+			},
+			dashboardName:      NodeDashboardName,
+			dashboardNamespace: DashboardNs,
+			cmKey:              fmt.Sprintf("%s.json", NodeDashboardName),
+			scenario:           "node dashboard case",
+		},
+		{
+			createDashboard: NewPowerMonitorInfoDashboard,
+			labels: k8s.StringMap{
+				"console.openshift.io/dashboard": "true",
+				"app.kubernetes.io/managed-by":   "kepler-operator",
+			},
+			dashboardName:      InfoDashboardName,
+			dashboardNamespace: DashboardNs,
+			cmKey:              fmt.Sprintf("%s.json", InfoDashboardName),
+			scenario:           "info dashboard case",
+		},
+	}
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			nodeDashboard := tc.createDashboard(components.Full)
+
+			actualName := nodeDashboard.Name
+			assert.Equal(t, tc.dashboardName, actualName)
+
+			actualNamespace := nodeDashboard.Namespace
+			assert.Equal(t, tc.dashboardNamespace, actualNamespace)
+
+			actualLabels := k8s.LabelsFromConfigMap(nodeDashboard)
+			assert.Equal(t, tc.labels.ToMap(), actualLabels)
+
+			actualData := k8s.DataFromConfigMap(nodeDashboard)
+			assert.Contains(t, actualData, tc.cmKey)
+			assert.Equal(t, actualData[tc.cmKey], readDashboardJSON(t, tc.cmKey))
+		})
+	}
+}
+
+func readDashboardJSON(t *testing.T, jsonFilename string) string {
+	_, f, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("failed to get filepath")
+	}
+	path := filepath.Join(filepath.Dir(f), "assets", "dashboards", jsonFilename)
+	dashboardData, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read dashboard file %s: %v", jsonFilename, err)
+	}
+	return string(dashboardData)
 }

@@ -259,7 +259,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "group(kepler_cpu_info{container=~\"power-monitor\"}) by (core_id, instance, model_name, vendor_id)",
+          "expr": "group(kepler_node_cpu_info{container=~\"power-monitor\"}) by (core_id, instance, model_name, vendor_id)",
           "format": "table",
           "interval": "",
           "legendFormat": "",
@@ -331,7 +331,7 @@
           "expr": "sum by (zone_type) (label_replace({__name__=~\"kepler_node_.+_watts\", instance=~\".+\"}, \"zone_type\",\"$1\",\"__name__\", \"kepler_node_(.+)_watts\"))",
           "hide": false,
           "interval": "",
-          "legendFormat": "Total {{zone_type}} Watta",
+          "legendFormat": "Total {{zone_type}} Watts",
           "range": true,
           "refId": "A"
         }
