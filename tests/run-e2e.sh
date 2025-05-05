@@ -29,7 +29,6 @@ declare CI_MODE=false
 declare NO_DEPLOY=false
 declare NO_BUILDS=false
 declare SHOW_USAGE=false
-declare COMMAND=""
 declare LOGS_DIR="tmp/e2e"
 declare OPERATORS_NS="operators"
 declare TEST_TIMEOUT="15m"
@@ -96,7 +95,7 @@ gather_olm() {
 	done
 }
 
-run_bundle_upgrade() {
+cmd_upgrade() {
 	header "Running Bundle Upgrade"
 	kind_load_images
 	delete_olm_subscription || true
@@ -240,39 +239,6 @@ run_e2e() {
 declare -i ARGS_PARSED=0
 
 parse_args() {
-	# Check if command was provided
-	if [[ -n "${1+xxx}" ]]; then
-		case $1 in
-		-h | --help)
-			SHOW_USAGE=true
-			ARGS_PARSED+=1
-			return 0
-			;;
-		upgrade-test)
-			# For upgrade-test, consume the command only and ignore all other arguments
-			COMMAND="$1"
-			ARGS_PARSED+=1
-			# Count all remaining arguments as parsed to effectively ignore them
-			while [[ -n "${2+xxx}" ]]; do
-				ARGS_PARSED+=1
-				shift
-			done
-			return 0
-			;;
-		e2e)
-			COMMAND="$1"
-			ARGS_PARSED+=1
-			shift
-			;;
-		*)
-			warn "Unknown command: $1"
-			SHOW_USAGE=true
-			ARGS_PARSED+=1
-			return 1
-			;;
-		esac
-	fi
-
 	### while there are args parse them
 	while [[ -n "${1+xxx}" ]]; do
 		ARGS_PARSED+=1
@@ -326,7 +292,7 @@ init_operator_img() {
 	declare -r OPERATOR_IMG BUNDLE_IMG
 }
 
-print_usage() {
+cmd_help() {
 	local scr
 	scr="$(basename "$0")"
 
@@ -337,14 +303,14 @@ print_usage() {
 
 		📋 Commands:
 		  e2e             run end-to-end tests
-		  upgrade-test    run bundle upgrade tests
+		  upgrade         run bundle upgrade tests
 
 		💡 Examples:
 		  # run e2e tests
 		  ❯   $scr e2e
 
-		  # run upgrade tests (no additional options allowed)
-		  ❯   $scr upgrade-test
+		  # run upgrade tests
+		  ❯   $scr upgrade
 
 		  # run only invalid test with e2e
 		  ❯   $scr e2e -- -run TestInvalid
@@ -529,7 +495,7 @@ print_config() {
 	line 50
 }
 
-deploy_and_run_e2e() {
+cmd_e2e() {
 	if $NO_DEPLOY; then
 		restart_operator || die "restarting operator failed 🤕"
 	else
@@ -544,45 +510,34 @@ deploy_and_run_e2e() {
 	return $ret
 }
 
-run_command() {
-	local cmd=$1
-	shift 1
-
-	case $cmd in
-	e2e)
-		deploy_and_run_e2e "$@" || return 1
-		;;
-	upgrade-test)
-		# For upgrade-test, no arg checking needed as they were already consumed in parse_args
-		run_bundle_upgrade || return 1
-		;;
-	*)
-		warn "Unknown command: $cmd"
-		print_usage
-		return 1
-		;;
-	esac
-
-	return 0
-}
-
 main() {
 	export PATH="$LOCAL_BIN:$PATH"
+
+	local fn=${1:-''}
+	shift
+
 	parse_args "$@" || die "parse args failed"
 	# eat up all the parsed args so that the rest can be passed to go test
 	shift $ARGS_PARSED
 	$SHOW_USAGE && {
-		print_usage
+		cmd_help
 		exit 0
 	}
 
 	cd "$PROJECT_ROOT"
 
+	local cmd_fn="cmd_$fn"
+	if ! is_fn "$cmd_fn"; then
+		err "unknown command: $fn"
+		cmd_help
+		return 1
+	fi
+
 	init_operator_img
 	init_logs_dir
 	print_config
 
-	run_command "$COMMAND" "$@" || return 1
+	$cmd_fn "$@" || return 1
 
 	return 0
 }
