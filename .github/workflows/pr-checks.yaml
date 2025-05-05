@@ -234,7 +234,7 @@ jobs:
       - name: Run Operator Upgrade
         shell: bash
         run: |
-          ./tests/run-e2e.sh upgrade-test
+          ./tests/run-e2e.sh upgrade
         env:
           VERSION: ${{ steps.version.outputs.version }}
 
