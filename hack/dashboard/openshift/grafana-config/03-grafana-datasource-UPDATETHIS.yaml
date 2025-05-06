@@ -21,8 +21,8 @@ spec:
       httpHeaderValue1: Bearer ${BEARER_TOKEN}
     type: prometheus
     url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
-name: prometheus-grafanadatasource.yaml
-# The spec.instanceSelectors field is used to tell the operator which Grafana instance the resource applies to.
-instanceSelector:
-  matchLabels:
-    dashboards: kepler-grafana
+  name: prometheus-grafanadatasource.yaml
+  # The spec.instanceSelectors field is used to tell the operator which Grafana instance the resource applies to.
+  instanceSelector:
+    matchLabels:
+      dashboards: kepler-grafana
