@@ -29,8 +29,11 @@ const (
 	PowerMonitorServicePortName = "http"
 	DashboardNs                 = "openshift-config-managed"
 	PowerMonitorDSPort          = 28282
-	// SysFSMountPath                     = "/host/sys"
-	// ProcPath                    = "/host/proc"
+
+	// Dashboard
+	NodeDashboardName = "power-monitor-per-node"
+	InfoDashboardName = "power-monitor-node-info"
+
 	SysFSMountPath      = "/host/sys"
 	ProcFSMountPath     = "/host/proc"
 	KeplerConfigMapPath = "/etc/kepler"
@@ -38,9 +41,16 @@ const (
 	EnableVMTestKey     = "powermonitor.sustainable.computing.io/test-env-vm"
 )
 
-var linuxNodeSelector = k8s.StringMap{
-	"kubernetes.io/os": "linux",
-}
+var (
+	linuxNodeSelector = k8s.StringMap{
+		"kubernetes.io/os": "linux",
+	}
+	//go:embed assets/dashboards/power-monitor-node-info.json
+	infoDashboardJson string
+
+	//go:embed assets/dashboards/power-monitor-per-node.json
+	nodeDashboardJson string
+)
 
 func NewPowerMonitorDaemonSet(detail components.Detail, pmi *v1alpha1.PowerMonitorInternal) *appsv1.DaemonSet {
 	if detail == components.Metadata {
@@ -125,6 +135,14 @@ func NewPowerMonitorService(pmi *v1alpha1.PowerMonitorInternal) *corev1.Service 
 			}},
 		},
 	}
+}
+
+func NewPowerMonitorNodeDashboard(d components.Detail) *corev1.ConfigMap {
+	return openshiftDashboardConfigMap(d, NodeDashboardName, fmt.Sprintf("%s.json", NodeDashboardName), nodeDashboardJson)
+}
+
+func NewPowerMonitorInfoDashboard(d components.Detail) *corev1.ConfigMap {
+	return openshiftDashboardConfigMap(d, InfoDashboardName, fmt.Sprintf("%s.json", InfoDashboardName), infoDashboardJson)
 }
 
 func NewPowerMonitorConfigMap(d components.Detail, pmi *v1alpha1.PowerMonitorInternal) *corev1.ConfigMap {
@@ -328,6 +346,45 @@ func NewPowerMonitorServiceMonitor(pmi *v1alpha1.PowerMonitorInternal) *monv1.Se
 			Selector: metav1.LabelSelector{
 				MatchLabels: labels(pmi),
 			},
+		},
+	}
+}
+
+func openshiftDashboardConfigMap(d components.Detail, dashboardName, dashboardJSONName, dashboardJSONPath string) *corev1.ConfigMap {
+	objMeta := openshiftDashboardObjectMeta(dashboardName)
+
+	if d == components.Metadata {
+		return &corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: corev1.SchemeGroupVersion.String(),
+				Kind:       "ConfigMap",
+			},
+			ObjectMeta: objMeta,
+		}
+	}
+
+	return &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: objMeta,
+		Data: map[string]string{
+			dashboardJSONName: dashboardJSONPath,
+		},
+	}
+}
+
+func openshiftDashboardObjectMeta(name string) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:      name,
+		Namespace: DashboardNs,
+		Labels: components.CommonLabels.Merge(k8s.StringMap{
+			"console.openshift.io/dashboard": "true",
+		}),
+		Annotations: k8s.StringMap{
+			"include.release.openshift.io/self-managed-high-availability": "true",
+			"include.release.openshift.io/single-node-developer":          "true",
 		},
 	}
 }
