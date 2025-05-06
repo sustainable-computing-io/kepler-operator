@@ -45,10 +45,10 @@ var (
 	linuxNodeSelector = k8s.StringMap{
 		"kubernetes.io/os": "linux",
 	}
-	//go:embed assets/dashboards/power-monitoring-info.json
+	//go:embed assets/dashboards/power-monitor-node-info.json
 	infoDashboardJson string
 
-	//go:embed assets/dashboards/power-monitoring-by-node.json
+	//go:embed assets/dashboards/power-monitor-per-node.json
 	nodeDashboardJson string
 )
 
