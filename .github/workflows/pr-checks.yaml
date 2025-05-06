@@ -54,6 +54,7 @@ jobs:
         run: make fmt && git diff --exit-code
 
   vet:
+    needs: check-changes
     if: needs.check-changes.outputs.changes == 'true'
     runs-on: ubuntu-latest-8-cores
     steps:
@@ -70,6 +71,7 @@ jobs:
         run: make vet && git diff --exit-code
 
   escapes_detect:
+    needs: check-changes
     if: needs.check-changes.outputs.changes == 'true'
     runs-on: ubuntu-latest-8-cores
     steps:
@@ -86,6 +88,7 @@ jobs:
         run: make escapes_detect
 
   golangci:
+    needs: check-changes
     if: needs.check-changes.outputs.changes == 'true'
     permissions:
       contents: read
@@ -109,6 +112,7 @@ jobs:
           only-new-issues: true
 
   vulnerability_detect:
+    needs: check-changes
     if: needs.check-changes.outputs.changes == 'true'
     runs-on: ubuntu-latest-8-cores
     steps:
@@ -136,6 +140,7 @@ jobs:
         uses: pre-commit/action@v3.0.1
 
   codecov-upload:
+    needs: check-changes
     if: needs.check-changes.outputs.changes == 'true'
     runs-on: ubuntu-latest-8-cores
     steps:
