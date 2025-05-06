@@ -15,12 +15,12 @@ spec:
         name: kepler-grafana-service
         weight: 100
   ingress:
-    enabled: true
+    enabled: "True"
   config:
     auth:
-      disable_signout_menu: true
+      disable_signout_menu: "True"
     auth.anonymous:
-      enabled: true
+      enabled: "True"
     log:
       level: warn
       mode: console
