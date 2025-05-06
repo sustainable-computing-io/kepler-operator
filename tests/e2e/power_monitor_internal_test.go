@@ -17,7 +17,7 @@ import (
 
 func TestPowerMonitorInternal_Reconciliation(t *testing.T) {
 	f := test.NewFramework(t)
-	name := "e2e-pmi"
+	name := "e2e-pmo"
 	// test namespace must be the deployment namespace for controller
 	// to watch the deployments / daemonsets etc
 	testNs := controller.PowerMonitorDeploymentNS
