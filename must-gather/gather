@@ -13,7 +13,8 @@ declare OPERATOR=""
 declare COLLECTION_DIR=""
 
 declare OLM_INFO_DIR=""
-declare KEPLER_NS=""
+declare INSTANCE_NS=""
+declare INSTANCE_TYPE=""
 declare KEPLER_OPERATOR_INFO_DIR=""
 
 declare UWM_INFO_DIR=""
@@ -28,9 +29,12 @@ declare -r COLLECTION_DIR_DEFAULT="/must-gather"
 declare -r OPERATOR_DEPLOY_NAME="kepler-operator-controller"
 declare -r LOGFILE_NAME="gather-debug.log"
 declare -r UWM_NS="openshift-user-workload-monitoring"
+declare -r KEPLER_INSTANCE="kepler"
+declare -r POWER_MONITOR_INSTANCE="power-monitor"
 
 declare SHOW_HELP=false
 
+# Initialize global variables with defaults if they aren't already set
 init_globals() {
 	[[ -z "$OPERATOR_NS" ]] && {
 		OPERATOR_NS="$OPERATOR_NS_DEFAULT"
@@ -44,14 +48,17 @@ init_globals() {
 	return 0
 }
 
+# Initialize monitoring variables
 init_monitoring() {
 	THANOS_RULER_ROUTE="$(oc get routes -n $UWM_NS thanos-ruler -o jsonpath='{.status.ingress[0].host}')" || return 1
 	SA_TOKEN="$(oc create token default)" || return 1
 	PROM_PODS="$(oc -n $UWM_NS get pods -l app.kubernetes.io/component=prometheus -oname)" || return 1
 
+	log "Successfully initialized monitoring variables"
 	return 0
 }
 
+# Parse command line arguments
 parse_args() {
 	while [[ -n "${1+xxx}" ]]; do
 		case $1 in
@@ -82,6 +89,7 @@ parse_args() {
 	return 0
 }
 
+# Print usage information
 print_usage() {
 	local scr
 	scr="$(basename "$0")"
@@ -110,206 +118,274 @@ print_usage() {
 	return 0
 }
 
-get_kepler_internal_instances() {
-	log "getting kepler internal instance(s)"
-	oc get keplerinternals kepler >/dev/null || {
-		log "no kepler internals found; skipping gathering kepler"
+# Get internal instances
+get_internal_instances() {
+	local instance_type="$1"
+	local instance_name="$2"
+	shift 2
+
+	log "Getting $instance_type internal instance(s)"
+
+	oc get "${instance_type}internals" "$instance_name" >/dev/null || {
+		log "No $instance_type internals found; skipping gathering $instance_type"
 		return 0
 	}
-	local kepler_internals=""
-	kepler_internals=$(oc get keplerinternals.kepler.system.sustainable.computing.io -oname)
-	run oc get "$kepler_internals" -oyaml "$COLLECTION_DIR/kepler-internals.yaml"
+	run oc get "${instance_type}internals" "$instance_name" -oyaml "$COLLECTION_DIR/$instance_type-internals.yaml"
 }
 
-get_kepler_instance() {
-	log "getting kepler instance(s)"
-	oc get kepler kepler >/dev/null || {
-		log "no kepler found; skipping gathering kepler"
+# Get instance
+get_instance() {
+	local instance_type="$1"
+	local instance_name="$2"
+	shift 2
+
+	log "Getting $instance_type instance(s)"
+
+	oc get "$instance_type" "$instance_name" >/dev/null || {
+		log "No $instance_type found; skipping gathering $instance_type"
 		return 0
 	}
-	KEPLER_NS=$(oc get keplerinternals kepler -o jsonpath='{.spec.exporter.deployment.namespace}')
-	local kepler=""
-	kepler=$(oc get keplers.kepler.system.sustainable.computing.io -oname)
-	run oc get "$kepler" -oyaml "$COLLECTION_DIR/keplers.yaml"
+
+	# Different jsonpath for different instance type
+	local jsonpath="{.spec.exporter.deployment.namespace}"
+	[[ "$instance_type" == "powermonitor" ]] && {
+		jsonpath="{.spec.kepler.deployment.namespace}"
+	}
+
+	# Get instance namespace from internals
+	INSTANCE_NS=$(oc get "${instance_type}internals" "$instance_name" -o jsonpath="$jsonpath")
+	INSTANCE_TYPE="$instance_name"
+
+	run oc get "$instance_type" -oyaml "$COLLECTION_DIR/${instance_type}s.yaml"
 }
 
-get_kepler_events() {
-	log "getting $KEPLER_NS events"
-	run oc -n "$KEPLER_NS" get events "$COLLECTION_DIR/$KEPLER_NS""_events"
+# Get event information
+get_events() {
+	log "Getting $INSTANCE_NS events"
+	run oc -n "$INSTANCE_NS" get events "$COLLECTION_DIR/$INSTANCE_NS""_events"
 }
 
-get_kepler_daemon_set() {
-	log "getting kepler exporter daemonset"
-	run oc -n "$KEPLER_NS" get ds kepler -oyaml "$COLLECTION_DIR/kepler-ds.yaml"
+# Get daemon set information
+get_daemon_set() {
+	log "Getting $INSTANCE_TYPE exporter daemonset"
+	run oc -n "$INSTANCE_NS" get ds "$INSTANCE_TYPE" -oyaml "$COLLECTION_DIR/$INSTANCE_TYPE-ds.yaml"
 }
 
-get_kepler_config_map() {
-	log "getting kepler exporter config map"
-	run oc -n "$KEPLER_NS" get cm kepler -oyaml "$COLLECTION_DIR/kepler-cm.yaml"
+# Get config map information
+get_config_map() {
+	log "Getting $INSTANCE_TYPE exporter config map"
+	run oc -n "$INSTANCE_NS" get cm "$INSTANCE_TYPE" -oyaml "$COLLECTION_DIR/$INSTANCE_TYPE-cm.yaml"
 }
 
-get_kepler_sa() {
-	log "getting kepler exporter service account"
-	run oc -n "$KEPLER_NS" get serviceaccount kepler -oyaml "$COLLECTION_DIR/kepler-sa.yaml"
+# Get service account information
+get_sa() {
+	log "Getting $INSTANCE_TYPE exporter service account"
+	run oc -n "$INSTANCE_NS" get serviceaccount "$INSTANCE_TYPE" -oyaml "$COLLECTION_DIR/$INSTANCE_TYPE-sa.yaml"
 }
 
-get_kepler_scc() {
-	log "getting kepler exporter scc"
-	run oc get scc kepler -oyaml "$COLLECTION_DIR/kepler-scc.yaml"
+# Get scc information
+get_scc() {
+	log "Getting $INSTANCE_TYPE exporter scc"
+	run oc get scc "$INSTANCE_TYPE" -oyaml "$COLLECTION_DIR/$INSTANCE_TYPE-scc.yaml"
 }
 
-get_kepler_pod() {
-	local kepler_pod="$1"
-	local kepler_node_info_dir="$2"
+# Get pod information
+get_pods() {
+	local component_pod="$1"
+	local component_node_info_dir="$2"
 	shift 2
-	log "getting pod yaml for kepler pod: $kepler_pod"
-	run oc -n "$KEPLER_NS" get pod "$kepler_pod" -oyaml "$kepler_node_info_dir/kepler-pod.yaml"
+
+	log "Getting pod yaml for $INSTANCE_TYPE pod: $component_pod"
+
+	run oc -n "$INSTANCE_NS" get pod "$component_pod" -oyaml "$component_node_info_dir/$INSTANCE_TYPE-pod.yaml"
 }
 
-get_kepler_cpuid() {
-	local kepler_pod="$1"
-	local kepler_node_info_dir="$2"
+# Get cpuid information
+get_cpuid() {
+	local component_pod="$1"
+	local component_node_info_dir="$2"
 	shift 2
-	log "getting information from \"cpuid\" from kepler pod: $kepler_pod"
-	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- cpuid -1 "$kepler_node_info_dir/node-cpuid-info"
+
+	log "Getting information from \"cpuid\" from $INSTANCE_TYPE pod: $component_pod"
+	run oc -n "$INSTANCE_NS" exec "$component_pod" -c "$INSTANCE_TYPE" -- cpuid -1 "$component_node_info_dir/node-cpuid-info"
 }
 
-get_kepler_env_var() {
-	local kepler_pod="$1"
-	local kepler_node_info_dir="$2"
+# Get environment variables
+get_env_var() {
+	local component_pod="$1"
+	local component_node_info_dir="$2"
 	shift 2
-	log "getting environment variables from kepler pod: $kepler_pod"
-	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- env "$kepler_node_info_dir/env-variables"
+
+	log "Getting environment variables from $INSTANCE_TYPE pod: $component_pod"
+	run oc -n "$INSTANCE_NS" exec "$component_pod" -c "$INSTANCE_TYPE" -- env "$component_node_info_dir/env-variables"
 }
 
-get_kepler_kernel_info() {
-	local kepler_pod="$1"
-	local kepler_node_info_dir="$2"
+# Get kernel information
+get_kernel_info() {
+	local component_pod="$1"
+	local component_node_info_dir="$2"
 	shift 2
-	log "getting kernel version from kepler pod: $kepler_pod"
-	echo "kernel version:" >>"$kepler_node_info_dir/kernel-info"
-	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- uname -a "$kepler_node_info_dir/kernel-info"
+
+	log "Getting kernel version from $INSTANCE_TYPE pod: $component_pod"
+	echo "kernel version:" >>"$component_node_info_dir/kernel-info"
+	run oc -n "$INSTANCE_NS" exec "$component_pod" -c "$INSTANCE_TYPE" -- uname -a "$component_node_info_dir/kernel-info"
 }
 
-get_kepler_ebpf_info() {
-	local kepler_pod="$1"
-	local kepler_node_info_dir="$2"
+# Get ebpf information
+get_ebpf_info() {
+	local component_pod="$1"
+	local component_node_info_dir="$2"
 	shift 2
-	log "getting ebpf information from kepler pod: $kepler_pod"
+
+	log "Getting ebpf information from $INSTANCE_TYPE pod: $component_pod"
 
 	echo "Probing the running kernel and dumping the number of eBPF-related parameters"
-	echo "ebpf related features supported by current kernel:" >>"$kepler_node_info_dir/kernel-ebpf-features"
-	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- bpftool feature probe kernel "$kepler_node_info_dir/kernel-ebpf-features"
+	echo "ebpf related features supported by current kernel:" >>"$component_node_info_dir/kernel-ebpf-features"
+	run oc -n "$INSTANCE_NS" exec "$component_pod" -c "$INSTANCE_TYPE" -- bpftool feature probe kernel "$component_node_info_dir/kernel-ebpf-features"
 
 	echo "listing all loaded ebpf programs"
-	echo "list of all loaded ebpf programs:" >>"$kepler_node_info_dir/ebpf-info"
-	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- bpftool prog list "$kepler_node_info_dir/ebpf-info"
+	echo "list of all loaded ebpf programs:" >>"$component_node_info_dir/ebpf-info"
+	run oc -n "$INSTANCE_NS" exec "$component_pod" -c "$INSTANCE_TYPE" -- bpftool prog list "$component_node_info_dir/ebpf-info"
 
 	echo "listing all ebpf maps"
-	echo "list of all ebpf maps:" >>"$kepler_node_info_dir/ebpf-info"
-	run oc -n "$KEPLER_NS" exec "$kepler_pod" -c kepler -- bpftool map list "$kepler_node_info_dir/ebpf-info"
+	echo "list of all ebpf maps:" >>"$component_node_info_dir/ebpf-info"
+	run oc -n "$INSTANCE_NS" exec "$component_pod" -c "$INSTANCE_TYPE" -- bpftool map list "$component_node_info_dir/ebpf-info"
+
 }
 
-get_kepler_logs() {
-	local kepler_pod="$1"
-	local kepler_node_info_dir="$2"
+# Get pod logs
+get_pod_logs() {
+	local component_pod="$1"
+	local component_node_info_dir="$2"
 	shift 2
-	log "getting logs from kepler pod: $kepler_pod"
-	run oc -n "$KEPLER_NS" logs "$kepler_pod" -c kepler "$kepler_node_info_dir/kepler.log"
+
+	log "Getting logs from $INSTANCE_TYPE pod: $component_pod"
+	run oc -n "$INSTANCE_NS" logs "$component_pod" -c "$INSTANCE_TYPE" "$component_node_info_dir/$INSTANCE_TYPE.log"
 }
 
-gather_kepler_exporter_info() {
-	[[ -z "$KEPLER_NS" ]] && {
-		log "no kepler found; skipping gathering kepler exporter info"
+# Gather exporter information
+gather_exporter_info() {
+	[[ -z "$INSTANCE_NS" ]] && {
+		log "no $INSTANCE_TYPE found; skipping gathering $INSTANCE_TYPE exporter info"
 		return 0
 	}
-	get_kepler_events
-	get_kepler_daemon_set
-	get_kepler_config_map
-	get_kepler_sa
-	get_kepler_scc
-	local kepler_pods=""
-	local kepler_pod_info_dir=""
-	kepler_pods=$(oc -n "$KEPLER_NS" get pods -oname 2>/dev/null || echo "")
-	for pod in $kepler_pods; do
+
+	log "Gathering exporter information for $INSTANCE_TYPE in namespace $INSTANCE_NS"
+
+	# Get resource information
+	get_events
+	get_daemon_set
+	get_config_map
+	get_sa
+	get_scc
+
+	# Gather pod-specific information
+	local component_pods=""
+	local component_pod_info_dir=""
+
+	# Get all pods in the component namespace
+	component_pods=$(oc -n "$INSTANCE_NS" get pods -oname 2>/dev/null || echo "")
+
+	log "Found $(echo "$component_pods" | wc -w) pods in namespace $INSTANCE_NS"
+	for pod in $component_pods; do
 		pod=$(echo "$pod" | awk -F '/' '{print $2}')
-		log "running gather script for kepler pod: $pod"
-		kepler_pod_info_dir="$COLLECTION_DIR/kepler-info/$pod"
-		mkdir -p "$kepler_pod_info_dir"
-		get_kepler_pod "$pod" "$kepler_pod_info_dir"
-		get_kepler_cpuid "$pod" "$kepler_pod_info_dir"
-		get_kepler_env_var "$pod" "$kepler_pod_info_dir"
-		get_kepler_kernel_info "$pod" "$kepler_pod_info_dir"
-		get_kepler_ebpf_info "$pod" "$kepler_pod_info_dir"
-		get_kepler_logs "$pod" "$kepler_pod_info_dir"
+		log "Gathering information for $INSTANCE_TYPE pod: $pod"
+
+		component_pod_info_dir="$COLLECTION_DIR/$INSTANCE_TYPE-info/$pod"
+		mkdir -p "$component_pod_info_dir"
+
+		# Gather pod information
+		get_pods "$pod" "$component_pod_info_dir"
+		get_cpuid "$pod" "$component_pod_info_dir"
+		get_env_var "$pod" "$component_pod_info_dir"
+		get_kernel_info "$pod" "$component_pod_info_dir"
+		get_ebpf_info "$pod" "$component_pod_info_dir"
+		get_pod_logs "$pod" "$component_pod_info_dir"
+
+		log "Completed gathering information for pod: $pod"
 	done
+
+	log "Completed gathering exporter information for $INSTANCE_TYPE"
 }
 
+# Get OLM information
 get_olm() {
-	log "collecting olm info for $OPERATOR"
+	log "Collecting olm info for $OPERATOR"
 	run oc -n "$OPERATOR_NS" get olm -l "operators.coreos.com/$OPERATOR.$OPERATOR_NS"= \
 		-oyaml "$OLM_INFO_DIR/$OPERATOR-olm-resources.yaml"
 }
 
+# Get OLM summary
 get_summary() {
-	log "collecting olm summary"
+	log "Collecting olm summary"
 	run oc -n "$OPERATOR_NS" get olm -owide "$OLM_INFO_DIR/summary.txt"
 }
 
+# Gather OLM information
 gather_olm_info() {
-	log "running gather script for olm"
+	log "Running gather script for olm"
+
 	OLM_INFO_DIR="$COLLECTION_DIR/olm-info"
 	mkdir -p "$OLM_INFO_DIR"
+
 	get_olm
 	get_summary
 }
 
+# Get catalogsource information
 get_catalogsource() {
-	log "getting catalogsource info for $OPERATOR"
+	log "Getting catalogsource info for $OPERATOR"
 	run oc -n "$OPERATOR_NS" get catalogsource \
 		"$OPERATOR-catalog" -oyaml "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR-catalogsource.yaml"
 }
 
+# Get subscription information
 get_subscription() {
-	log "getting subscription info for $OPERATOR"
+	log "Getting subscription info for $OPERATOR"
 	run oc -n "$OPERATOR_NS" get subscription \
 		-l operators.coreos.com/"$OPERATOR"."$OPERATOR_NS"= \
 		-oyaml "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR-subscription.yaml"
 }
 
+# Get installplan information
 get_install_plan() {
-	log "getting installplan info for $OPERATOR"
+	log "Getting installplan info for $OPERATOR"
 	run oc -n "$OPERATOR_NS" get installplan \
 		-l operators.coreos.com/"$OPERATOR"."$OPERATOR_NS"= \
 		-oyaml "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR-installplan.yaml"
 }
 
+# Get CSV information
 get_csv() {
-	log "getting CSV for $OPERATOR"
+	log "Getting CSV for $OPERATOR"
 	run oc -n "$OPERATOR_NS" get csv \
 		-l operators.coreos.com/"$OPERATOR"."$OPERATOR_NS"= \
 		-oyaml "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR-csv.yaml"
 }
 
+# Get Operator deployment information
 get_kepler_operator_deployment_info() {
-	log "getting deployment info for $OPERATOR"
+	log "Getting deployment info for $OPERATOR"
 	run oc -n "$OPERATOR_NS" get deployment \
 		"$OPERATOR_DEPLOY_NAME" -oyaml "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR-deployment.yaml"
 }
 
+# Get Operator pod information
 get_kepler_operator_pod_info() {
-	log "getting pod info for $OPERATOR"
+	log "Getting pod info for $OPERATOR"
 	run oc -n "$OPERATOR_NS" get pod \
 		-l app.kubernetes.io/component=manager \
 		-l app.kubernetes.io/part-of="kepler-operator" \
 		-oyaml "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR.yaml"
 }
 
+# Get Operator log
 get_kepler_operator_log() {
-	log "getting pod log for $OPERATOR"
+	log "Getting pod log for $OPERATOR"
 	run oc -n "$OPERATOR_NS" logs deployment/"$OPERATOR_DEPLOY_NAME" "$KEPLER_OPERATOR_INFO_DIR/$OPERATOR.log"
 }
 
+# Get Operator summary
 get_operator_summary() {
 	run oc -n "$OPERATOR_NS" get catalogsource \
 		"$OPERATOR-catalog" -owide "$KEPLER_OPERATOR_INFO_DIR/summary.txt"
@@ -334,10 +410,13 @@ get_operator_summary() {
 		-owide "$KEPLER_OPERATOR_INFO_DIR/summary.txt"
 }
 
+# Gather Operator information
 gather_operator_info() {
-	log "getting $OPERATOR info"
+	log "Getting $OPERATOR info"
+
 	KEPLER_OPERATOR_INFO_DIR="$COLLECTION_DIR/$OPERATOR-info"
 	mkdir -p "$KEPLER_OPERATOR_INFO_DIR"
+
 	get_subscription
 	get_catalogsource
 	get_install_plan
@@ -348,14 +427,16 @@ gather_operator_info() {
 	get_operator_summary
 }
 
+# Get prometheus rules
 get_rules() {
-	log "getting prometheus rules"
+	log "Getting prometheus rules"
 	run oc -n openshift-config-managed get cm default-ingress-cert -o jsonpath='{.data.ca-bundle\.crt}' "${CA_BUNDLE}"
 	run oc get --certificate-authority="${CA_BUNDLE}" \
 		--token="${SA_TOKEN}" --server="https://${THANOS_RULER_ROUTE}" \
 		--raw="/api/v1/rules" "${UWM_INFO_DIR}/rules.json"
 }
 
+# Get prometheus object from replica
 get_from_prom_replica() {
 	local replica="$1"
 	shift
@@ -373,6 +454,7 @@ get_from_prom_replica() {
 		"${result_path}.json"
 }
 
+# Get prometheus objects from replicas
 get_from_prom_replicas() {
 	local object="$1"
 	shift
@@ -386,11 +468,14 @@ get_from_prom_replicas() {
 	done
 }
 
+# Gather monitoring information
 gather_monitoring_info() {
-	log "getting monitoring info"
+	log "Getting monitoring info"
+
 	UWM_INFO_DIR="${COLLECTION_DIR}/uwm-info"
 	CA_BUNDLE="${UWM_INFO_DIR}/ca-bundle.crt"
 	mkdir -p "${UWM_INFO_DIR}"
+
 	get_rules
 	get_from_prom_replicas status/runtimeinfo
 	get_from_prom_replicas status/config
@@ -398,18 +483,34 @@ gather_monitoring_info() {
 	get_from_prom_replicas status/tsdb
 }
 
+# Check if instance exists in the cluster
+component_exists() {
+	local instance_type="$1"
+	local instance_name="$2"
+	shift 2
+
+	oc get "${instance_type}internals" "$instance_name" >/dev/null 2>&1 && return 0
+	return 1
+}
+
 main() {
+	# Parse command line arguments
 	parse_args "$@" || {
 		print_usage
 		echo "error: parsing args failed"
 		return 1
 	}
+
+	# Show help if requested
 	$SHOW_HELP && {
 		print_usage
 		return 0
 	}
+
+	# Initialize global variables
 	init_globals
 
+	# Create collection directory
 	# NOTE: convert relative to absolute path
 	COLLECTION_DIR="$(readlink -f "$COLLECTION_DIR")"
 	export LOGFILE_PATH="${COLLECTION_DIR}/${LOGFILE_NAME}"
@@ -422,18 +523,34 @@ main() {
 	export KUBECACHEDIR=/tmp/cache-dir
 
 	echo "$OPERATOR must-gather started..."
+
+	# Gather operator and OLM information
 	gather_olm_info
 	gather_operator_info
-	get_kepler_instance
-	get_kepler_internal_instances
-	gather_kepler_exporter_info
+
+	# Check and process available components
+	component_exists "kepler" "$KEPLER_INSTANCE" && {
+		get_internal_instances "kepler" "$KEPLER_INSTANCE"
+		get_instance "kepler" "$KEPLER_INSTANCE"
+		gather_exporter_info
+	}
+
+	component_exists "powermonitor" "$POWER_MONITOR_INSTANCE" && {
+		get_internal_instances "powermonitor" "$POWER_MONITOR_INSTANCE"
+		get_instance "powermonitor" "$POWER_MONITOR_INSTANCE"
+		gather_exporter_info
+	}
+
+	# Gather monitoring information if available
 	if init_monitoring; then
 		gather_monitoring_info
 	else
 		log "cannot gather UWM details; skipping gathering monitoring info"
 	fi
 
+	log "$OPERATOR must-gather completed successfully"
 	echo "$OPERATOR must-gather completed"
+	return 0
 }
 
 main "$@"
