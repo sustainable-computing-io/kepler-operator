@@ -402,7 +402,7 @@ func (f Framework) WaitUntilPowerMonitorInternalCondition(name string, t v1alpha
 				return true, fmt.Errorf("power-monitor-internal %s is not found", name)
 			}
 
-			condition, _ := k8s.FindCondition(pmi.Status.Kepler.Conditions, t)
+			condition, _ := k8s.FindCondition(pmi.Status.Conditions, t)
 			return condition.Status == s, nil
 		}, fns...)
 	return &pmi
@@ -418,7 +418,7 @@ func (f Framework) WaitUntilPowerMonitorCondition(name string, t v1alpha1.Condit
 				return true, fmt.Errorf("powermonitor %s is not found", name)
 			}
 
-			condition, _ := k8s.FindCondition(pm.Status.Kepler.Conditions, t)
+			condition, _ := k8s.FindCondition(pm.Status.Conditions, t)
 			return condition.Status == s, nil
 		})
 	return &pm
@@ -496,6 +496,7 @@ func (f Framework) WithPowerMonitorAnnotation(key, val string) func(k *v1alpha1.
 		pm.Annotations[key] = val
 	}
 }
+
 func (f Framework) GetSchedulableNodes() []corev1.Node {
 	f.T.Helper()
 	var nodes corev1.NodeList

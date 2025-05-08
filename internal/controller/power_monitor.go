@@ -136,10 +136,11 @@ func (r PowerMonitorReconciler) updatePowerMonitorStatus(ctx context.Context, re
 		// should be set to kepler's current generation to indicate that the
 		// current generation has been "observed"
 		pm.Status = v1alpha1.PowerMonitorStatus{
-			Kepler: v1alpha1.PowerMonitorKeplerStatus(internal.Status.Kepler), // this may fail
+			Kepler:     v1alpha1.PowerMonitorKeplerStatus(internal.Status.Kepler), // this may fail
+			Conditions: internal.Status.Conditions,
 		}
-		for i := range pm.Status.Kepler.Conditions {
-			pm.Status.Kepler.Conditions[i].ObservedGeneration = pm.Generation
+		for i := range pm.Status.Conditions {
+			pm.Status.Conditions[i].ObservedGeneration = pm.Generation
 		}
 		return r.Client.Status().Update(ctx, pm)
 	})
@@ -148,8 +149,8 @@ func (r PowerMonitorReconciler) updatePowerMonitorStatus(ctx context.Context, re
 // returns true (i.e. status has changed ) if any of the Conditions'
 // ObservedGeneration is equal to the current generation
 func hasPowerMonitorInternalStatusChanged(internal *v1alpha1.PowerMonitorInternal) bool {
-	for i := range internal.Status.Kepler.Conditions {
-		if internal.Status.Kepler.Conditions[i].ObservedGeneration == internal.Generation {
+	for i := range internal.Status.Conditions {
+		if internal.Status.Conditions[i].ObservedGeneration == internal.Generation {
 			return true
 		}
 	}
@@ -215,7 +216,7 @@ func (r PowerMonitorReconciler) setInvalidStatus(ctx context.Context, req ctrl.R
 		}
 
 		now := metav1.Now()
-		invalidpm.Status.Kepler.Conditions = []v1alpha1.Condition{{
+		invalidpm.Status.Conditions = []v1alpha1.Condition{{
 			Type:               v1alpha1.Reconciled,
 			Status:             v1alpha1.ConditionFalse,
 			ObservedGeneration: invalidpm.Generation,

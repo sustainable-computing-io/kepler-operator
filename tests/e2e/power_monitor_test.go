@@ -58,13 +58,13 @@ func TestPowerMonitor_Reconciliation(t *testing.T) {
 	powermonitor := f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Reconciled, v1alpha1.ConditionTrue)
 	// default toleration
 	assert.Equal(t, []corev1.Toleration{{Operator: "Exists"}}, powermonitor.Spec.Kepler.Deployment.Tolerations)
-	reconciled, err := k8s.FindCondition(powermonitor.Status.Kepler.Conditions, v1alpha1.Reconciled)
+	reconciled, err := k8s.FindCondition(powermonitor.Status.Conditions, v1alpha1.Reconciled)
 	assert.NoError(t, err, "unable to get reconciled condition")
 	assert.Equal(t, reconciled.ObservedGeneration, powermonitor.Generation)
 	assert.Equal(t, reconciled.Status, v1alpha1.ConditionTrue)
 
 	powermonitor = f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Available, v1alpha1.ConditionTrue)
-	available, err := k8s.FindCondition(powermonitor.Status.Kepler.Conditions, v1alpha1.Available)
+	available, err := k8s.FindCondition(powermonitor.Status.Conditions, v1alpha1.Available)
 	assert.NoError(t, err, "unable to get available condition")
 	assert.Equal(t, available.ObservedGeneration, powermonitor.Generation)
 	assert.Equal(t, available.Status, v1alpha1.ConditionTrue)

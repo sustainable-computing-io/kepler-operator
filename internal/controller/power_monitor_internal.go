@@ -259,7 +259,7 @@ func (r PowerMonitorInternalReconciler) updatePowerMonitorStatus(ctx context.Con
 			return nil
 		}
 		// sanitize the conditions so that all types are present and the order is predictable
-		pmi.Status.Kepler.Conditions = sanitizePowerMonitorConditions(pmi.Status.Kepler.Conditions)
+		pmi.Status.Conditions = sanitizePowerMonitorConditions(pmi.Status.Conditions)
 
 		{
 			now := metav1.Now()
@@ -327,7 +327,7 @@ func (r PowerMonitorInternalReconciler) updatePowerMonitorReconciledStatus(ctx c
 		reconciled.Message = recErr.Error()
 	}
 
-	return updatePowerMonitorCondition(pmi.Status.Kepler.Conditions, reconciled, time)
+	return updatePowerMonitorCondition(pmi.Status.Conditions, reconciled, time)
 }
 
 func findPowerMonitorCondition(conditions []v1alpha1.Condition, t v1alpha1.ConditionType) *v1alpha1.Condition {
@@ -367,7 +367,7 @@ func (r PowerMonitorInternalReconciler) updatePowerMonitorAvailableStatus(ctx co
 	dset := appsv1.DaemonSet{}
 	key := types.NamespacedName{Name: pmi.DaemonsetName(), Namespace: pmi.Namespace()}
 	if err := r.Client.Get(ctx, key, &dset); err != nil {
-		return updatePowerMonitorCondition(pmi.Status.Kepler.Conditions, availablePowerMonitorConditionForGetError(err), time)
+		return updatePowerMonitorCondition(pmi.Status.Conditions, availablePowerMonitorConditionForGetError(err), time)
 	}
 
 	ds := dset.Status
@@ -389,7 +389,7 @@ func (r PowerMonitorInternalReconciler) updatePowerMonitorAvailableStatus(ctx co
 		available.Reason = v1alpha1.ReconcileError
 	}
 
-	updated := updatePowerMonitorCondition(pmi.Status.Kepler.Conditions, available, time)
+	updated := updatePowerMonitorCondition(pmi.Status.Conditions, available, time)
 	return updated
 }
 
@@ -421,7 +421,7 @@ func availablePowerMonitorCondition(dset *appsv1.DaemonSet) v1alpha1.Condition {
 			Status: v1alpha1.ConditionUnknown,
 			Reason: v1alpha1.DaemonSetOutOfSync,
 			Message: fmt.Sprintf(
-				"Generation %d of kepler daemonset %q is out of sync with the observed generation: %d",
+				"Generation %d of power-monitor daemonset %q is out of sync with the observed generation: %d",
 				gen, dsName, ogen),
 		}
 	}
@@ -436,7 +436,7 @@ func availablePowerMonitorCondition(dset *appsv1.DaemonSet) v1alpha1.Condition {
 	if ds.NumberReady == 0 || ds.DesiredNumberScheduled == 0 {
 		c.Status = v1alpha1.ConditionFalse
 		c.Reason = v1alpha1.DaemonSetPodsNotRunning
-		c.Message = fmt.Sprintf("Kepler daemonset %q is not rolled out to any node; check nodeSelector and tolerations", dsName)
+		c.Message = fmt.Sprintf("power-monitor daemonset %q is not rolled out to any node; check nodeSelector and tolerations", dsName)
 		return c
 	}
 
@@ -449,7 +449,7 @@ func availablePowerMonitorCondition(dset *appsv1.DaemonSet) v1alpha1.Condition {
 		c.Status = v1alpha1.ConditionUnknown
 		c.Reason = v1alpha1.DaemonSetRolloutInProgress
 		c.Message = fmt.Sprintf(
-			"Waiting for kepler daemonset %q rollout to finish: %d out of %d new pods have been updated",
+			"Waiting for power-monitor daemonset %q rollout to finish: %d out of %d new pods have been updated",
 			dsName, ds.UpdatedNumberScheduled, ds.DesiredNumberScheduled)
 		return c
 	}
@@ -461,7 +461,7 @@ func availablePowerMonitorCondition(dset *appsv1.DaemonSet) v1alpha1.Condition {
 	if ds.NumberAvailable < ds.DesiredNumberScheduled {
 		c.Status = v1alpha1.ConditionUnknown
 		c.Reason = v1alpha1.DaemonSetPartiallyAvailable
-		c.Message = fmt.Sprintf("Rollout of kepler daemonset %q is in progress: %d of %d updated pods are available",
+		c.Message = fmt.Sprintf("Rollout of power-monitor daemonset %q is in progress: %d of %d updated pods are available",
 			dsName, ds.NumberAvailable, ds.DesiredNumberScheduled)
 		return c
 	}
@@ -472,13 +472,13 @@ func availablePowerMonitorCondition(dset *appsv1.DaemonSet) v1alpha1.Condition {
 	if ds.NumberUnavailable > 0 {
 		c.Status = v1alpha1.ConditionFalse
 		c.Reason = v1alpha1.DaemonSetPartiallyAvailable
-		c.Message = fmt.Sprintf("Waiting for kepler daemonset %q to rollout on %d nodes", dsName, ds.NumberUnavailable)
+		c.Message = fmt.Sprintf("Waiting for power-monitor daemonset %q to rollout on %d nodes", dsName, ds.NumberUnavailable)
 		return c
 	}
 
 	c.Status = v1alpha1.ConditionTrue
 	c.Reason = v1alpha1.DaemonSetReady
-	c.Message = fmt.Sprintf("Kepler daemonset %q is deployed to all nodes and available; ready %d/%d",
+	c.Message = fmt.Sprintf("power-monitor daemonset %q is deployed to all nodes and available; ready %d/%d",
 		dsName, ds.NumberReady, ds.DesiredNumberScheduled)
 	return c
 }

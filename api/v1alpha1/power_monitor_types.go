@@ -93,16 +93,15 @@ type PowerMonitorKeplerStatus struct {
 	// power-monitor pod and have none of the power-monitor pod running and available
 	// +optional
 	NumberUnavailable int32 `json:"numberUnavailable,omitempty"`
-
-	// conditions represent the latest available observations of power-monitor
-	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
-	// +listType=atomic
-	Conditions []Condition `json:"conditions"`
 }
 
 // PowerMonitorStatus defines the observed state of Power Monitor
 type PowerMonitorStatus struct {
 	Kepler PowerMonitorKeplerStatus `json:"kepler,omitempty"`
+	// conditions represent the latest available observations of power-monitor
+	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
+	// +listType=atomic
+	Conditions []Condition `json:"conditions"`
 }
 
 //+kubebuilder:object:root=true
