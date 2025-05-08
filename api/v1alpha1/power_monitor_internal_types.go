@@ -98,15 +98,14 @@ type PowerMonitorInternalKeplerStatus struct {
 	// power-monitor-internal pod and have none of the power-monitor-internal pod running and available
 	// +optional
 	NumberUnavailable int32 `json:"numberUnavailable,omitempty"`
-
-	// conditions represent the latest available observations of power-monitor-internal
-	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
-	// +listType=atomic
-	Conditions []Condition `json:"conditions"`
 }
 
 type PowerMonitorInternalStatus struct {
 	Kepler PowerMonitorInternalKeplerStatus `json:"kepler,omitempty"`
+	// conditions represent the latest available observations of power-monitor-internal
+	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
+	// +listType=atomic
+	Conditions []Condition `json:"conditions"`
 }
 
 func (pmi PowerMonitorInternal) Namespace() string {
