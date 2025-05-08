@@ -70,6 +70,20 @@ jobs:
           git tag -a "v${{ github.event.inputs.tag }}" -m "v${{ github.event.inputs.tag }}"
           git show --stat
 
+      - name: Output the version
+        run: |
+          cat VERSION
+
+      - name: Push Images
+        run: |
+          make operator-push  bundle-push
+        env:
+          IMG_BASE: ${{ vars.IMG_BASE }}
+
+      - name: Push Release tag
+        run: |
+          git push --tags
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
         with:
@@ -93,16 +107,6 @@ jobs:
             vprashar2929
             KaiyiLiu1234
           draft: false
-
-      - name: Push Images
-        run: |
-          make operator-push  bundle-push
-        env:
-          IMG_BASE: ${{ vars.IMG_BASE }}
-
-      - name: Push Release tag
-        run: |
-          git push --tags
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
