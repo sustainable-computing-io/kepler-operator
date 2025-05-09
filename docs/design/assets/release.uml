@@ -1,0 +1,86 @@
+@startuml Release Workflow Sequence
+' NOTE: Render using http://sujoyu.github.io/plantuml-previewer or any PlantUML tool
+
+title Release Workflow for Kepler Operator
+
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 250
+skinparam style strictuml
+skinparam DefaultFontName SansSerif
+
+actor "User" as User
+participant "Repo" as Repo
+box "GitHub Actions" #LightBlue
+    participant "Workflow Runner" as Runner
+end box
+participant "Quay.io" as Registry
+
+== Workflow Trigger ==
+User -> Repo: Dispatch 'Release' workflow
+note right of User
+  Inputs:
+  - tag: (e.g., 0.8.0)
+  - version-replace: (e.g., 0.7.3)
+end note
+Repo -> Runner: Trigger 'Release' workflow run
+
+== Setup & Preparation ==
+group Environment & Initial Setup
+    Runner -> Repo: Checkout source code
+    note right: Uses actions/checkout@v2
+
+    Runner -> Registry: Login to Quay.io
+    note right: Uses docker/login-action@v2
+    Registry --> Runner: Authenticated
+
+    Runner -> Runner: Update VERSION file
+    note right: Writes `${{ github.event.inputs.tag }}` to VERSION file
+
+    Runner -> Runner: Install tools
+    note right: Uses local action ./.github/tools-cache
+end
+
+== Build Images ==
+group Operator & Bundle Build
+    Runner -> Runner: Build Operator Image
+    note right: make operator-build
+    Runner -> Runner: Build Bundle Image & Files
+    note right: make bundle bundle-build
+end
+
+== Git Operations & Image Push ==
+group Tagging & Pushing Artifacts
+    Runner -> Runner: Configure Git user
+    note right: User: `${{ github.actor }}`
+
+    Runner -> Runner: Create Git tag locally
+    note right: Tags as `v${{ github.event.inputs.tag }}`
+
+    Runner -> Registry: Push Operator & Bundle Images
+    note right: make operator-push bundle-push
+    Registry --> Runner: Images pushed
+
+    Runner -> Repo: Push Git tags to origin
+    Repo --> Runner: Tags received
+end
+
+== Create Pull Request & GitHub Release ==
+group GitHub Integration
+    Runner -> Repo: Create Pull Request for VERSION update
+    note right of Runner
+        Uses peter-evans/create-pull-request@v7
+    end note
+    Repo --> Runner: Pull Request created
+
+    Runner -> Repo: Create GitHub Release
+    note right of Runner
+        Uses softprops/action-gh-release@v2
+    end note
+    Repo --> Runner: Release created
+end
+
+== Complete ==
+Runner --> User: Workflow run completed
+
+@enduml
