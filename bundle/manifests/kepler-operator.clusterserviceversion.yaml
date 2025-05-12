@@ -47,7 +47,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.16.0
-    createdAt: "2025-05-08T14:06:23Z"
+    createdAt: "2025-05-09T08:51:49Z"
     description: Deploys and Manages Kepler on Kubernetes
     operators.operatorframework.io/builder: operator-sdk-v1.39.1
     operators.operatorframework.io/internal-objects: |-
@@ -88,11 +88,29 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:conditions
       version: v1alpha1
-    - kind: PowerMonitorInternal
+    - description: PowerMonitorInternal is the Schema for internal/unsupported API
+      displayName: PowerMonitorInternal
+      kind: PowerMonitorInternal
       name: powermonitorinternals.kepler.system.sustainable.computing.io
+      statusDescriptors:
+      - description: conditions represent the latest available observations of the
+          power-monitor
+        displayName: Conditions
+        path: conditions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:conditions
       version: v1alpha1
-    - kind: PowerMonitor
+    - description: PowerMonitor is the Schema for the powermonitors API
+      displayName: PowerMonitor
+      kind: PowerMonitor
       name: powermonitors.kepler.system.sustainable.computing.io
+      statusDescriptors:
+      - description: conditions represent the latest available observations of the
+          power-monitor
+        displayName: Conditions
+        path: conditions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:conditions
       version: v1alpha1
   description: |-
     ### Introduction

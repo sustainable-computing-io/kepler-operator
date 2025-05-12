@@ -34,6 +34,30 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:conditions
       version: v1alpha1
+    - description: PowerMonitorInternal is the Schema for internal/unsupported API
+      displayName: PowerMonitorInternal
+      kind: PowerMonitorInternal
+      name: powermonitorinternals.kepler.system.sustainable.computing.io
+      statusDescriptors:
+      - description: conditions represent the latest available observations of the
+          power-monitor
+        displayName: Conditions
+        path: conditions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:conditions
+      version: v1alpha1
+    - description: PowerMonitor is the Schema for the powermonitors API
+      displayName: PowerMonitor
+      kind: PowerMonitor
+      name: powermonitors.kepler.system.sustainable.computing.io
+      statusDescriptors:
+      - description: conditions represent the latest available observations of the
+          power-monitor
+        displayName: Conditions
+        path: conditions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:conditions
+      version: v1alpha1
     - description: Kepler is the Schema for the keplers API
       displayName: Kepler
       kind: Kepler
