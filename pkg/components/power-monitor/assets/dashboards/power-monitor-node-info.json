@@ -62,24 +62,11 @@
           ],
           "show": false
         },
-        "showHeader": true,
-        "sortBy": [
-          {
-              "desc": true,
-              "displayName": "Instance"
-          }
-        ]
+        "showHeader": true
       },
       "pluginVersion": "8.5.1",
       "span": 6,
       "styles": [
-        {
-          "alias": "Time",
-          "dateFormat": "YYYY-MM-DD HH:mm:ss",
-          "format": "table",
-          "pattern": "Time",
-          "type": "hidden"
-        },
         {
           "alias": "Architecture",
           "colors": [],
@@ -179,34 +166,10 @@
           ],
           "show": false
         },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "Core ID"
-          }
-        ]
+        "showHeader": true
       },
       "pluginVersion": "8.5.1",
       "styles": [
-        {
-          "alias": "Time",
-          "dateFormat": "YYYY-MM-DD HH:mm:ss",
-          "format": "table",
-          "pattern": "Time",
-          "type": "hidden"
-        },
-        {
-          "alias": "Core ID",
-          "colors": [],
-          "decimals": 0,
-          "link": true,
-          "linkTargetBlank": false,
-          "pattern": "core_id",
-          "thresholds": [],
-          "type": "number",
-          "unit": "short"
-        },
         {
           "alias": "Instance",
           "colors": [],
@@ -241,14 +204,14 @@
           "unit": "short"
         },
         {
-          "alias": "Count",
+          "alias": "Cores",
           "colors": [],
           "decimals": 0,
           "link": true,
           "linkTargetBlank": false,
           "pattern": "Value #A",
           "thresholds": [],
-          "type": "hidden",
+          "type": "string",
           "unit": "short"
         }
       ],
@@ -259,7 +222,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "group(kepler_node_cpu_info{container=~\"power-monitor\"}) by (core_id, instance, model_name, vendor_id)",
+          "expr": "count(kepler_node_cpu_info{container=~\"power-monitor\"}) by (instance, model_name, vendor_id)",
           "format": "table",
           "interval": "",
           "legendFormat": "",
