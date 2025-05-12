@@ -1,10 +1,13 @@
 # Kepler Operator
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![CI Status](https://github.com/sustainable-computing-io/kepler-operator/actions/workflows/publish-images.yaml/badge.svg)](https://github.com/sustainable-computing-io/kepler-operator/actions/workflows/publish-images.yaml)
+[![Codecov](https://codecov.io/gh/sustainable-computing-io/kepler-operator/graph/badge.svg?token=036JVLMN2V)](https://codecov.io/gh/sustainable-computing-io/kepler-operator)
+[![Release](https://img.shields.io/github/v/release/sustainable-computing-io/kepler-operator)](https://github.com/sustainable-computing-io/kepler-operator/releases)
 
 Kepler Operator is a Kubernetes operator that automates the deployment and management of [Kepler](https://github.com/sustainable-computing-io/kepler) on Kubernetes and OpenShift clusters.
 
-## What is Kepler?
+## 🔍 What is Kepler?
 
 [Kepler](https://github.com/sustainable-computing-io/kepler) (Kubernetes-based Efficient Power Level Exporter) is a Prometheus
 exporter. It uses eBPF to probe CPU performance counters and Linux kernel
@@ -15,13 +18,13 @@ estimate energy consumption by Pods.
 
 Check out the project on GitHub ➡️ [Kepler](https://github.com/sustainable-computing-io/kepler)
 
-## Getting Started
+## 🚀 Getting Started
 
-You’ll need a Kubernetes or OpenShift cluster. For local testing, use [KIND](https://sigs.k8s.io/kind). Otherwise, connect to a remote cluster.
+You'll need a Kubernetes or OpenShift cluster. For local testing, use [KIND](https://sigs.k8s.io/kind). Otherwise, connect to a remote cluster.
 
 **Note:** The operator uses the current kubeconfig context (check with `kubectl cluster-info`).
 
-### Using Kind Cluster
+### 💻 Using Kind Cluster
 
 To quickly set up a local environment with Kind:
 
@@ -29,7 +32,7 @@ To quickly set up a local environment with Kind:
 make cluster-up
 ```
 
-### Local Development
+### 🛠️ Local Development
 
 To run the operator locally outside the cluster:
 
@@ -51,7 +54,7 @@ make deploy
 kubectl apply -k config/samples/
 ```
 
-### Using Pre-published Image
+### 📦 Using Pre-published Image
 
 You can use the pre-built image from quay.io:
 
@@ -81,7 +84,7 @@ make operator-build operator-push \
   --install-mode AllNamespaces --namespace openshift-operators --skip-tls
 ```
 
-## Uninstallation
+## 🗑️ Uninstallation
 
 To list the installed resources before deletion:
 
@@ -95,11 +98,11 @@ To completely remove the operator and all related resources:
 ./hack/uninstall-operator.sh --delete
 ```
 
-## Developer Documentation
+## 📚 Developer Documentation
 
 [Developer documentation](https://github.com/sustainable-computing-io/kepler-operator/tree/v1alpha1/docs/developer) is available for those who want to contribute to the codebase or understand its internals.
 
-## Contributing
+## 🤝 Contributing
 
 You can contribute by:
 
@@ -108,20 +111,6 @@ You can contribute by:
 * Improving documentation
 * Sharing your success stories with Kepler
 
-## License
+## 📝 License
 
-Copyright 2022.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-```text
-http://www.apache.org/licenses/LICENSE-2.0
-```
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+This project is licensed under the Apache License 2.0 - see the [LICENSES](LICENSES) for details.
