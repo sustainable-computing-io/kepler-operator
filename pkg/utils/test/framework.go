@@ -497,6 +497,16 @@ func (f Framework) WithPowerMonitorAnnotation(key, val string) func(k *v1alpha1.
 	}
 }
 
+func (f Framework) WithPowerMonitorAdditionalConfigMaps(configMapNames []string) func(k *v1alpha1.PowerMonitor) {
+	return func(pm *v1alpha1.PowerMonitor) {
+		var configMapRefs []v1alpha1.ConfigMapRef
+		for _, name := range configMapNames {
+			configMapRefs = append(configMapRefs, v1alpha1.ConfigMapRef{Name: name})
+		}
+		pm.Spec.Kepler.Config.AdditionalConfigMaps = configMapRefs
+	}
+}
+
 func (f Framework) GetSchedulableNodes() []corev1.Node {
 	f.T.Helper()
 	var nodes corev1.NodeList

@@ -10,24 +10,30 @@ import (
 
 	"github.com/go-logr/logr"
 	secv1 "github.com/openshift/api/security/v1"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	powermonitor "github.com/sustainable.computing.io/kepler-operator/pkg/components/power-monitor"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/reconciler"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // KeplerInternalReconciler reconciles a Kepler object
@@ -36,6 +42,8 @@ type PowerMonitorInternalReconciler struct {
 	Scheme *runtime.Scheme
 	logger logr.Logger
 }
+
+const configMapField = ".spec.kepler.config.additionalConfigMaps.name"
 
 // common to all components deployed by operator
 //+kubebuilder:rbac:groups=core,resources=namespaces,verbs=list;watch;create;update;patch;delete
@@ -53,12 +61,34 @@ type PowerMonitorInternalReconciler struct {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PowerMonitorInternalReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Set up indexer for PowerMonitorInternal based on referenced ConfigMaps
+	err := mgr.GetFieldIndexer().IndexField(context.Background(),
+		&v1alpha1.PowerMonitorInternal{},
+		configMapField,
+		func(obj client.Object) []string {
+			pmi, ok := obj.(*v1alpha1.PowerMonitorInternal)
+			if !ok {
+				r.logger.Info("failed to cast object to PowerMonitorInternal", "object", obj.GetName())
+				return nil
+			}
+			var keys []string
+			for _, cm := range pmi.Spec.Kepler.Config.AdditionalConfigMaps {
+				keys = append(keys, cm.Name)
+			}
+			return keys
+		})
+	if err != nil {
+		return err
+	}
 	// We only want to trigger a reconciliation when the generation
 	// of a child changes. Until we need to update our the status for our own objects,
 	// we can save CPU cycles by avoiding reconciliations triggered by
 	// child status changes.
 
 	genChanged := builder.WithPredicates(predicate.GenerationChangedPredicate{})
+
+	// watch for ConfigMap change events
+	configMapHandler := handler.EnqueueRequestsFromMapFunc(r.mapConfigMapToRequests)
 
 	c := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.PowerMonitorInternal{}).
@@ -67,12 +97,37 @@ func (r *PowerMonitorInternalReconciler) SetupWithManager(mgr ctrl.Manager) erro
 		Owns(&corev1.Service{}, genChanged).
 		Owns(&appsv1.DaemonSet{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Owns(&rbacv1.ClusterRoleBinding{}, genChanged).
-		Owns(&rbacv1.ClusterRole{}, genChanged)
+		Owns(&rbacv1.ClusterRole{}, genChanged).
+		Watches(&corev1.ConfigMap{}, configMapHandler, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}))
 
 	if Config.Cluster == k8s.OpenShift {
 		c = c.Owns(&secv1.SecurityContextConstraints{}, genChanged)
 	}
 	return c.Complete(r)
+}
+
+// mapConfigMapToRequests returns the reconcile requests for power-monitor-internal objects for which an associated ConfigMap has changed
+func (r *PowerMonitorInternalReconciler) mapConfigMapToRequests(ctx context.Context, object client.Object) []reconcile.Request {
+	configMap, ok := object.(*corev1.ConfigMap)
+	if !ok {
+		r.logger.Info("failed to cast object to ConfigMap", "object", object.GetName())
+		return nil
+	}
+
+	pmis := &v1alpha1.PowerMonitorInternalList{}
+	err := r.Client.List(ctx, pmis, client.MatchingFields{configMapField: configMap.Name})
+	if err != nil {
+		r.logger.Error(err, "failed to list objects using index", "indexKey", configMap.Name)
+		return nil
+	}
+
+	requests := []reconcile.Request{}
+	for _, pmi := range pmis.Items {
+		requests = append(requests, reconcile.Request{
+			NamespacedName: types.NamespacedName{Name: pmi.Name},
+		})
+	}
+	return requests
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -200,11 +255,9 @@ func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Clust
 		// powermonitor.NewPowerMonitorPrometheusRule(kx), prometheus rule is not necessary at the moment
 	)...)
 
-	rs = append(rs, resourceReconcilers(updateResource,
-		// deploy configmap before daemonset
-		powermonitor.NewPowerMonitorConfigMap(components.Full, pmi), // will regenerate logs from spec
-		powermonitor.NewPowerMonitorDaemonSet(components.Full, pmi),
-	)...)
+	// powermonitor deployer
+	rs = append(rs, reconciler.PowerMonitorDeployer{Pmi: pmi})
+
 	rs = append(rs, resourceReconcilers(updateResource, openshiftPowerMonitorNamespacedResources(pmi, cluster)...)...)
 	return rs
 }
@@ -224,7 +277,6 @@ func (r PowerMonitorInternalReconciler) reconcilersForPowerMonitor(pmi *v1alpha1
 	}
 
 	// update with image to be used (initial setup for testing then fix to be top level)
-
 	rs = append(rs, powerMonitorExporters(pmi, Config.Cluster)...)
 
 	if cleanup {

@@ -29,7 +29,6 @@ func (r Updater) Reconcile(ctx context.Context, c client.Client, scheme *runtime
 
 	if ownerNs == "" || ownerNs == resourceNs {
 		if err := ctrlutil.SetControllerReference(r.Owner, r.Resource, scheme); err != nil {
-
 			return Result{
 				Action: Stop,
 				Error:  r.error("setting controller reference failed", err),

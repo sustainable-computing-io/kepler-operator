@@ -30,6 +30,12 @@ type PowerMonitorInternalKeplerDeploymentSpec struct {
 type PowerMonitorInternalKeplerConfigSpec struct {
 	// +kubebuilder:default="info"
 	LogLevel string `json:"logLevel,omitempty"`
+
+	// AdditionalConfigMaps is a list of ConfigMap names that will be merged with the default ConfigMap
+	// These AdditionalConfigMaps must exist in the same namespace as PowerMonitor components
+	// +optional
+	// +listType=atomic
+	AdditionalConfigMaps []ConfigMapRef `json:"additionalConfigMaps,omitempty"`
 }
 
 type PowerMonitorInternalKeplerSpec struct {

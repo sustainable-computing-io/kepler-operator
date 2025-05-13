@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/cespare/xxhash/v2"
 	secv1 "github.com/openshift/api/security/v1"
 	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
@@ -39,6 +40,9 @@ const (
 	KeplerConfigMapPath = "/etc/kepler"
 	KeplerConfigFile    = "config.yaml"
 	EnableVMTestKey     = "powermonitor.sustainable.computing.io/test-env-vm"
+
+	// ConfigMap annotations
+	ConfigMapHashAnnotation = "powermonitor.sustainable.computing.io/config-map-hash"
 )
 
 var (
@@ -145,7 +149,7 @@ func NewPowerMonitorInfoDashboard(d components.Detail) *corev1.ConfigMap {
 	return openshiftDashboardConfigMap(d, InfoDashboardName, fmt.Sprintf("%s.json", InfoDashboardName), infoDashboardJson)
 }
 
-func NewPowerMonitorConfigMap(d components.Detail, pmi *v1alpha1.PowerMonitorInternal) *corev1.ConfigMap {
+func NewPowerMonitorConfigMap(d components.Detail, pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...string) *corev1.ConfigMap {
 	if d == components.Metadata {
 		return &corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
@@ -160,7 +164,7 @@ func NewPowerMonitorConfigMap(d components.Detail, pmi *v1alpha1.PowerMonitorInt
 		}
 	}
 
-	config, _ := keplerConfig(pmi)
+	config, _ := KeplerConfig(pmi, additionalConfigs...)
 
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
@@ -441,20 +445,40 @@ func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Contain
 	}
 }
 
-func keplerConfig(pmi *v1alpha1.PowerMonitorInternal) (string, error) {
-	cf := config.DefaultConfig()
+// KeplerConfig returns the config for the power-monitor
+func KeplerConfig(pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...string) (string, error) {
+	// Start with default config
+	cfg := config.DefaultConfig()
+
+	// Merge additional configs into the default config
+	if err := config.MergeAdditionalConfigs(cfg, additionalConfigs...); err != nil {
+		return "", fmt.Errorf("failed to merge configs: %w", err)
+	}
+
 	val, ok := pmi.Annotations[EnableVMTestKey]
 	if ok {
-		cf.Dev.FakeCpuMeter.Enabled = val == "true"
+		cfg.Dev.FakeCpuMeter.Enabled = val == "true"
 	}
-	cf.Log.Level = pmi.Spec.Kepler.Config.LogLevel
-	cf.Host.SysFS = SysFSMountPath
-	cf.Host.ProcFS = ProcFSMountPath
 
-	if err := cf.Validate(config.SkipHostValidation); err != nil {
+	cfg.Log.Level = pmi.Spec.Kepler.Config.LogLevel
+	cfg.Host.SysFS = SysFSMountPath
+	cfg.Host.ProcFS = ProcFSMountPath
+
+	if err := cfg.Validate(config.SkipHostValidation); err != nil {
 		// TODO: use builder pattern and pass logger to builder
 		return config.DefaultConfig().String(), err
 	}
 
-	return cf.String(), nil
+	return cfg.String(), nil
+}
+
+// MountConfigMapToDaemonSet sets annotations on the DaemonSet's pod template to trigger a rollout when the ConfigMap changes
+func MountConfigMapToDaemonSet(ds *appsv1.DaemonSet, cfm *corev1.ConfigMap) {
+	if ds.Spec.Template.Annotations == nil {
+		ds.Spec.Template.Annotations = make(map[string]string)
+	}
+
+	hash := xxhash.Sum64([]byte(cfm.Data[KeplerConfigFile]))
+
+	ds.Spec.Template.Annotations[ConfigMapHashAnnotation+"-"+cfm.Name] = fmt.Sprintf("%x", hash)
 }
