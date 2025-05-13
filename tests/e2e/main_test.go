@@ -23,7 +23,7 @@ var (
 	testKeplerImage       string
 	testKeplerRebootImage string
 	vmAnnotationKey       string
-	enableVMEnv           string
+	enableVMTest          bool
 )
 
 func TestMain(m *testing.M) {
@@ -33,12 +33,7 @@ func TestMain(m *testing.M) {
 	flag.StringVar(&testKeplerImage, "kepler-image", keplerImage, "Kepler image to use when running Internal tests")
 	flag.StringVar(&testKeplerRebootImage, "kepler-reboot-image", keplerRebootImage, "Kepler image to use when running PowerMonitorInternal tests")
 	flag.StringVar(&vmAnnotationKey, "vm-annotation-key", ciTestVMEnvKey, "VM Annotation Key set to enable vm test environment")
-	enableFakeMeter := "false"
-	if os.Getenv("ENABLE_VM_TEST") == "true" {
-		enableFakeMeter = "true"
-	}
-	flag.StringVar(&enableVMEnv, "enable-vm-env", enableFakeMeter, "Flag to set when enabling vm test environment")
-
+	flag.BoolVar(&enableVMTest, "enable-vm-test", false, "Enable VM test environment")
 	flag.Parse()
 
 	if *openshift {

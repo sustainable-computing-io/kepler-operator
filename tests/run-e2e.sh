@@ -18,7 +18,6 @@ declare -r OPERATOR_CSV="bundle/manifests/$OPERATOR.clusterserviceversion.yaml"
 declare -r OPERATOR_DEPLOY_NAME="kepler-operator-controller"
 declare -r OPERATOR_RELEASED_BUNDLE="quay.io/sustainable_computing_io/$OPERATOR-bundle"
 declare -r TEST_IMAGES_YAML="tests/images.yaml"
-declare ENABLE_VM_TEST
 
 declare IMG_BASE="${IMG_BASE:-localhost:5001/$OPERATOR}"
 # NOTE: this vars are initialized in init_operator_img
@@ -29,6 +28,7 @@ declare CI_MODE=false
 declare NO_DEPLOY=false
 declare NO_BUILDS=false
 declare SHOW_USAGE=false
+declare ENABLE_VM_TEST=false
 declare LOGS_DIR="tmp/e2e"
 declare OPERATORS_NS="operators"
 declare TEST_TIMEOUT="15m"
@@ -213,6 +213,7 @@ run_e2e() {
 	local ret=0
 	run go test -v -failfast -timeout $TEST_TIMEOUT \
 		./tests/e2e/... "$@" \
+		-enable-vm-test=$ENABLE_VM_TEST \
 		2>&1 | tee "$LOGS_DIR/e2e.log" || ret=1
 
 	# terminate both log_events
@@ -261,8 +262,7 @@ parse_args() {
 			shift
 			;;
 		--enable-vm-test)
-			ENABLE_VM_TEST="true"
-			export ENABLE_VM_TEST # export vm test results
+			ENABLE_VM_TEST=true
 			shift
 			;;
 		--image-base)
