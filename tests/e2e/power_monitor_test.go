@@ -4,6 +4,7 @@
 package e2e
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -22,7 +23,7 @@ func TestPowerMonitor_Deletion(t *testing.T) {
 	f := test.NewFramework(t)
 
 	// pre-condition: ensure powermonitor exists
-	f.CreatePowerMonitor("power-monitor", f.WithPowerMonitorAnnotation(vmAnnotationKey, enableVMEnv))
+	f.CreatePowerMonitor("power-monitor", f.WithPowerMonitorAnnotation(vmAnnotationKey, strconv.FormatBool(enableVMTest)))
 	pm := f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Available, v1alpha1.ConditionTrue)
 
 	//
@@ -48,7 +49,7 @@ func TestPowerMonitor_Reconciliation(t *testing.T) {
 	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{})
 
 	// when
-	pm := f.CreatePowerMonitor("power-monitor", f.WithPowerMonitorAnnotation(vmAnnotationKey, enableVMEnv))
+	pm := f.CreatePowerMonitor("power-monitor", f.WithPowerMonitorAnnotation(vmAnnotationKey, strconv.FormatBool(enableVMTest)))
 
 	// then
 	f.AssertResourceExists(controller.PowerMonitorDeploymentNS, "", &corev1.Namespace{})
@@ -95,7 +96,7 @@ func TestPowerMonitorNodeSelector(t *testing.T) {
 
 	pm := f.CreatePowerMonitor("power-monitor",
 		f.WithPowerMonitorNodeSelector(labels),
-		f.WithPowerMonitorAnnotation(vmAnnotationKey, enableVMEnv))
+		f.WithPowerMonitorAnnotation(vmAnnotationKey, strconv.FormatBool(enableVMTest)))
 
 	f.AssertResourceExists(controller.PowerMonitorDeploymentNS, "", &corev1.Namespace{})
 	ds := appsv1.DaemonSet{}
@@ -119,7 +120,7 @@ func TestPowerMonitorNodeSelectorUnavailableLabel(t *testing.T) {
 
 	pm := f.CreatePowerMonitor("power-monitor",
 		f.WithPowerMonitorNodeSelector(unavailableLabels),
-		f.WithPowerMonitorAnnotation(vmAnnotationKey, enableVMEnv))
+		f.WithPowerMonitorAnnotation(vmAnnotationKey, strconv.FormatBool(enableVMTest)))
 
 	f.AssertResourceExists(controller.PowerMonitorDeploymentNS, "", &corev1.Namespace{})
 	ds := appsv1.DaemonSet{}
@@ -155,7 +156,7 @@ func TestPowerMonitorTaint_WithToleration(t *testing.T) {
 
 	pm := f.CreatePowerMonitor("power-monitor",
 		f.WithPowerMonitorTolerations(append(node.Spec.Taints, e2eTestTaint)),
-		f.WithPowerMonitorAnnotation(vmAnnotationKey, enableVMEnv))
+		f.WithPowerMonitorAnnotation(vmAnnotationKey, strconv.FormatBool(enableVMTest)))
 	f.AssertResourceExists(controller.PowerMonitorDeploymentNS, "", &corev1.Namespace{})
 	ds := appsv1.DaemonSet{}
 	f.AssertResourceExists(pm.Name, controller.PowerMonitorDeploymentNS, &ds)
@@ -193,7 +194,7 @@ func TestBadPowerMonitorTaint_WithToleration(t *testing.T) {
 
 	pm := f.CreatePowerMonitor("power-monitor",
 		f.WithPowerMonitorTolerations(append(node.Spec.Taints, badTestTaint)),
-		f.WithPowerMonitorAnnotation(vmAnnotationKey, enableVMEnv))
+		f.WithPowerMonitorAnnotation(vmAnnotationKey, strconv.FormatBool(enableVMTest)))
 
 	f.AssertResourceExists(controller.PowerMonitorDeploymentNS, "", &corev1.Namespace{})
 	ds := appsv1.DaemonSet{}

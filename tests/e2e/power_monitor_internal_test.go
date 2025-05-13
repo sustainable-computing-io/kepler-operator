@@ -4,6 +4,7 @@
 package e2e
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -31,7 +32,7 @@ func TestPowerMonitorInternal_Reconciliation(t *testing.T) {
 		b.WithNamespace(testNs),
 		b.WithKeplerImage(testKeplerRebootImage),
 		b.WithCluster(Cluster),
-		b.WithAnnotation(vmAnnotationKey, enableVMEnv),
+		b.WithAnnotation(vmAnnotationKey, strconv.FormatBool(enableVMTest)),
 	)
 
 	// then the following resources will be created
