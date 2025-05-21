@@ -37,7 +37,7 @@ const (
 	SysFSMountPath      = "/host/sys"
 	ProcFSMountPath     = "/host/proc"
 	KeplerConfigMapPath = "/etc/kepler"
-	KeplerConfigFile    = "kepler-config.yaml"
+	KeplerConfigFile    = "config.yaml"
 	EnableVMTestKey     = "powermonitor.sustainable.computing.io/test-env-vm"
 )
 
