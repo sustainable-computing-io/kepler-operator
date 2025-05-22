@@ -4,9 +4,11 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/stretchr/testify/assert"
@@ -49,6 +51,9 @@ func TestLoadEmptyFromYAML(t *testing.T) {
 	defaultCfg := DefaultConfig()
 	assert.Equal(t, defaultCfg.Log.Level, cfg.Log.Level)
 	assert.Equal(t, defaultCfg.Log.Format, cfg.Log.Format)
+
+	assert.Equal(t, defaultCfg.Monitor.Interval, cfg.Monitor.Interval)
+	assert.Equal(t, defaultCfg.Monitor.Staleness, cfg.Monitor.Staleness)
 }
 
 func TestLoadInvalidConfigFromYAML(t *testing.T) {
@@ -68,22 +73,31 @@ log:
 func TestCommandLinePrecedence(t *testing.T) {
 	// Create config from YAML
 	yamlData := `
-log:
-  level: info
+exporter:
+  stdout:
+    enabled: false
+  prometheus:
+    enabled: false
+    debugCollectors:
+      - go
+debug:
+  pprof:
+    enabled: false
 `
 	// Load config from YAML
 	reader := strings.NewReader(yamlData)
 	cfg, err := Load(reader)
-	assert.Equal(t, "info", cfg.Log.Level, "Must read YAML file")
 	assert.NoError(t, err)
 
 	// Create a kingpin app and register flags
 	app := kingpin.New("test", "Test application")
 	updateConfig := RegisterFlags(app)
-	assert.Equal(t, "info", cfg.Log.Level, "Must not change YAML values until updateConfig is called")
 
 	// Parse command line arguments that override some settings
-	_, err = app.Parse([]string{"--log.level=debug"})
+	_, err = app.Parse([]string{
+		"--exporter.stdout",
+		"--debug.pprof",
+	})
 	assert.NoError(t, err)
 
 	// Update config with parsed flags
@@ -91,8 +105,11 @@ log:
 	assert.NoError(t, err)
 
 	// Verify that command line arguments take precedence
-	assert.Equal(t, "debug", cfg.Log.Level, "Command line should override YAML value")
-	assert.Equal(t, "text", cfg.Log.Format, "Default value should not be overridden")
+	assert.True(t, cfg.Exporter.Stdout.Enabled, "stdout exporter should be enabled from flag")
+	assert.False(t, cfg.Exporter.Prometheus.Enabled, "prometheus exporter should remain disabled from yaml")
+	assert.ElementsMatch(t, []string{"go"}, cfg.Exporter.Prometheus.DebugCollectors,
+		"debug collectors should be overridden by flag")
+	assert.True(t, cfg.Debug.Pprof.Enabled, "pprof should be enabled from flag")
 }
 
 func TestPartialConfig(t *testing.T) {
@@ -119,18 +136,22 @@ func TestWhitespaceHandling(t *testing.T) {
 log:
   level: "  debug  "
   format: "  json  "
+
+exporter:
+  prometheus:
+    debugCollectors: ["  go  ", "  process  "]
 `
-	// Load config from YAML
 	reader := strings.NewReader(yamlData)
 	cfg, err := Load(reader)
 	assert.NoError(t, err)
 
-	// Trim whitespace
 	cfg.sanitize()
 
 	// Verify whitespace is trimmed
 	assert.Equal(t, "debug", cfg.Log.Level)
 	assert.Equal(t, "json", cfg.Log.Format)
+	assert.ElementsMatch(t, []string{"go", "process"}, cfg.Exporter.Prometheus.DebugCollectors,
+		"debug collectors should be sanitized")
 }
 
 func TestFromRealFile(t *testing.T) {
@@ -259,6 +280,14 @@ func TestInvalidConfigurationValues(t *testing.T) {
 			},
 		},
 		error: "invalid sysfs path",
+	}, {
+		name: "unreadable web config",
+		config: &Config{
+			Web: Web{
+				Config: "/from/unreadable/path/web.yaml",
+			},
+		},
+		error: "invalid web config file",
 	}}
 
 	// test yaml marshall
@@ -350,6 +379,13 @@ func TestConfigString(t *testing.T) {
 				ProcFS: "/proc/fake",
 			},
 		},
+	}, {
+		name: "custom web.config",
+		config: &Config{
+			Web: Web{
+				Config: "/fake/web.config.yml",
+			},
+		},
 	}}
 
 	// test yaml marshall
@@ -387,7 +423,7 @@ func TestEnablePprof(t *testing.T) {
 		enabled bool
 	}{{
 		name:    "enable pprof with flag",
-		args:    []string{"--enable.pprof"},
+		args:    []string{"--debug.pprof"},
 		enabled: true,
 	}, {
 		name:    "disable pprof no flag",
@@ -395,7 +431,7 @@ func TestEnablePprof(t *testing.T) {
 		enabled: false,
 	}, {
 		name:    "disable pprof with flag",
-		args:    []string{"--no-enable.pprof"},
+		args:    []string{"--no-debug.pprof"},
 		enabled: false,
 	}}
 
@@ -408,7 +444,117 @@ func TestEnablePprof(t *testing.T) {
 			cfg := DefaultConfig()
 			err := updateConfig(cfg)
 			assert.NoError(t, err, "unexpected config update error")
-			assert.Equal(t, cfg.EnablePprof, tc.enabled, "unexpected flag value")
+			assert.Equal(t, cfg.Debug.Pprof.Enabled, tc.enabled, "unexpected flag value")
+		})
+	}
+}
+
+func TestWebConfig(t *testing.T) {
+	t.Run("no web config", func(t *testing.T) {
+		app := kingpin.New("test", "Test application")
+		updateConfig := RegisterFlags(app)
+		_, parseErr := app.Parse([]string{"--log.level=debug"})
+		assert.NoError(t, parseErr, "unexpected flag parsing error")
+		cfg := DefaultConfig()
+		err := updateConfig(cfg)
+		assert.NoError(t, err, "unexpected config update error")
+		assert.Equal(t, cfg.Web.Config, "", "unexpected web.config-file configured")
+	})
+	t.Run("invalid web config", func(t *testing.T) {
+		app := kingpin.New("test", "Test application")
+		updateConfig := RegisterFlags(app)
+		_, parseErr := app.Parse([]string{"--web.config-file=/fake/web.yml"})
+		assert.NoError(t, parseErr, "unexpected flag parsing error")
+		cfg := DefaultConfig()
+		err := updateConfig(cfg)
+		assert.Error(t, err, "expected config update error")
+	})
+	t.Run("valid web config", func(t *testing.T) {
+		tempWebConfig, err := os.CreateTemp("", "temp_*web.yml")
+		assert.NoError(t, err, "cannot create temp file")
+		defer os.Remove(tempWebConfig.Name())
+		webConfig := `
+tls_server_config:
+  cert_file: cert.pem
+  key_file: key.pem
+`
+		_, err = tempWebConfig.Write([]byte(webConfig))
+		assert.NoError(t, err, "cannot write to temp web config")
+
+		app := kingpin.New("test", "Test application")
+		updateConfig := RegisterFlags(app)
+		flagStr := fmt.Sprintf("--web.config-file=%s", tempWebConfig.Name())
+		_, parseErr := app.Parse([]string{flagStr})
+		assert.NoError(t, parseErr, "unexpected flag parsing error")
+		cfg := DefaultConfig()
+		err = updateConfig(cfg)
+		assert.NoError(t, err, "expected config update error")
+		assert.Equal(t, cfg.Web.Config, tempWebConfig.Name(), "unexpected config update")
+	})
+}
+
+func TestStdoutExporter(t *testing.T) {
+	tt := []struct {
+		name    string
+		args    []string
+		enabled bool
+	}{{
+		name:    "no exporter.stdout flag present",
+		args:    []string{"--log.level=debug"},
+		enabled: false,
+	}, {
+		name:    "disable stdout exporter with flag",
+		args:    []string{"--no-exporter.stdout"},
+		enabled: false,
+	}, {
+		name:    "disable stdout exporter with flag",
+		args:    []string{"--exporter.stdout"},
+		enabled: true,
+	}}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			app := kingpin.New("test", "Test application")
+			updateConfig := RegisterFlags(app)
+			_, parseErr := app.Parse(tc.args)
+			assert.NoError(t, parseErr, "unexpected flag parsing error")
+			cfg := DefaultConfig()
+			err := updateConfig(cfg)
+			assert.NoError(t, err, "unexpected config update error")
+			assert.Equal(t, cfg.Exporter.Stdout.Enabled, tc.enabled, "unexpected flag value")
+		})
+	}
+}
+
+func TestPrometheusExporter(t *testing.T) {
+	tt := []struct {
+		name    string
+		args    []string
+		enabled bool
+	}{{
+		name:    "no exporter.prometheus flag present",
+		args:    []string{"--log.level=debug"},
+		enabled: true,
+	}, {
+		name:    "disable prometheus exporter with flag",
+		args:    []string{"--no-exporter.prometheus"},
+		enabled: false,
+	}, {
+		name:    "enable prometheus exporter with flag",
+		args:    []string{"--exporter.prometheus"},
+		enabled: true,
+	}}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			app := kingpin.New("test", "Test application")
+			updateConfig := RegisterFlags(app)
+			_, parseErr := app.Parse(tc.args)
+			assert.NoError(t, parseErr, "unexpected flag parsing error")
+			cfg := DefaultConfig()
+			err := updateConfig(cfg)
+			assert.NoError(t, err, "unexpected config update error")
+			assert.Equal(t, cfg.Exporter.Prometheus.Enabled, tc.enabled, "unexpected flag value")
 		})
 	}
 }
@@ -422,4 +568,134 @@ func TestValidateWithSkip(t *testing.T) {
 	// Validate with skipping host validation
 	err := cfg.Validate(SkipHostValidation)
 	assert.NoError(t, err, "Should pass when SkipHostValidation is provided")
+}
+
+func TestMonitorConfig(t *testing.T) {
+	cfg := DefaultConfig()
+
+	// Monitor should be enabled by default
+	assert.True(t, cfg.Monitor.Interval > 0, "Monitor should be enabled by default")
+	assert.True(t, cfg.Monitor.Staleness > 0, "staleness should be set to a positive value")
+
+	t.Run("interval", func(t *testing.T) {
+		cfg := DefaultConfig()
+		assert.NoError(t, cfg.Validate())
+
+		cfg.Monitor.Interval = -10
+		assert.ErrorContains(t, cfg.Validate(), "invalid configuration: invalid monitor interval")
+
+		cfg.Monitor.Interval = 0
+		assert.NoError(t, cfg.Validate())
+
+		cfg.Monitor.Interval = 100
+		assert.NoError(t, cfg.Validate())
+	})
+
+	t.Run("staleness", func(t *testing.T) {
+		cfg := DefaultConfig()
+		assert.NoError(t, cfg.Validate())
+
+		cfg.Monitor.Staleness = -10
+		assert.ErrorContains(t, cfg.Validate(), "invalid configuration: invalid monitor staleness")
+
+		cfg.Monitor.Staleness = 0
+		assert.NoError(t, cfg.Validate())
+
+		cfg.Monitor.Staleness = 100
+		assert.NoError(t, cfg.Validate())
+	})
+}
+
+func TestMonitorConfigFlags(t *testing.T) {
+	type expect struct {
+		interval   time.Duration
+		staleness  time.Duration
+		parseError error
+		cfgErr     error
+	}
+	tt := []struct {
+		name     string
+		args     []string
+		expected expect
+	}{{
+		name:     "default",
+		args:     []string{},
+		expected: expect{interval: 5 * time.Second, staleness: 500 * time.Millisecond, parseError: nil},
+	}, {
+		name:     "invalid-interval flag",
+		args:     []string{"--monitor.interval=-10Fs"},
+		expected: expect{parseError: fmt.Errorf("time: unknown unit")},
+	}, {
+		name:     "invalid-interval",
+		args:     []string{"--monitor.interval=-10s"},
+		expected: expect{cfgErr: fmt.Errorf("invalid configuration: invalid monitor interval")},
+	}}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			app := kingpin.New("test", "Test application")
+			updateConfig := RegisterFlags(app)
+
+			_, parseErr := app.Parse(tc.args)
+			if tc.expected.parseError != nil {
+				assert.ErrorContains(t, parseErr, tc.expected.parseError.Error(), "args: %v", tc.args)
+				return
+			}
+			assert.NoError(t, parseErr, "unexpected config update error")
+
+			cfg := DefaultConfig()
+			err := updateConfig(cfg)
+			if tc.expected.cfgErr != nil {
+				assert.ErrorContains(t, err, tc.expected.cfgErr.Error())
+				return
+			}
+
+			assert.NoError(t, err, "unexpected config update error")
+			assert.Equal(t, cfg.Monitor.Interval, tc.expected.interval)
+			assert.Equal(t, cfg.Monitor.Staleness, tc.expected.staleness)
+		})
+	}
+}
+
+func TestConfigDefault(t *testing.T) {
+	cfg := DefaultConfig()
+
+	// Check default exporter config
+	assert.False(t, cfg.Exporter.Stdout.Enabled, "stdout exporter should be disabled by default")
+	assert.True(t, cfg.Exporter.Prometheus.Enabled, "prometheus exporter should be enabled by default")
+	assert.Equal(t, []string{"go"}, cfg.Exporter.Prometheus.DebugCollectors, "default debug collectors should be set")
+
+	// Check default debug config
+	assert.False(t, cfg.Debug.Pprof.Enabled, "pprof should be disabled by default")
+}
+
+func TestConifgLoadFromYaml(t *testing.T) {
+	yamlData := `
+log:
+  level: debug
+  format: json
+exporter:
+  stdout:
+    enabled: true
+  prometheus:
+    enabled: true
+    debugCollectors:
+      - go
+      - process
+debug:
+  pprof:
+    enabled: true
+`
+	reader := strings.NewReader(yamlData)
+	cfg, err := Load(reader)
+	assert.NoError(t, err)
+
+	// Verify exporter config
+	assert.True(t, cfg.Exporter.Stdout.Enabled, "stdout exporter should be enabled")
+	assert.True(t, cfg.Exporter.Prometheus.Enabled, "prometheus exporter should be enabled")
+	assert.ElementsMatch(t, []string{"go", "process"}, cfg.Exporter.Prometheus.DebugCollectors,
+		"debug collectors should match")
+
+	// Verify debug config
+	assert.True(t, cfg.Debug.Pprof.Enabled, "pprof should be enabled")
 }

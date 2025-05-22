@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/alecthomas/kingpin/v2"
 	"gopkg.in/yaml.v3"
@@ -36,13 +37,48 @@ type (
 			Zones   []string `yaml:"zones"`
 		} `yaml:"fake-cpu-meter"`
 	}
+	Web struct {
+		Config string `yaml:"configFile"`
+	}
+
+	Monitor struct {
+		Interval  time.Duration `yaml:"interval"`  // Interval for monitoring resources
+		Staleness time.Duration `yaml:"staleness"` // Time after which calculated values are considered stale
+	}
+
+	// Exporter configuration
+	StdoutExporter struct {
+		Enabled bool `yaml:"enabled"`
+	}
+
+	PrometheusExporter struct {
+		Enabled         bool     `yaml:"enabled"`
+		DebugCollectors []string `yaml:"debugCollectors"`
+	}
+
+	Exporter struct {
+		Stdout     StdoutExporter     `yaml:"stdout"`
+		Prometheus PrometheusExporter `yaml:"prometheus"`
+	}
+
+	// Debug configuration
+	PprofDebug struct {
+		Enabled bool `yaml:"enabled"`
+	}
+
+	Debug struct {
+		Pprof PprofDebug `yaml:"pprof"`
+	}
 
 	Config struct {
-		Log         Log  `yaml:"log"`
-		Host        Host `yaml:"host"`
-		Dev         Dev  `yaml:"dev"` // WARN: do not expose dev settings as flags
-		EnablePprof bool `yaml:"enable-pprof"`
-		Rapl        Rapl `yaml:"rapl"`
+		Log      Log      `yaml:"log"`
+		Host     Host     `yaml:"host"`
+		Monitor  Monitor  `yaml:"monitor"`
+		Rapl     Rapl     `yaml:"rapl"`
+		Exporter Exporter `yaml:"exporter"`
+		Web      Web      `yaml:"web"`
+		Debug    Debug    `yaml:"debug"`
+		Dev      Dev      `yaml:"dev"` // WARN: do not expose dev settings as flags
 	}
 )
 
@@ -60,7 +96,22 @@ const (
 	HostSysFSFlag  = "host.sysfs"
 	HostProcFSFlag = "host.procfs"
 
-	EnablePprofFlag = "enable.pprof"
+	MonitorIntervalFlag = "monitor.interval"
+	MonitorStaleness    = "monitor.staleness" // not a flag
+
+	// RAPL
+	RaplZones = "rapl.zones" // not a flag
+
+	pprofEnabledFlag = "debug.pprof"
+
+	WebConfigFlag = "web.config-file"
+
+	// Exporters
+	ExporterStdoutEnabledFlag = "exporter.stdout"
+
+	ExporterPrometheusEnabledFlag = "exporter.prometheus"
+	// NOTE: not a flag
+	ExporterPrometheusDebugCollectors = "exporter.prometheus.debug-collectors"
 
 // WARN:  dev settings shouldn't be exposed as flags as flags are intended for end users
 )
@@ -78,6 +129,24 @@ func DefaultConfig() *Config {
 		},
 		Rapl: Rapl{
 			Zones: []string{},
+		},
+		Monitor: Monitor{
+			Interval:  5 * time.Second,
+			Staleness: 500 * time.Millisecond,
+		},
+		Exporter: Exporter{
+			Stdout: StdoutExporter{
+				Enabled: false,
+			},
+			Prometheus: PrometheusExporter{
+				Enabled:         true,
+				DebugCollectors: []string{"go"},
+			},
+		},
+		Debug: Debug{
+			Pprof: PprofDebug{
+				Enabled: false,
+			},
 		},
 	}
 
@@ -140,9 +209,21 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 	// Logging
 	logLevel := app.Flag(LogLevelFlag, "Logging level: debug, info, warn, error").Default("info").Enum("debug", "info", "warn", "error")
 	logFormat := app.Flag(LogFormatFlag, "Logging format: text or json").Default("text").Enum("text", "json")
+	// host
 	hostSysFS := app.Flag(HostSysFSFlag, "Host sysfs path").Default("/sys").ExistingDir()
 	hostProcFS := app.Flag(HostProcFSFlag, "Host procfs path").Default("/proc").ExistingDir()
-	enablePprof := app.Flag(EnablePprofFlag, "Enable pprof").Default("false").Bool()
+
+	// monitor
+	monitorInterval := app.Flag(MonitorIntervalFlag,
+		"Interval for monitoring resources (processes, container, vm, etc...); 0 to disable").Default("5s").Duration()
+
+	enablePprof := app.Flag(pprofEnabledFlag, "Enable pprof debug endpoints").Default("false").Bool()
+	webConfig := app.Flag(WebConfigFlag, "Web config file path").Default("").String()
+
+	// exporters
+	stdoutExporterEnabled := app.Flag(ExporterStdoutEnabledFlag, "Enable stdout exporter").Default("false").Bool()
+
+	prometheusExporterEnabled := app.Flag(ExporterPrometheusEnabledFlag, "Enable Prometheus exporter").Default("true").Bool()
 
 	return func(cfg *Config) error {
 		// Logging settings
@@ -162,8 +243,25 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 			cfg.Host.ProcFS = *hostProcFS
 		}
 
-		if flagsSet[EnablePprofFlag] {
-			cfg.EnablePprof = *enablePprof
+		// monitor settings
+		if flagsSet[MonitorIntervalFlag] {
+			cfg.Monitor.Interval = *monitorInterval
+		}
+
+		if flagsSet[pprofEnabledFlag] {
+			cfg.Debug.Pprof.Enabled = *enablePprof
+		}
+
+		if flagsSet[WebConfigFlag] {
+			cfg.Web.Config = *webConfig
+		}
+
+		if flagsSet[ExporterStdoutEnabledFlag] {
+			cfg.Exporter.Stdout.Enabled = *stdoutExporterEnabled
+		}
+
+		if flagsSet[ExporterPrometheusEnabledFlag] {
+			cfg.Exporter.Prometheus.Enabled = *prometheusExporterEnabled
 		}
 
 		cfg.sanitize()
@@ -176,9 +274,14 @@ func (c *Config) sanitize() {
 	c.Log.Format = strings.TrimSpace(c.Log.Format)
 	c.Host.SysFS = strings.TrimSpace(c.Host.SysFS)
 	c.Host.ProcFS = strings.TrimSpace(c.Host.ProcFS)
+	c.Web.Config = strings.TrimSpace(c.Web.Config)
 
 	for i := range c.Rapl.Zones {
 		c.Rapl.Zones[i] = strings.TrimSpace(c.Rapl.Zones[i])
+	}
+
+	for i := range c.Exporter.Prometheus.DebugCollectors {
+		c.Exporter.Prometheus.DebugCollectors[i] = strings.TrimSpace(c.Exporter.Prometheus.DebugCollectors[i])
 	}
 }
 
@@ -223,6 +326,21 @@ func (c *Config) Validate(skips ...SkipValidation) error {
 			}
 		}
 	}
+	{ // Web config file
+		if c.Web.Config != "" {
+			if err := canReadFile(c.Web.Config); err != nil {
+				errs = append(errs, fmt.Sprintf("invalid web config file. path: %q: %s", c.Web.Config, err.Error()))
+			}
+		}
+	}
+	{ // Monitor
+		if c.Monitor.Interval < 0 {
+			errs = append(errs, fmt.Sprintf("invalid monitor interval: %s can't be negative", c.Monitor.Interval))
+		}
+		if c.Monitor.Staleness < 0 {
+			errs = append(errs, fmt.Sprintf("invalid monitor staleness: %s can't be negative", c.Monitor.Staleness))
+		}
+	}
 
 	if len(errs) > 0 {
 		return fmt.Errorf("invalid configuration: %s", strings.Join(errs, ", "))
@@ -250,6 +368,25 @@ func canReadDir(path string) error {
 	return nil
 }
 
+func canReadFile(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		// ignored on purpose
+		_ = f.Close()
+	}()
+	buf := make([]byte, 8)
+	_, err = f.Read(buf)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *Config) String() string {
 	bytes, err := yaml.Marshal(c)
 	if err == nil {
@@ -269,7 +406,13 @@ func (c *Config) manualString() string {
 		{LogFormatFlag, c.Log.Format},
 		{HostSysFSFlag, c.Host.SysFS},
 		{HostProcFSFlag, c.Host.ProcFS},
-		{"rapl.zones", strings.Join(c.Rapl.Zones, ", ")},
+		{MonitorIntervalFlag, c.Monitor.Interval.String()},
+		{MonitorStaleness, c.Monitor.Staleness.String()},
+		{RaplZones, strings.Join(c.Rapl.Zones, ", ")},
+		{ExporterStdoutEnabledFlag, fmt.Sprintf("%v", c.Exporter.Stdout.Enabled)},
+		{ExporterPrometheusEnabledFlag, fmt.Sprintf("%v", c.Exporter.Prometheus.Enabled)},
+		{ExporterPrometheusDebugCollectors, strings.Join(c.Exporter.Prometheus.DebugCollectors, ", ")},
+		{pprofEnabledFlag, fmt.Sprintf("%v", c.Debug.Pprof.Enabled)},
 	}
 	sb := strings.Builder{}
 

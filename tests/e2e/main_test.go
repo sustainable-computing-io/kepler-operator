@@ -14,7 +14,7 @@ import (
 
 const (
 	keplerImage       = `quay.io/sustainable_computing_io/kepler:release-0.7.12`
-	keplerRebootImage = `quay.io/sustainable_computing_io/kepler-reboot:v0.0.5`
+	keplerRebootImage = `quay.io/sustainable_computing_io/kepler-reboot:v0.0.6`
 	ciTestVMEnvKey    = `powermonitor.sustainable.computing.io/test-env-vm`
 )
 
