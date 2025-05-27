@@ -5,10 +5,10 @@ go 1.23
 toolchain go1.23.3
 
 require (
+	dario.cat/mergo v1.0.0
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/go-logr/logr v1.4.2
-	github.com/imdario/mergo v0.3.6
 	github.com/openshift/api v0.0.0-20240212125214-04ea3891d9cb
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.71.2
 	github.com/stretchr/testify v1.9.0
@@ -50,6 +50,7 @@ require (
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 // indirect
+	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect

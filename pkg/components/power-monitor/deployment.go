@@ -448,11 +448,16 @@ func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Contain
 // KeplerConfig returns the config for the power-monitor
 func KeplerConfig(pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...string) (string, error) {
 	// Start with default config
-	cfg := config.DefaultConfig()
+	b := &config.Builder{}
+	b.UseDefault()
 
-	// Merge additional configs into the default config
-	if err := config.MergeAdditionalConfigs(cfg, additionalConfigs...); err != nil {
-		return "", fmt.Errorf("failed to merge configs: %w", err)
+	for _, additionalConfig := range additionalConfigs {
+		b.Merge(additionalConfig)
+	}
+
+	cfg, err := b.Build()
+	if err != nil {
+		return "", fmt.Errorf("failed to build config: %w", err)
 	}
 
 	val, ok := pmi.Annotations[EnableVMTestKey]
@@ -465,10 +470,8 @@ func KeplerConfig(pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...strin
 	cfg.Host.ProcFS = ProcFSMountPath
 
 	if err := cfg.Validate(config.SkipHostValidation); err != nil {
-		// TODO: use builder pattern and pass logger to builder
 		return config.DefaultConfig().String(), err
 	}
-
 	return cfg.String(), nil
 }
 
