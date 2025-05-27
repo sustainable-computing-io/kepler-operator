@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"dario.cat/mergo"
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/imdario/mergo"
 	"gopkg.in/yaml.v3"
 )
 
@@ -80,6 +80,12 @@ type (
 		Web      Web      `yaml:"web"`
 		Debug    Debug    `yaml:"debug"`
 		Dev      Dev      `yaml:"dev"` // WARN: do not expose dev settings as flags
+	}
+
+	// Builder is a struct for building a config
+	Builder struct {
+		yamls  []string
+		Config *Config
 	}
 )
 
@@ -427,31 +433,34 @@ func (c *Config) manualString() string {
 	return sb.String()
 }
 
-func (c *Config) merge(additional *Config) error {
-	return mergo.Merge(c, additional, mergo.WithOverride)
+// UseDefault sets the default configuration
+func (b *Builder) UseDefault() *Builder {
+	b.Config = DefaultConfig()
+	return b
 }
 
-// mergeYAML merges a YAML string into the existing config
-func (c *Config) mergeYAML(yamlStr string) error {
-	if strings.TrimSpace(yamlStr) == "" {
-		return nil
-	}
-
-	additional := &Config{}
-	if err := yaml.Unmarshal([]byte(yamlStr), additional); err != nil {
-		return fmt.Errorf("failed to parse YAML config: %w", err)
-	}
-
-	return c.merge(additional)
+// Merge adds a YAML string to be merged into the configuration
+func (b *Builder) Merge(yamlStr string) *Builder {
+	b.yamls = append(b.yamls, yamlStr)
+	return b
 }
 
-// MergeAdditionalConfigs merges additional YAML configurations into a default config
-func MergeAdditionalConfigs(defaultConfig *Config, additionalConfigs ...string) error {
-	for _, cfg := range additionalConfigs {
-		if err := defaultConfig.mergeYAML(cfg); err != nil {
-			return fmt.Errorf("failed to merge additional config: %w", err)
+// Build constructs the final configuration by merging all additional YAMLS into the default configuration
+func (b *Builder) Build() (*Config, error) {
+	if b.Config == nil {
+		b.Config = DefaultConfig()
+	}
+
+	for _, yamlStr := range b.yamls {
+		additional := DefaultConfig()
+		if err := yaml.Unmarshal([]byte(yamlStr), additional); err != nil {
+			return nil, fmt.Errorf("failed to parse YAML config: %w", err)
+		}
+
+		if err := mergo.Merge(b.Config, additional, mergo.WithOverwriteWithEmptyValue); err != nil {
+			return nil, fmt.Errorf("failed to merge config: %w", err)
 		}
 	}
 
-	return nil
+	return b.Config, nil
 }
