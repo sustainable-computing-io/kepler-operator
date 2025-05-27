@@ -80,6 +80,22 @@ spec:
                 properties:
                   config:
                     properties:
+                      additionalConfigMaps:
+                        description: |-
+                          AdditionalConfigMaps is a list of ConfigMap names that will be merged with the default ConfigMap
+                          These AdditionalConfigMaps must exist in the same namespace as PowerMonitor components
+                        items:
+                          description: ConfigMapRef defines a reference to a ConfigMap
+                          properties:
+                            name:
+                              description: Name of the ConfigMap
+                              minLength: 1
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
                       logLevel:
                         default: info
                         type: string

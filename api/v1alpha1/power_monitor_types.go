@@ -29,6 +29,19 @@ type PowerMonitorKeplerConfigSpec struct {
 	// +kubebuilder:default="info"
 	// +optional
 	LogLevel string `json:"logLevel,omitempty"`
+
+	// AdditionalConfigMaps is a list of ConfigMap names that will be merged with the default ConfigMap
+	// These AdditionalConfigMaps must exist in the same namespace as PowerMonitor components
+	// +optional
+	// +listType=atomic
+	AdditionalConfigMaps []ConfigMapRef `json:"additionalConfigMaps,omitempty"`
+}
+
+// ConfigMapRef defines a reference to a ConfigMap
+type ConfigMapRef struct {
+	// Name of the ConfigMap
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
 }
 
 type PowerMonitorKeplerSpec struct {

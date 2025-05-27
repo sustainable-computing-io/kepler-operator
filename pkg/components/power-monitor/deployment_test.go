@@ -72,7 +72,8 @@ func TestPowerMonitorTolerations(t *testing.T) {
 			Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
 				PowerMonitorKeplerDeploymentSpec: v1alpha1.PowerMonitorKeplerDeploymentSpec{
 					Tolerations: []corev1.Toleration{{
-						Effect: corev1.TaintEffectNoSchedule, Key: "key1"}},
+						Effect: corev1.TaintEffectNoSchedule, Key: "key1",
+					}},
 				},
 			},
 		},
@@ -105,6 +106,9 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 		volumeMounts    []corev1.VolumeMount
 		volumes         []corev1.Volume
 		scenario        string
+		addConfigMap    bool
+		configMap       *corev1.ConfigMap
+		annotation      map[string]string
 	}{
 		{
 			spec:    v1alpha1.PowerMonitorInternalKeplerSpec{},
@@ -125,6 +129,37 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 			},
 			scenario: "default case",
 		},
+		{
+			spec:    v1alpha1.PowerMonitorInternalKeplerSpec{},
+			hostPID: true,
+			exporterCommand: []string{
+				"/usr/bin/kepler",
+				fmt.Sprintf("--config.file=%s", filepath.Join(KeplerConfigMapPath, KeplerConfigFile)),
+			},
+			volumeMounts: []corev1.VolumeMount{
+				{Name: "sysfs", MountPath: SysFSMountPath, ReadOnly: true},
+				{Name: "procfs", MountPath: ProcFSMountPath, ReadOnly: true},
+				{Name: "cfm", MountPath: KeplerConfigMapPath},
+			},
+			volumes: []corev1.Volume{
+				k8s.VolumeFromHost("sysfs", "/sys"),
+				k8s.VolumeFromHost("procfs", "/proc"),
+				k8s.VolumeFromConfigMap("cfm", "power-monitor-internal"),
+			},
+			addConfigMap: true,
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Data: map[string]string{
+					KeplerConfigFile: "test-config-content",
+				},
+			},
+			annotation: map[string]string{
+				ConfigMapHashAnnotation + "-power-monitor-internal": "123",
+			},
+			scenario: "configmap case",
+		},
 	}
 	for _, tc := range tt {
 		tc := tc
@@ -139,6 +174,9 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 				},
 			}
 			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
+			if tc.addConfigMap {
+				MountConfigMapToDaemonSet(ds, tc.configMap)
+			}
 
 			actualHostPID := k8s.HostPIDFromDS(ds)
 			assert.Equal(t, tc.hostPID, actualHostPID)
@@ -151,6 +189,11 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 
 			actualVolumes := k8s.VolumesFromDS(ds)
 			assert.Equal(t, tc.volumes, actualVolumes)
+
+			if tc.addConfigMap {
+				actualAnnotation := k8s.AnnotationFromDS(ds)
+				assert.Contains(t, actualAnnotation, ConfigMapHashAnnotation+"-power-monitor-internal")
+			}
 		})
 	}
 }
@@ -363,4 +406,160 @@ func readDashboardJSON(t *testing.T, jsonFilename string) string {
 		t.Fatalf("failed to read dashboard file %s: %v", jsonFilename, err)
 	}
 	return string(dashboardData)
+}
+
+func TestKeplerConfig(t *testing.T) {
+	tt := []struct {
+		pmi               *v1alpha1.PowerMonitorInternal
+		additionalConfigs []string
+		expectedLogLevel  string
+		expectedSysFS     string
+		expectedProcFS    string
+		expectedFakeCpu   bool
+		hasError          bool
+		scenario          string
+	}{
+		{
+			pmi: &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+							LogLevel: "info",
+						},
+					},
+				},
+			},
+			additionalConfigs: []string{},
+			expectedLogLevel:  "info",
+			expectedSysFS:     SysFSMountPath,
+			expectedProcFS:    ProcFSMountPath,
+			expectedFakeCpu:   false,
+			hasError:          false,
+			scenario:          "default case",
+		},
+		{
+			pmi: &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+							LogLevel: "debug",
+						},
+					},
+				},
+			},
+			additionalConfigs: []string{},
+			expectedLogLevel:  "debug",
+			expectedSysFS:     SysFSMountPath,
+			expectedProcFS:    ProcFSMountPath,
+			expectedFakeCpu:   false,
+			hasError:          false,
+			scenario:          "debug log level",
+		},
+		{
+			pmi: &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+							LogLevel: "info",
+						},
+					},
+				},
+			},
+			additionalConfigs: []string{
+				`log:
+  level: debug`,
+			},
+			expectedLogLevel: "info", // PMI spec config takes precedence over additional config
+			expectedSysFS:    SysFSMountPath,
+			expectedProcFS:   ProcFSMountPath,
+			expectedFakeCpu:  false,
+			hasError:         false,
+			scenario:         "with additional config",
+		},
+		{
+			pmi: &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+							LogLevel: "info",
+						},
+					},
+				},
+			},
+			additionalConfigs: []string{
+				`log:
+  format: json`,
+			},
+			expectedLogLevel: "info",
+			expectedSysFS:    SysFSMountPath,
+			expectedProcFS:   ProcFSMountPath,
+			expectedFakeCpu:  false,
+			hasError:         false,
+			scenario:         "with additional config changing log format",
+		},
+		{
+			pmi: &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+							LogLevel: "info",
+						},
+					},
+				},
+			},
+			additionalConfigs: []string{
+				`{[invalid]yaml}`,
+			},
+			expectedLogLevel: "info",
+			expectedSysFS:    SysFSMountPath,
+			expectedProcFS:   ProcFSMountPath,
+			expectedFakeCpu:  false,
+			hasError:         true,
+			scenario:         "with invalid additional config",
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+
+			configStr, err := KeplerConfig(tc.pmi, tc.additionalConfigs...)
+
+			if tc.hasError {
+				assert.Error(t, err)
+				// When there's an error, it should return empty string
+				assert.Empty(t, configStr)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.NotEmpty(t, configStr)
+
+			// Verify the config contains expected values
+			assert.Contains(t, configStr, fmt.Sprintf("level: %s", tc.expectedLogLevel))
+			assert.Contains(t, configStr, fmt.Sprintf("sysfs: %s", tc.expectedSysFS))
+			assert.Contains(t, configStr, fmt.Sprintf("procfs: %s", tc.expectedProcFS))
+
+			// Special case: check for log format in the json format
+			if tc.scenario == "with additional config affecting log format" {
+				assert.Contains(t, configStr, "format: json")
+			}
+		})
+	}
 }

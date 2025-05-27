@@ -1303,6 +1303,14 @@ If the operator is Exists, the value should be empty, otherwise just a regular s
         </tr>
     </thead>
     <tbody><tr>
+        <td><b><a href="#powermonitorinternalspeckeplerconfigadditionalconfigmapsindex">additionalConfigMaps</a></b></td>
+        <td>[]object</td>
+        <td>
+          AdditionalConfigMaps is a list of ConfigMap names that will be merged with the default ConfigMap
+These AdditionalConfigMaps must exist in the same namespace as PowerMonitor components<br/>
+        </td>
+        <td>false</td>
+      </tr><tr>
         <td><b>logLevel</b></td>
         <td>string</td>
         <td>
@@ -1311,6 +1319,33 @@ If the operator is Exists, the value should be empty, otherwise just a regular s
             <i>Default</i>: info<br/>
         </td>
         <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### PowerMonitorInternal.spec.kepler.config.additionalConfigMaps[index]
+<sup><sup>[↩ Parent](#powermonitorinternalspeckeplerconfig)</sup></sup>
+
+
+
+ConfigMapRef defines a reference to a ConfigMap
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b>name</b></td>
+        <td>string</td>
+        <td>
+          Name of the ConfigMap<br/>
+        </td>
+        <td>true</td>
       </tr></tbody>
 </table>
 
@@ -1705,6 +1740,14 @@ PowerMonitorSpec defines the desired state of Power Monitor
         </tr>
     </thead>
     <tbody><tr>
+        <td><b><a href="#powermonitorspeckeplerconfigadditionalconfigmapsindex">additionalConfigMaps</a></b></td>
+        <td>[]object</td>
+        <td>
+          AdditionalConfigMaps is a list of ConfigMap names that will be merged with the default ConfigMap
+These AdditionalConfigMaps must exist in the same namespace as PowerMonitor components<br/>
+        </td>
+        <td>false</td>
+      </tr><tr>
         <td><b>logLevel</b></td>
         <td>string</td>
         <td>
@@ -1713,6 +1756,33 @@ PowerMonitorSpec defines the desired state of Power Monitor
             <i>Default</i>: info<br/>
         </td>
         <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### PowerMonitor.spec.kepler.config.additionalConfigMaps[index]
+<sup><sup>[↩ Parent](#powermonitorspeckeplerconfig)</sup></sup>
+
+
+
+ConfigMapRef defines a reference to a ConfigMap
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b>name</b></td>
+        <td>string</td>
+        <td>
+          Name of the ConfigMap<br/>
+        </td>
+        <td>true</td>
       </tr></tbody>
 </table>
 
