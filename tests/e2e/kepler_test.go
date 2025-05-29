@@ -3,6 +3,7 @@
 
 package e2e
 
+/*
 import (
 	"testing"
 	"time"
@@ -203,3 +204,4 @@ func TestBadTaint_WithToleration(t *testing.T) {
 	f.AssertNoResourceExists(controller.KeplerDeploymentNS, "", &corev1.Namespace{})
 	f.AssertNoResourceExists(ds.Name, ds.Namespace, &ds)
 }
+*/

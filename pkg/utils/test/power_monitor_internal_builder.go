@@ -42,3 +42,10 @@ func (PowerMonitorInternalBuilder) WithAnnotation(key, val string) func(pmi *v1a
 		pmi.Annotations[key] = val
 	}
 }
+
+func (PowerMonitorInternalBuilder) WithModeRBAC(allowedSANames []string) func(pmi *v1alpha1.PowerMonitorInternal) {
+	return func(pmi *v1alpha1.PowerMonitorInternal) {
+		pmi.Spec.Kepler.Deployment.Security.Mode = "rbac"
+		pmi.Spec.Kepler.Deployment.Security.AllowedSANames = allowedSANames
+	}
+}

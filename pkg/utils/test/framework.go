@@ -25,9 +25,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 
+	certv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+	certmetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	secv1 "github.com/openshift/api/security/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 )
@@ -76,6 +80,8 @@ func (f Framework) Scheme() *runtime.Scheme {
 	assert.NoError(f.T, secv1.AddToScheme(scheme))
 	assert.NoError(f.T, rbacv1.AddToScheme(scheme))
 	assert.NoError(f.T, v1alpha1.AddToScheme(scheme))
+	assert.NoError(f.T, certv1.AddToScheme(scheme))
+	assert.NoError(f.T, batchv1.AddToScheme(scheme))
 	return scheme
 }
 
@@ -507,6 +513,13 @@ func (f Framework) WithPowerMonitorAdditionalConfigMaps(configMapNames []string)
 	}
 }
 
+func (f Framework) WithPowerMonitorRBACEnabled(allowedSANames []string) func(k *v1alpha1.PowerMonitor) {
+	return func(pm *v1alpha1.PowerMonitor) {
+		pm.Spec.Kepler.Deployment.Security.Mode = "rbac"
+		pm.Spec.Kepler.Deployment.Security.AllowedSANames = allowedSANames
+	}
+}
+
 func (f Framework) GetSchedulableNodes() []corev1.Node {
 	f.T.Helper()
 	var nodes corev1.NodeList
@@ -520,6 +533,605 @@ func (f Framework) GetSchedulableNodes() []corev1.Node {
 		}
 	}
 	return ret
+}
+
+func (f Framework) DeployOpenshiftCerts(serviceName, serviceNamespace, clusterIssuerName, caCertName, caCertSecretName, pmIssuerName, tlsCertName, tlsCertSecretName string) {
+	f.T.Helper()
+
+	f.InstallCertManager()
+
+	f.CreateSelfSignedClusterIssuer(clusterIssuerName)
+
+	caCert := f.CreateCACertificate(caCertName, caCertSecretName, serviceNamespace, clusterIssuerName)
+	f.WaitUntil("ca certificate and secret are deployed", func(ctx context.Context) (bool, error) {
+		err := f.client.Get(ctx, client.ObjectKeyFromObject(caCert), caCert)
+		if err != nil {
+			return false, err
+		}
+		for _, cond := range caCert.Status.Conditions {
+			if cond.Type == certv1.CertificateConditionReady && cond.Status == certmetav1.ConditionTrue {
+				return true, nil
+			}
+		}
+		return false, err
+	}, Timeout(5*time.Minute))
+
+	f.CreateCAIssuer(pmIssuerName, caCertSecretName, serviceNamespace)
+
+	tlsCert := f.CreateTLSCertificate(tlsCertName, tlsCertSecretName, serviceNamespace, pmIssuerName, []string{
+		fmt.Sprintf("%s.%s.svc", serviceName, serviceNamespace)})
+	f.WaitUntil("tls certificate and secret are deployed", func(ctx context.Context) (bool, error) {
+		err := f.client.Get(ctx, client.ObjectKeyFromObject(tlsCert), tlsCert)
+		if err != nil {
+			return false, err
+		}
+		for _, cond := range tlsCert.Status.Conditions {
+			if cond.Type == certv1.CertificateConditionReady && cond.Status == certmetav1.ConditionTrue {
+				return true, nil
+			}
+		}
+		return false, err
+	}, Timeout(5*time.Minute))
+
+}
+
+func (f Framework) InstallCertManager() {
+	f.T.Helper()
+
+	_, err := oc.Literal().From("kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.2/cert-manager.yaml").Run()
+	assert.NoError(f.T, err, "failed to install cert-manager")
+
+	f.WaitUntil("cert-manager pods are running", func(ctx context.Context) (bool, error) {
+		pods := corev1.PodList{}
+		err := f.client.List(ctx, &pods, client.InNamespace("cert-manager"))
+		if err != nil {
+			return false, err
+		}
+
+		for _, pod := range pods.Items {
+			if pod.Status.Phase != corev1.PodRunning {
+				return false, nil
+			}
+		}
+		return true, nil
+	}, Timeout(5*time.Minute))
+
+	f.T.Cleanup(func() {
+		_, err := oc.Literal().From("kubectl delete -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.2/cert-manager.yaml").Run()
+		assert.NoError(f.T, err, "failed to uninstall cert-manager")
+	})
+}
+
+func (f Framework) CreateSelfSignedClusterIssuer(name string) *certv1.ClusterIssuer {
+	issuer := certv1.ClusterIssuer{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: certv1.SchemeGroupVersion.String(),
+			Kind:       "ClusterIssuer",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: certv1.IssuerSpec{
+			IssuerConfig: certv1.IssuerConfig{
+				SelfSigned: &certv1.SelfSignedIssuer{},
+			},
+		},
+	}
+
+	err := f.client.Patch(context.TODO(), &issuer, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
+	assert.NoError(f.T, err, "failed to create ClusterIssuer")
+
+	f.T.Cleanup(func() {
+		f.DeleteSelfSignedClusterIssuer(name, Timeout(5*time.Minute))
+	})
+	return &issuer
+}
+
+func (f Framework) DeleteSelfSignedClusterIssuer(name string, fns ...AssertOptionFn) {
+	f.T.Helper()
+
+	issuer := certv1.ClusterIssuer{}
+	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &issuer)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get self signed cluster issuer :%s", name)
+
+	f.T.Logf("%s: deleting self signed cluster issuer %s", time.Now().UTC().Format(time.RFC3339), name)
+
+	err = f.client.Delete(context.Background(), &issuer)
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete self signed cluster issuer:%s :%v", name, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("self signed cluster %s is deleted", name), func(ctx context.Context) (bool, error) {
+		issuer := certv1.ClusterIssuer{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &issuer)
+		return errors.IsNotFound(err), nil
+	}, fns...)
+}
+
+func (f Framework) CreateCACertificate(name, secretName, ns, issuerName string) *certv1.Certificate {
+	cert := certv1.Certificate{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: certv1.SchemeGroupVersion.String(),
+			Kind:       "Certificate",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: certv1.CertificateSpec{
+			IsCA:       true,
+			CommonName: name,
+			SecretName: secretName,
+			Duration:   &metav1.Duration{Duration: 8760 * time.Hour},
+			PrivateKey: &certv1.CertificatePrivateKey{
+				Algorithm: certv1.RSAKeyAlgorithm,
+				Size:      2048,
+			},
+			IssuerRef: certmetav1.ObjectReference{
+				Name: issuerName,
+				Kind: "ClusterIssuer",
+			},
+		},
+	}
+
+	err := f.client.Patch(context.TODO(), &cert, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
+	assert.NoError(f.T, err, "failed to create CA Certificate")
+
+	f.T.Cleanup(func() {
+		f.DeleteCACertificate(name, name, ns, Timeout(5*time.Minute))
+	})
+
+	return &cert
+}
+
+func (f Framework) DeleteCACertificate(name, secretName, ns string, fns ...AssertOptionFn) {
+	f.T.Helper()
+	caCert := certv1.Certificate{}
+	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &caCert)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get ca certificate :%s", name)
+
+	caSecret := corev1.Secret{}
+	err = f.client.Get(context.TODO(), client.ObjectKey{Name: secretName, Namespace: ns}, &caSecret)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get ca secret:%s", secretName)
+
+	f.T.Logf("%s: deleting ca certificate %s", time.Now().UTC().Format(time.RFC3339), name)
+
+	err = f.client.Delete(context.Background(), &caCert)
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete ca certificate:%s :%v", name, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("ca certificate %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
+		caCert := certv1.Certificate{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &caCert)
+		return errors.IsNotFound(err), nil
+	}, fns...)
+
+	f.T.Logf("%s: deleting ca secret %s", time.Now().UTC().Format(time.RFC3339), secretName)
+
+	err = f.client.Delete(context.Background(), &caSecret)
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete ca secret:%s :%v", secretName, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("ca secret %s in %s is deleted", secretName, ns), func(ctx context.Context) (bool, error) {
+		caSecret := corev1.Secret{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: secretName, Namespace: ns}, &caSecret)
+		return errors.IsNotFound(err), nil
+	}, fns...)
+}
+
+func (f Framework) CreateCAIssuer(name, secretName, ns string) *certv1.Issuer {
+	issuer := certv1.Issuer{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: certv1.SchemeGroupVersion.String(),
+			Kind:       "Issuer",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: certv1.IssuerSpec{
+			IssuerConfig: certv1.IssuerConfig{
+				CA: &certv1.CAIssuer{
+					SecretName: secretName,
+				},
+			},
+		},
+	}
+
+	err := f.client.Patch(context.TODO(), &issuer, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
+	assert.NoError(f.T, err, "failed to create CA Issuer")
+
+	f.T.Cleanup(func() {
+		f.DeleteCAIssuer(name, ns, Timeout(5*time.Minute))
+	})
+
+	return &issuer
+}
+
+func (f Framework) DeleteCAIssuer(name, ns string, fns ...AssertOptionFn) {
+	f.T.Helper()
+	issuer := certv1.Issuer{}
+	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &issuer)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get ca issuer:%s", name)
+
+	f.T.Logf("%s: deleting ca issuer %s", time.Now().UTC().Format(time.RFC3339), name)
+
+	err = f.client.Delete(context.Background(), &issuer)
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete ca issuer:%s :%v", name, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("ca issuer %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
+		issuer := certv1.Issuer{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &issuer)
+		return errors.IsNotFound(err), nil
+	}, fns...)
+}
+
+func (f Framework) CreateTLSCertificate(name, secretName, ns, issuerName string, dnsNames []string) *certv1.Certificate {
+	cert := certv1.Certificate{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: certv1.SchemeGroupVersion.String(),
+			Kind:       "Certificate",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: certv1.CertificateSpec{
+			SecretName: secretName,
+			Duration:   &metav1.Duration{Duration: 8760 * time.Hour},
+			DNSNames:   dnsNames,
+			IssuerRef: certmetav1.ObjectReference{
+				Name: issuerName,
+				Kind: "Issuer",
+			},
+		},
+	}
+
+	err := f.client.Patch(context.TODO(), &cert, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
+	assert.NoError(f.T, err, "failed to create TLS Certificate")
+
+	f.T.Cleanup(func() {
+		f.DeleteTLSCertificate(name, name, ns, Timeout(5*time.Minute))
+	})
+
+	return &cert
+}
+
+func (f Framework) DeleteTLSCertificate(name, secretName, ns string, fns ...AssertOptionFn) {
+	f.T.Helper()
+	caCert := certv1.Certificate{}
+	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &caCert)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get ca certificate :%s", name)
+
+	caSecret := corev1.Secret{}
+	err = f.client.Get(context.TODO(), client.ObjectKey{Name: secretName, Namespace: ns}, &caSecret)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get ca secret:%s", secretName)
+
+	f.T.Logf("%s: deleting ca certificate %s", time.Now().UTC().Format(time.RFC3339), name)
+
+	err = f.client.Delete(context.Background(), &caCert)
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete ca certificate:%s :%v", name, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("ca certificate %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
+		caCert := certv1.Certificate{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &caCert)
+		return errors.IsNotFound(err), nil
+	}, fns...)
+
+	f.T.Logf("%s: deleting ca secret %s", time.Now().UTC().Format(time.RFC3339), secretName)
+
+	err = f.client.Delete(context.Background(), &caSecret)
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete ca secret:%s :%v", secretName, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("ca secret %s in %s is deleted", secretName, ns), func(ctx context.Context) (bool, error) {
+		caSecret := corev1.Secret{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: secretName, Namespace: ns}, &caSecret)
+		return errors.IsNotFound(err), nil
+	}, fns...)
+}
+
+func (f Framework) CreateCurlPowerMonitorTestSuite(testJobName, testSAName, testNs, audience, serviceURL, caCertSecretName, caCertSecretNs string) string {
+	f.CreateNamespace(testNs)
+
+	f.CreateSA(testSAName, testNs)
+
+	caConfigMapName := "test-monitoring-serving-certs-ca-bundle"
+	f.CreateCAConfigMap(caConfigMapName, testNs, caCertSecretName, caCertSecretNs)
+
+	curlJob := f.CreateCurlPowerMonitorJob(testJobName, testNs, testSAName, caConfigMapName, audience, serviceURL)
+	f.WaitUntil(fmt.Sprintf("job %s in %s is complete", testJobName, testNs), func(ctx context.Context) (bool, error) {
+		err := f.client.Get(ctx, client.ObjectKeyFromObject(curlJob), curlJob)
+		if err != nil {
+			return false, err
+		}
+		return curlJob.Status.Succeeded > 0, nil
+	}, Timeout(5*time.Minute))
+
+	jobPod, err := f.getJobPod(testJobName, testNs)
+	if err != nil {
+		f.T.Errorf("job pod retrieval failed: %v", err)
+	} // oc logs job/krp-curl -n test-namespace - replace krp-curl with testJobName, testNs for test-namespace
+	logs, err := oc.Literal().From("oc logs %s -n %s", jobPod.Name, testNs).Run()
+	if err != nil {
+		f.T.Errorf("failed to get job pod's logs: %s :%v", jobPod.Name, err)
+	}
+	return logs
+}
+
+func (f Framework) CreateCAConfigMap(name, ns, caCertSecretName, caCertSecretNs string) *corev1.ConfigMap {
+	newCAConfigMap := corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Data: map[string]string{},
+	}
+	caSecret := corev1.Secret{}
+	f.AssertResourceExists(caCertSecretName, caCertSecretNs, &caSecret)
+	caCertData := caSecret.Data["tls.crt"]
+	newCAConfigMap.Data["service-ca.crt"] = string(caCertData)
+
+	err := f.client.Patch(context.TODO(), &newCAConfigMap, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
+	assert.NoError(f.T, err, "failed to create ca bundle config map")
+
+	f.T.Cleanup(func() {
+		f.DeleteCAConfigMap(name, ns, Timeout(5*time.Minute))
+	})
+
+	return &newCAConfigMap
+}
+
+func (f Framework) DeleteCAConfigMap(name, ns string, fns ...AssertOptionFn) {
+	f.T.Helper()
+	caConfigMap := corev1.ConfigMap{}
+	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &caConfigMap)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get ca bundle config map:%s", name)
+
+	f.T.Logf("%s: deleting ca bundle config map %s", time.Now().UTC().Format(time.RFC3339), name)
+
+	err = f.client.Delete(context.Background(), &caConfigMap)
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete ca config map:%s :%v", name, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("ca bundle configmap %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
+		caConfigMap := corev1.ConfigMap{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &caConfigMap)
+		return errors.IsNotFound(err), nil
+	}, fns...)
+}
+
+func (f Framework) CreateCurlPowerMonitorJob(name, ns, saName, caConfigMapName, audience, serviceURL string) *batchv1.Job {
+	volumes := []corev1.Volume{
+		k8s.VolumeFromConfigMap("ca-bundle", caConfigMapName),
+		k8s.VolumeFromProjectedToken("token-vol", audience, "token"),
+	}
+	command := []string{
+		"/bin/sh",
+		"-c",
+		fmt.Sprintf(
+			`curl -v -s --cacert /var/run/secrets/ca/service-ca.crt -H "Authorization: Bearer $(cat /var/service-account/token)" %s`, serviceURL,
+		),
+	}
+	jobContainers := []corev1.Container{
+		{
+			Name:    name,
+			Image:   "curlimages/curl:latest",
+			Command: command,
+			VolumeMounts: []corev1.VolumeMount{
+				{Name: "ca-bundle", MountPath: "/var/run/secrets/ca", ReadOnly: true},
+				{Name: "token-vol", MountPath: "/var/service-account", ReadOnly: true},
+			},
+		},
+	}
+	curlJob := batchv1.Job{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: batchv1.SchemeGroupVersion.String(),
+			Kind:       "Job",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: name,
+				},
+				Spec: corev1.PodSpec{
+					ServiceAccountName: saName,
+					RestartPolicy:      corev1.RestartPolicyNever,
+					Containers:         jobContainers,
+					Volumes:            volumes,
+				},
+			},
+		},
+	}
+
+	err := f.client.Patch(context.TODO(), &curlJob, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
+	assert.NoError(f.T, err, "failed to create curl power monitor job")
+
+	f.T.Cleanup(func() {
+		f.DeleteCurlPowerMonitorJob(name, ns, Timeout(5*time.Minute))
+	})
+
+	return &curlJob
+}
+
+func (f Framework) DeleteCurlPowerMonitorJob(name, ns string, fns ...AssertOptionFn) {
+	f.T.Helper()
+	curlJob := batchv1.Job{}
+	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &curlJob)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get curl power monitor job:%s", name)
+
+	f.T.Logf("%s: deleting curl power monitor job %s", time.Now().UTC().Format(time.RFC3339), name)
+
+	foregroundPolicy := metav1.DeletePropagationForeground
+	err = f.client.Delete(context.Background(), &curlJob, &client.DeleteOptions{
+		GracePeriodSeconds: ptr.To(int64(0)),
+		PropagationPolicy:  &foregroundPolicy,
+	})
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete curl power monitor job:%s :%v", name, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("curl power monitor %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
+		curlJob := batchv1.Job{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &curlJob)
+		return errors.IsNotFound(err), nil
+	}, fns...)
+}
+
+func (f Framework) CreateNamespace(name string) *corev1.Namespace {
+	namespace := corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "Namespace",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+
+	err := f.client.Patch(context.TODO(), &namespace, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
+	assert.NoError(f.T, err, "failed to create namespace")
+
+	f.T.Cleanup(func() {
+		f.DeleteNamespace(name, Timeout(5*time.Minute))
+	})
+
+	return &namespace
+}
+
+func (f Framework) DeleteNamespace(name string, fns ...AssertOptionFn) {
+	f.T.Helper()
+	namespace := corev1.Namespace{}
+	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &namespace)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get namespace:%s", name)
+
+	f.T.Logf("%s: deleting namespace %s", time.Now().UTC().Format(time.RFC3339), name)
+
+	err = f.client.Delete(context.Background(), &namespace, &client.DeleteOptions{
+		PropagationPolicy: ptr.To(metav1.DeletePropagationForeground),
+	})
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete namespace:%s :%v", name, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("namespace %s is deleted", name), func(ctx context.Context) (bool, error) {
+		namespace := corev1.Namespace{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &namespace)
+		return errors.IsNotFound(err), nil
+	}, fns...)
+}
+
+func (f Framework) CreateSA(name, ns string) *corev1.ServiceAccount {
+	serviceAccount := corev1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "ServiceAccount",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			Labels: map[string]string{
+				"app.kubernetes.io/component": "exporter",
+				"app.kubernetes.io/part-of":   "test-monitoring-sa",
+			},
+		},
+	}
+	err := f.client.Patch(context.TODO(), &serviceAccount, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
+	assert.NoError(f.T, err, "failed to create service account")
+
+	f.T.Cleanup(func() {
+		f.DeleteSA(name, ns, Timeout(5*time.Minute))
+	})
+
+	return &serviceAccount
+}
+
+func (f Framework) DeleteSA(name, ns string, fns ...AssertOptionFn) {
+	f.T.Helper()
+	serviceAccount := corev1.ServiceAccount{}
+	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &serviceAccount)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get service account:%s", name)
+
+	f.T.Logf("%s: deleting service account %s", time.Now().UTC().Format(time.RFC3339), name)
+
+	err = f.client.Delete(context.Background(), &serviceAccount)
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete service account:%s :%v", name, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("service account %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
+		serviceAccount := corev1.ServiceAccount{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &serviceAccount)
+		return errors.IsNotFound(err), nil
+	}, fns...)
+}
+
+func (f Framework) getJobPod(jobName, ns string) (*corev1.Pod, error) {
+	f.T.Helper()
+	pods := corev1.PodList{}
+	err := f.client.List(context.TODO(), &pods, client.InNamespace(ns), client.MatchingLabels{"job-name": jobName})
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve job pods:%s :%v", jobName, err)
+	}
+	if len(pods.Items) == 0 {
+		return nil, fmt.Errorf("no pods associated with job %s", jobName)
+	}
+	successfulPods := []corev1.Pod{}
+	for _, pod := range pods.Items {
+		if pod.Status.Phase == corev1.PodSucceeded {
+			successfulPods = append(successfulPods, pod)
+		}
+	}
+	if len(successfulPods) != 1 {
+		return nil, fmt.Errorf("there should be exactly one successful pod associated with job %s", jobName)
+	}
+	return &successfulPods[0], nil
 }
 
 func tolerateTaints(taints []corev1.Taint) []corev1.Toleration {

@@ -47,7 +47,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.17.0
-    createdAt: "2025-05-30T06:05:38Z"
+    createdAt: "2025-06-09T02:56:50Z"
     description: Deploys and Manages Kepler on Kubernetes
     operators.operatorframework.io/builder: operator-sdk-v1.39.1
     operators.operatorframework.io/internal-objects: |-
@@ -174,8 +174,19 @@ spec:
           resources:
           - secrets
           verbs:
+          - create
+          - delete
+          - get
           - list
+          - patch
+          - update
           - watch
+        - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts/token
+          verbs:
+          - create
         - apiGroups:
           - apps
           resources:

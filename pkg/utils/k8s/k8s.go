@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -33,6 +34,25 @@ type SCCAllows struct {
 	AllowHostNetwork         bool
 	AllowHostPID             bool
 	AllowHostPorts           bool
+}
+
+type User struct {
+	Name string `yaml:"name"`
+}
+
+type StaticRule struct {
+	Path            string `yaml:"path"`
+	ResourceRequest bool   `yaml:"resourceRequest"`
+	User            User   `yaml:"user"`
+	Verb            string `yaml:"verb"`
+}
+
+type Authorization struct {
+	StaticRules []StaticRule `yaml:"static"`
+}
+
+type KubeRBACProxyConfig struct {
+	Authorization Authorization `yaml:"authorization"`
 }
 
 func (l StringMap) Merge(other StringMap) StringMap {
@@ -97,6 +117,25 @@ func VolumeFromEmptyDir(name string) corev1.Volume {
 		Name: name,
 		VolumeSource: corev1.VolumeSource{
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+}
+
+func VolumeFromProjectedToken(name, audience, tokenPath string) corev1.Volume {
+	return corev1.Volume{
+		Name: name,
+		VolumeSource: corev1.VolumeSource{
+			Projected: &corev1.ProjectedVolumeSource{
+				Sources: []corev1.VolumeProjection{
+					{
+						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+							Audience:          audience,
+							ExpirationSeconds: ptr.To(int64(3600)),
+							Path:              tokenPath,
+						},
+					},
+				},
+			},
 		},
 	}
 }

@@ -31,6 +31,7 @@ import (
 	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/internal/controller"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
+	powermonitor "github.com/sustainable.computing.io/kepler-operator/pkg/components/power-monitor"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/version"
 	//+kubebuilder:scaffold:imports
@@ -130,8 +131,12 @@ func main() {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
-	if openshift {
+	if openshift { // then we enable rbac by default, api.config.allowed (changed in k8s to be empty)
 		controller.Config.Cluster = k8s.OpenShift
+		keplersystemv1alpha1.DefaultSecurityConfig.Mode = keplersystemv1alpha1.SecurityModeRBAC
+		keplersystemv1alpha1.DefaultSecurityConfig.AllowedSANames = []string{
+			fmt.Sprintf("system:serviceaccount:%s:%s", powermonitor.UWMNamespace, powermonitor.UWMServiceAccountName),
+		}
 	}
 
 	// Metrics endpoint is enabled in 'config/default/kustomization.yaml'. The Metrics options configure the server.
@@ -169,6 +174,7 @@ func main() {
 			}
 			if openshift {
 				cacheNs[exporter.DashboardNs] = cache.Config{}
+				cacheNs[powermonitor.UWMNamespace] = cache.Config{}
 			}
 			for _, ns := range additionalNamespaces {
 				cacheNs[ns] = cache.Config{}

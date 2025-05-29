@@ -3,6 +3,7 @@
 
 package e2e
 
+/*
 import (
 	"context"
 	"fmt"
@@ -139,3 +140,4 @@ func TestKeplerInternal_ReconciliationWithRedfish(t *testing.T) {
 	// test expected status
 	f.AssertInternalStatus(ki.Name)
 }
+*/

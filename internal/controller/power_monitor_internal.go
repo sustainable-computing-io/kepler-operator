@@ -6,6 +6,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -48,11 +49,12 @@ const configMapField = ".spec.kepler.config.additionalConfigMaps.name"
 // common to all components deployed by operator
 //+kubebuilder:rbac:groups=core,resources=namespaces,verbs=list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=services;configmaps;serviceaccounts;persistentvolumeclaims,verbs=list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=serviceaccounts/token,verbs=create
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=*,verbs=*
 
 // RBAC for running Kepler exporter
 //+kubebuilder:rbac:groups=apps,resources=daemonsets;deployments,verbs=list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=core,resources=secrets,verbs=list;watch
+//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=list;watch;create;update;patch;delete;use
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;prometheusrules,verbs=list;watch;create;update;patch;delete
 
@@ -102,6 +104,28 @@ func (r *PowerMonitorInternalReconciler) SetupWithManager(mgr ctrl.Manager) erro
 
 	if Config.Cluster == k8s.OpenShift {
 		c = c.Owns(&secv1.SecurityContextConstraints{}, genChanged)
+		c = c.Owns(&corev1.Secret{}, genChanged)
+		c = c.Watches(&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(r.mapSecretToPowerMonitorRequests),
+			builder.WithPredicates(
+				predicate.GenerationChangedPredicate{},
+				predicate.AnnotationChangedPredicate{},
+			),
+		)
+		c = c.Watches(&corev1.ConfigMap{},
+			handler.EnqueueRequestsFromMapFunc(r.mapCABundleConfigMapToPowerMonitorRequests),
+			builder.WithPredicates(
+				predicate.GenerationChangedPredicate{},
+				predicate.AnnotationChangedPredicate{},
+			),
+		)
+		c = c.Watches(&corev1.ServiceAccount{},
+			handler.EnqueueRequestsFromMapFunc(r.mapServiceAccountToPowerMonitorRequests),
+			builder.WithPredicates(
+				predicate.GenerationChangedPredicate{},
+				predicate.AnnotationChangedPredicate{},
+			),
+		)
 	}
 	return c.Complete(r)
 }
@@ -125,6 +149,109 @@ func (r *PowerMonitorInternalReconciler) mapConfigMapToRequests(ctx context.Cont
 	for _, pmi := range pmis.Items {
 		requests = append(requests, reconcile.Request{
 			NamespacedName: types.NamespacedName{Name: pmi.Name},
+		})
+	}
+	return requests
+}
+
+func (r *PowerMonitorInternalReconciler) mapSecretToPowerMonitorRequests(ctx context.Context, object client.Object) []reconcile.Request {
+	secret, ok := object.(*corev1.Secret)
+	if !ok {
+		return nil
+	}
+
+	if secret.GetName() != powermonitor.SecretTLSCertName {
+		return nil
+	}
+
+	pmis := &v1alpha1.PowerMonitorInternalList{}
+	err := r.List(ctx, pmis)
+	if err != nil {
+		return nil
+	}
+
+	requests := []reconcile.Request{}
+	for _, pmi := range pmis.Items {
+		enabledSecurity := (pmi.Spec.Kepler.Deployment.Security.Mode == v1alpha1.SecurityModeRBAC)
+		if !enabledSecurity {
+			continue
+		}
+		ns := pmi.Spec.Kepler.Deployment.Namespace
+		if ns == secret.GetNamespace() {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      pmi.Name,
+					Namespace: pmi.ObjectMeta.Namespace,
+				},
+			})
+		}
+	}
+	return requests
+}
+
+func (r *PowerMonitorInternalReconciler) mapCABundleConfigMapToPowerMonitorRequests(ctx context.Context, object client.Object) []reconcile.Request {
+	cm, ok := object.(*corev1.ConfigMap)
+	if !ok {
+		return nil
+	}
+
+	if cm.GetName() != powermonitor.PowerMonitorCertsCABundleName {
+		return nil
+	}
+
+	pmis := &v1alpha1.PowerMonitorInternalList{}
+	err := r.List(ctx, pmis)
+	if err != nil {
+		return nil
+	}
+
+	requests := []reconcile.Request{}
+	for _, pmi := range pmis.Items {
+		enabledSecurity := (pmi.Spec.Kepler.Deployment.Security.Mode == v1alpha1.SecurityModeRBAC)
+		if !enabledSecurity {
+			continue
+		}
+		ns := pmi.Spec.Kepler.Deployment.Namespace
+		if ns == cm.GetNamespace() {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      pmi.Name,
+					Namespace: pmi.ObjectMeta.Namespace,
+				},
+			})
+		}
+	}
+	return requests
+}
+
+func (r *PowerMonitorInternalReconciler) mapServiceAccountToPowerMonitorRequests(ctx context.Context, object client.Object) []reconcile.Request {
+	sa, ok := object.(*corev1.ServiceAccount)
+	if !ok {
+		return nil
+	}
+
+	if sa.GetName() != powermonitor.UWMServiceAccountName || sa.GetNamespace() != powermonitor.UWMNamespace {
+		return nil
+	}
+
+	pmis := &v1alpha1.PowerMonitorInternalList{}
+	err := r.List(ctx, pmis)
+	if err != nil {
+		return nil
+	}
+
+	requests := []reconcile.Request{}
+	for _, pmi := range pmis.Items {
+		enabledSecurity := (pmi.Spec.Kepler.Deployment.Security.Mode == v1alpha1.SecurityModeRBAC)
+		if !enabledSecurity {
+			continue
+		}
+
+		requests = append(requests, reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      pmi.Name,
+				Namespace: pmi.ObjectMeta.Namespace,
+			},
 		})
 	}
 	return requests
@@ -224,6 +351,28 @@ func openshiftPowerMonitorNamespacedResources(pmi *v1alpha1.PowerMonitorInternal
 	return res
 }
 
+func securityPowerMonitorReconcilers(pmi *v1alpha1.PowerMonitorInternal, enableRBAC, enableUWM bool) []reconciler.Reconciler {
+	rs := []reconciler.Reconciler{}
+	rs = append(rs,
+		reconciler.KubeRBACProxyConfigReconciler{
+			Pmi:        pmi,
+			EnableRBAC: enableRBAC,
+			EnableUWM:  enableUWM,
+		},
+		reconciler.CABundleConfigReconciler{
+			Pmi:        pmi,
+			EnableRBAC: enableRBAC,
+			EnableUWM:  enableUWM,
+		},
+		reconciler.UWMSecretTokenReconciler{
+			Pmi:        pmi,
+			EnableRBAC: enableRBAC,
+			EnableUWM:  enableUWM,
+		},
+	)
+	return rs
+}
+
 func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Cluster) []reconciler.Reconciler {
 	if cleanup := !pmi.DeletionTimestamp.IsZero(); cleanup {
 		rs := resourceReconcilers(
@@ -236,28 +385,64 @@ func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Clust
 		rs = append(rs, resourceReconcilers(deleteResource, openshiftPowerMonitorNamespacedResources(pmi, cluster)...)...)
 		return rs
 	}
-
+	rs := []reconciler.Reconciler{}
 	updateResource := newUpdaterWithOwner(pmi)
+	enableRBAC := pmi.Spec.Kepler.Deployment.Security.Mode == v1alpha1.SecurityModeRBAC
+	enableUWM := slices.Contains(
+		pmi.Spec.Kepler.Deployment.Security.AllowedSANames,
+		fmt.Sprintf(
+			"system:serviceaccount:%s:%s",
+			powermonitor.UWMNamespace,
+			powermonitor.UWMServiceAccountName,
+		),
+	)
+
+	ds := powermonitor.NewPowerMonitorDaemonSet(components.Full, pmi)
 	// cluster-scoped resources first
 	// update cluster role before cluster role binding
-	rs := resourceReconcilers(updateResource,
+	rs = append(rs, resourceReconcilers(updateResource,
 		powermonitor.NewPowerMonitorClusterRole(components.Full, pmi),
 		powermonitor.NewPowerMonitorClusterRoleBinding(components.Full, pmi),
-	)
+	)...)
 	rs = append(rs, resourceReconcilers(updateResource, openshiftPowerMonitorClusterResources(pmi, cluster)...)...)
+
+	// kube rbac proxy resources
+	rs = append(rs, securityPowerMonitorReconcilers(pmi, enableRBAC, enableUWM)...)
 
 	// namespace scoped
 	rs = append(rs, resourceReconcilers(updateResource,
 		powermonitor.NewPowerMonitorServiceAccount(pmi),
 		powermonitor.NewPowerMonitorService(pmi),
-		powermonitor.NewPowerMonitorServiceMonitor(pmi),
-		// powermonitor.NewPowerMonitorPrometheusRule(kx), prometheus rule is not necessary at the moment
 	)...)
 
-	// powermonitor deployer
-	rs = append(rs, reconciler.PowerMonitorDeployer{Pmi: pmi})
+	// check that all required objects have been created for kube rbac proxy
+	rs = append(rs,
+		reconciler.PowerMonitorDeployer{
+			Pmi: pmi,
+			Ds:  ds,
+		},
+		reconciler.KubeRBACProxyObjectsChecker{
+			Pmi:        pmi,
+			Ds:         ds,
+			Cluster:    cluster,
+			EnableRBAC: enableRBAC,
+			EnableUWM:  enableUWM,
+		},
+	)
+	// deploy daemonset
+	rs = append(rs, resourceReconcilers(updateResource, ds)...)
+
+	// deploy service monitor
+	rs = append(rs,
+		reconciler.PowerMonitorServiceMonitorReconciler{
+			Pmi:        pmi,
+			EnableRBAC: enableRBAC,
+			EnableUWM:  enableUWM,
+		},
+	)
 
 	rs = append(rs, resourceReconcilers(updateResource, openshiftPowerMonitorNamespacedResources(pmi, cluster)...)...)
+
 	return rs
 }
 

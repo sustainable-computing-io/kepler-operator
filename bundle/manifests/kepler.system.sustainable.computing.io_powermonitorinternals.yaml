@@ -109,6 +109,20 @@ spec:
                           kubernetes.io/os: linux
                         description: Defines which Nodes the Pod is scheduled on
                         type: object
+                      security:
+                        properties:
+                          allowedSANames:
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          mode:
+                            default: none
+                            enum:
+                            - none
+                            - rbac
+                            type: string
+                        type: object
                       tolerations:
                         default:
                         - effect: ""
