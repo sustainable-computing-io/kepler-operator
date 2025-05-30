@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"dario.cat/mergo"
 	"github.com/alecthomas/kingpin/v2"
 	"gopkg.in/yaml.v3"
+	"k8s.io/utils/ptr"
 )
 
 // Config represents the complete application configuration
@@ -34,7 +34,7 @@ type (
 	// Development mode settings; disabled by default
 	Dev struct {
 		FakeCpuMeter struct {
-			Enabled bool     `yaml:"enabled"`
+			Enabled *bool    `yaml:"enabled"`
 			Zones   []string `yaml:"zones"`
 		} `yaml:"fake-cpu-meter"`
 	}
@@ -49,11 +49,11 @@ type (
 
 	// Exporter configuration
 	StdoutExporter struct {
-		Enabled bool `yaml:"enabled"`
+		Enabled *bool `yaml:"enabled"`
 	}
 
 	PrometheusExporter struct {
-		Enabled         bool     `yaml:"enabled"`
+		Enabled         *bool    `yaml:"enabled"`
 		DebugCollectors []string `yaml:"debugCollectors"`
 	}
 
@@ -64,7 +64,7 @@ type (
 
 	// Debug configuration
 	PprofDebug struct {
-		Enabled bool `yaml:"enabled"`
+		Enabled *bool `yaml:"enabled"`
 	}
 
 	Debug struct {
@@ -80,12 +80,6 @@ type (
 		Web      Web      `yaml:"web"`
 		Debug    Debug    `yaml:"debug"`
 		Dev      Dev      `yaml:"dev"` // WARN: do not expose dev settings as flags
-	}
-
-	// Builder is a struct for building a config
-	Builder struct {
-		yamls  []string
-		Config *Config
 	}
 )
 
@@ -143,20 +137,21 @@ func DefaultConfig() *Config {
 		},
 		Exporter: Exporter{
 			Stdout: StdoutExporter{
-				Enabled: false,
+				Enabled: ptr.To(false),
 			},
 			Prometheus: PrometheusExporter{
-				Enabled:         true,
+				Enabled:         ptr.To(true),
 				DebugCollectors: []string{"go"},
 			},
 		},
 		Debug: Debug{
 			Pprof: PprofDebug{
-				Enabled: false,
+				Enabled: ptr.To(false),
 			},
 		},
 	}
 
+	cfg.Dev.FakeCpuMeter.Enabled = ptr.To(false)
 	return cfg
 }
 
@@ -256,7 +251,7 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 		}
 
 		if flagsSet[pprofEnabledFlag] {
-			cfg.Debug.Pprof.Enabled = *enablePprof
+			cfg.Debug.Pprof.Enabled = enablePprof
 		}
 
 		if flagsSet[WebConfigFlag] {
@@ -264,11 +259,11 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 		}
 
 		if flagsSet[ExporterStdoutEnabledFlag] {
-			cfg.Exporter.Stdout.Enabled = *stdoutExporterEnabled
+			cfg.Exporter.Stdout.Enabled = stdoutExporterEnabled
 		}
 
 		if flagsSet[ExporterPrometheusEnabledFlag] {
-			cfg.Exporter.Prometheus.Enabled = *prometheusExporterEnabled
+			cfg.Exporter.Prometheus.Enabled = prometheusExporterEnabled
 		}
 
 		cfg.sanitize()
@@ -431,36 +426,4 @@ func (c *Config) manualString() string {
 	}
 
 	return sb.String()
-}
-
-// UseDefault sets the default configuration
-func (b *Builder) UseDefault() *Builder {
-	b.Config = DefaultConfig()
-	return b
-}
-
-// Merge adds a YAML string to be merged into the configuration
-func (b *Builder) Merge(yamlStr string) *Builder {
-	b.yamls = append(b.yamls, yamlStr)
-	return b
-}
-
-// Build constructs the final configuration by merging all additional YAMLS into the default configuration
-func (b *Builder) Build() (*Config, error) {
-	if b.Config == nil {
-		b.Config = DefaultConfig()
-	}
-
-	for _, yamlStr := range b.yamls {
-		additional := DefaultConfig()
-		if err := yaml.Unmarshal([]byte(yamlStr), additional); err != nil {
-			return nil, fmt.Errorf("failed to parse YAML config: %w", err)
-		}
-
-		if err := mergo.Merge(b.Config, additional, mergo.WithOverwriteWithEmptyValue); err != nil {
-			return nil, fmt.Errorf("failed to merge config: %w", err)
-		}
-	}
-
-	return b.Config, nil
 }

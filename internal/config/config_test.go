@@ -12,6 +12,7 @@ import (
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/utils/ptr"
 )
 
 func TestDefaultConfig(t *testing.T) {
@@ -105,11 +106,11 @@ debug:
 	assert.NoError(t, err)
 
 	// Verify that command line arguments take precedence
-	assert.True(t, cfg.Exporter.Stdout.Enabled, "stdout exporter should be enabled from flag")
-	assert.False(t, cfg.Exporter.Prometheus.Enabled, "prometheus exporter should remain disabled from yaml")
+	assert.True(t, *cfg.Exporter.Stdout.Enabled, "stdout exporter should be enabled from flag")
+	assert.False(t, *cfg.Exporter.Prometheus.Enabled, "prometheus exporter should remain disabled from yaml")
 	assert.ElementsMatch(t, []string{"go"}, cfg.Exporter.Prometheus.DebugCollectors,
 		"debug collectors should be overridden by flag")
-	assert.True(t, cfg.Debug.Pprof.Enabled, "pprof should be enabled from flag")
+	assert.True(t, *cfg.Debug.Pprof.Enabled, "pprof should be enabled from flag")
 }
 
 func TestPartialConfig(t *testing.T) {
@@ -444,7 +445,7 @@ func TestEnablePprof(t *testing.T) {
 			cfg := DefaultConfig()
 			err := updateConfig(cfg)
 			assert.NoError(t, err, "unexpected config update error")
-			assert.Equal(t, cfg.Debug.Pprof.Enabled, tc.enabled, "unexpected flag value")
+			assert.Equal(t, *cfg.Debug.Pprof.Enabled, tc.enabled, "unexpected flag value")
 		})
 	}
 }
@@ -521,7 +522,7 @@ func TestStdoutExporter(t *testing.T) {
 			cfg := DefaultConfig()
 			err := updateConfig(cfg)
 			assert.NoError(t, err, "unexpected config update error")
-			assert.Equal(t, cfg.Exporter.Stdout.Enabled, tc.enabled, "unexpected flag value")
+			assert.Equal(t, *cfg.Exporter.Stdout.Enabled, tc.enabled, "unexpected flag value")
 		})
 	}
 }
@@ -554,7 +555,7 @@ func TestPrometheusExporter(t *testing.T) {
 			cfg := DefaultConfig()
 			err := updateConfig(cfg)
 			assert.NoError(t, err, "unexpected config update error")
-			assert.Equal(t, cfg.Exporter.Prometheus.Enabled, tc.enabled, "unexpected flag value")
+			assert.Equal(t, *cfg.Exporter.Prometheus.Enabled, tc.enabled, "unexpected flag value")
 		})
 	}
 }
@@ -661,12 +662,12 @@ func TestConfigDefault(t *testing.T) {
 	cfg := DefaultConfig()
 
 	// Check default exporter config
-	assert.False(t, cfg.Exporter.Stdout.Enabled, "stdout exporter should be disabled by default")
-	assert.True(t, cfg.Exporter.Prometheus.Enabled, "prometheus exporter should be enabled by default")
+	assert.False(t, *cfg.Exporter.Stdout.Enabled, "stdout exporter should be disabled by default")
+	assert.True(t, *cfg.Exporter.Prometheus.Enabled, "prometheus exporter should be enabled by default")
 	assert.Equal(t, []string{"go"}, cfg.Exporter.Prometheus.DebugCollectors, "default debug collectors should be set")
 
 	// Check default debug config
-	assert.False(t, cfg.Debug.Pprof.Enabled, "pprof should be disabled by default")
+	assert.False(t, *cfg.Debug.Pprof.Enabled, "pprof should be disabled by default")
 }
 
 func TestConifgLoadFromYaml(t *testing.T) {
@@ -691,38 +692,39 @@ debug:
 	assert.NoError(t, err)
 
 	// Verify exporter config
-	assert.True(t, cfg.Exporter.Stdout.Enabled, "stdout exporter should be enabled")
-	assert.True(t, cfg.Exporter.Prometheus.Enabled, "prometheus exporter should be enabled")
+	assert.True(t, *cfg.Exporter.Stdout.Enabled, "stdout exporter should be enabled")
+	assert.True(t, *cfg.Exporter.Prometheus.Enabled, "prometheus exporter should be enabled")
 	assert.ElementsMatch(t, []string{"go", "process"}, cfg.Exporter.Prometheus.DebugCollectors,
 		"debug collectors should match")
 
 	// Verify debug config
-	assert.True(t, cfg.Debug.Pprof.Enabled, "pprof should be enabled")
+	assert.True(t, *cfg.Debug.Pprof.Enabled, "pprof should be enabled")
 }
 
-func TestMergeConfig(t *testing.T) {
-	// Test merge with default
-	t.Run("MergeWithDefault", func(t *testing.T) {
+func TestBuilder(t *testing.T) {
+	t.Run("Build", func(t *testing.T) {
+		// Test Build should return default config
 		b := &Builder{}
-		cfg, err := b.UseDefault().Build()
+		got, err := b.Build()
 		assert.NoError(t, err)
-		assert.Equal(t, "info", cfg.Log.Level)
-		assert.Equal(t, "text", cfg.Log.Format) // default
+
+		exp := DefaultConfig()
+		assert.Equal(t, exp.String(), got.String())
 	})
 
-	// Test merge without default
-	t.Run("MergeWithoutDefault", func(t *testing.T) {
+	t.Run("Use", func(t *testing.T) {
 		b := &Builder{}
-		cfg, err := b.Build()
+		exp := DefaultConfig()
+		exp.Log.Level = "warn"
+
+		got, err := b.Use(exp).Build()
 		assert.NoError(t, err)
-		assert.Equal(t, "info", cfg.Log.Level)
-		assert.Equal(t, "text", cfg.Log.Format) // default
+		assert.Equal(t, exp.String(), got.String())
 	})
 
-	// Test merge with invalid YAML
 	t.Run("MergeWithInvalidYAML", func(t *testing.T) {
 		b := &Builder{}
-		cfg, err := b.UseDefault().
+		cfg, err := b.Merge().
 			Merge(`invalid yaml: [invalid`).
 			Build()
 		assert.Error(t, err)
@@ -730,27 +732,32 @@ func TestMergeConfig(t *testing.T) {
 		assert.Nil(t, cfg)
 	})
 
-	// Test multiple merges
 	t.Run("MultipleMerges", func(t *testing.T) {
 		b := &Builder{}
-		cfg, err := b.UseDefault().
+		cfg, err := b.
 			Merge(`
 log:
   level: debug
-`).
-			Merge(`
+`,
+				`
+monitor:
+  interval: 3h
+`,
+				`
 log:
   level: info
 `).
 			Build()
 		assert.NoError(t, err)
-		assert.Equal(t, "info", cfg.Log.Level) // last merge
+		exp := DefaultConfig()
+		exp.Log.Level = "info"
+		exp.Monitor.Interval = 3 * time.Hour
+		assert.Equal(t, exp.String(), cfg.String())
 	})
 
-	// Test merge nested
 	t.Run("MergeNested", func(t *testing.T) {
 		b := &Builder{}
-		cfg, err := b.UseDefault().
+		cfg, err := b.
 			Merge(`
 exporter:
   prometheus:
@@ -758,14 +765,14 @@ exporter:
 `).
 			Build()
 		assert.NoError(t, err)
-		assert.False(t, cfg.Exporter.Prometheus.Enabled)
-		assert.False(t, cfg.Exporter.Stdout.Enabled) // default
+		exp := DefaultConfig()
+		exp.Exporter.Prometheus.Enabled = ptr.To(false)
+		assert.Equal(t, exp.String(), cfg.String())
 	})
 
-	// Test merge arrays
 	t.Run("MergeArrays", func(t *testing.T) {
 		b := &Builder{}
-		cfg, err := b.UseDefault().
+		cfg, err := b.
 			Merge(`
 exporter:
   prometheus:
@@ -773,6 +780,8 @@ exporter:
 `).
 			Build()
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, []string{"go", "process"}, cfg.Exporter.Prometheus.DebugCollectors)
+		exp := DefaultConfig()
+		exp.Exporter.Prometheus.DebugCollectors = []string{"go", "process"}
+		assert.Equal(t, exp.String(), cfg.String())
 	})
 }

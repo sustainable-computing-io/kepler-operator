@@ -47,7 +47,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.17.0
-    createdAt: "2025-05-22T12:38:07Z"
+    createdAt: "2025-05-30T06:05:38Z"
     description: Deploys and Manages Kepler on Kubernetes
     operators.operatorframework.io/builder: operator-sdk-v1.39.1
     operators.operatorframework.io/internal-objects: |-
@@ -286,7 +286,7 @@ spec:
                 - name: RELATED_IMAGE_KEPLER
                   value: quay.io/sustainable_computing_io/kepler:release-0.7.12
                 - name: RELATED_IMAGE_KEPLER_REBOOT
-                  value: quay.io/sustainable_computing_io/kepler-reboot:v0.0.6
+                  value: quay.io/sustainable_computing_io/kepler-reboot:v0.0.7
                 image: quay.io/sustainable_computing_io/kepler-operator:0.17.0
                 imagePullPolicy: IfNotPresent
                 livenessProbe:
@@ -396,7 +396,7 @@ spec:
   relatedImages:
   - image: quay.io/sustainable_computing_io/kepler:release-0.7.12
     name: kepler
-  - image: quay.io/sustainable_computing_io/kepler-reboot:v0.0.6
+  - image: quay.io/sustainable_computing_io/kepler-reboot:v0.0.7
     name: kepler-reboot
   replaces: kepler-operator.v0.16.0
   version: 0.17.0
