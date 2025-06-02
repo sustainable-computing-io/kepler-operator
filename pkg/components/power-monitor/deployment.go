@@ -449,7 +449,6 @@ func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Contain
 func KeplerConfig(pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...string) (string, error) {
 	// Start with default config
 	b := &config.Builder{}
-	b.UseDefault()
 
 	for _, additionalConfig := range additionalConfigs {
 		b.Merge(additionalConfig)
@@ -462,7 +461,7 @@ func KeplerConfig(pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...strin
 
 	val, ok := pmi.Annotations[EnableVMTestKey]
 	if ok {
-		cfg.Dev.FakeCpuMeter.Enabled = val == "true"
+		cfg.Dev.FakeCpuMeter.Enabled = ptr.To(val == "true")
 	}
 
 	cfg.Log.Level = pmi.Spec.Kepler.Config.LogLevel

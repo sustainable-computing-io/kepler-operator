@@ -12,10 +12,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/internal/config"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
 func TestPowerMonitorNodeSelection(t *testing.T) {
@@ -409,157 +411,157 @@ func readDashboardJSON(t *testing.T, jsonFilename string) string {
 }
 
 func TestKeplerConfig(t *testing.T) {
-	tt := []struct {
-		pmi               *v1alpha1.PowerMonitorInternal
-		additionalConfigs []string
-		expectedLogLevel  string
-		expectedSysFS     string
-		expectedProcFS    string
-		expectedFakeCpu   bool
-		hasError          bool
-		scenario          string
-	}{
-		{
-			pmi: &v1alpha1.PowerMonitorInternal{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "power-monitor-internal",
-				},
-				Spec: v1alpha1.PowerMonitorInternalSpec{
-					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
-						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
-							LogLevel: "info",
-						},
+	t.Run("With default config", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel: "info",
 					},
 				},
 			},
-			additionalConfigs: []string{},
-			expectedLogLevel:  "info",
-			expectedSysFS:     SysFSMountPath,
-			expectedProcFS:    ProcFSMountPath,
-			expectedFakeCpu:   false,
-			hasError:          false,
-			scenario:          "default case",
-		},
-		{
-			pmi: &v1alpha1.PowerMonitorInternal{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "power-monitor-internal",
-				},
-				Spec: v1alpha1.PowerMonitorInternalSpec{
-					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
-						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
-							LogLevel: "debug",
-						},
+		}
+
+		configStr, err := KeplerConfig(pmi)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
+	})
+
+	t.Run("With debug log level", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel: "debug",
 					},
 				},
 			},
-			additionalConfigs: []string{},
-			expectedLogLevel:  "debug",
-			expectedSysFS:     SysFSMountPath,
-			expectedProcFS:    ProcFSMountPath,
-			expectedFakeCpu:   false,
-			hasError:          false,
-			scenario:          "debug log level",
-		},
-		{
-			pmi: &v1alpha1.PowerMonitorInternal{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "power-monitor-internal",
-				},
-				Spec: v1alpha1.PowerMonitorInternalSpec{
-					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
-						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
-							LogLevel: "info",
-						},
+		}
+
+		configStr, err := KeplerConfig(pmi)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Log.Level = "debug"
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
+	})
+
+	t.Run("With additional config", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel: "info",
 					},
 				},
 			},
-			additionalConfigs: []string{
-				`log:
-  level: debug`,
+		}
+
+		additionalConfig := `log:
+  level: debug`
+
+		configStr, err := KeplerConfig(pmi, additionalConfig)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr) // PMI spec config takes precedence over additional config
+	})
+
+	t.Run("With additional config affecting log format", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
 			},
-			expectedLogLevel: "info", // PMI spec config takes precedence over additional config
-			expectedSysFS:    SysFSMountPath,
-			expectedProcFS:   ProcFSMountPath,
-			expectedFakeCpu:  false,
-			hasError:         false,
-			scenario:         "with additional config",
-		},
-		{
-			pmi: &v1alpha1.PowerMonitorInternal{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "power-monitor-internal",
-				},
-				Spec: v1alpha1.PowerMonitorInternalSpec{
-					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
-						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
-							LogLevel: "info",
-						},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel: "info",
 					},
 				},
 			},
-			additionalConfigs: []string{
-				`log:
-  format: json`,
-			},
-			expectedLogLevel: "info",
-			expectedSysFS:    SysFSMountPath,
-			expectedProcFS:   ProcFSMountPath,
-			expectedFakeCpu:  false,
-			hasError:         false,
-			scenario:         "with additional config changing log format",
-		},
-		{
-			pmi: &v1alpha1.PowerMonitorInternal{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "power-monitor-internal",
+		}
+
+		additionalConfig := `log:
+  format: json`
+
+		configStr, err := KeplerConfig(pmi, additionalConfig)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Log.Format = "json"
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
+	})
+
+	t.Run("With fake CPU meter enabled", func(t *testing.T) { // TODO: remove this test
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+				Annotations: map[string]string{
+					EnableVMTestKey: "true",
 				},
-				Spec: v1alpha1.PowerMonitorInternalSpec{
-					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
-						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
-							LogLevel: "info",
-						},
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel: "info",
 					},
 				},
 			},
-			additionalConfigs: []string{
-				`{[invalid]yaml}`,
+		}
+
+		configStr, err := KeplerConfig(pmi)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Dev.FakeCpuMeter.Enabled = ptr.To(true)
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
+	})
+	t.Run("With invalid additional config", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
 			},
-			expectedLogLevel: "info",
-			expectedSysFS:    SysFSMountPath,
-			expectedProcFS:   ProcFSMountPath,
-			expectedFakeCpu:  false,
-			hasError:         true,
-			scenario:         "with invalid additional config",
-		},
-	}
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel: "info",
+					},
+				},
+			},
+		}
 
-	for _, tc := range tt {
-		tc := tc
-		t.Run(tc.scenario, func(t *testing.T) {
-			t.Parallel()
+		invalidConfig := `{[invalid]yaml}`
 
-			configStr, err := KeplerConfig(tc.pmi, tc.additionalConfigs...)
+		configStr, err := KeplerConfig(pmi, invalidConfig)
 
-			if tc.hasError {
-				assert.Error(t, err)
-				// When there's an error, it should return empty string
-				assert.Empty(t, configStr)
-				return
-			}
-
-			assert.NoError(t, err)
-			assert.NotEmpty(t, configStr)
-
-			// Verify the config contains expected values
-			assert.Contains(t, configStr, fmt.Sprintf("level: %s", tc.expectedLogLevel))
-			assert.Contains(t, configStr, fmt.Sprintf("sysfs: %s", tc.expectedSysFS))
-			assert.Contains(t, configStr, fmt.Sprintf("procfs: %s", tc.expectedProcFS))
-
-			// Special case: check for log format in the json format
-			if tc.scenario == "with additional config affecting log format" {
-				assert.Contains(t, configStr, "format: json")
-			}
-		})
-	}
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to build config")
+		assert.Empty(t, configStr)
+	})
 }
