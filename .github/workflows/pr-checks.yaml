@@ -139,10 +139,23 @@ jobs:
       - name: Setup Pre-Commit
         uses: pre-commit/action@v3.0.1
 
-  test-and-codecov:
+  codecov-upload:
     needs: check-changes
     if: needs.check-changes.outputs.changes == 'true'
-    uses: ./.github/workflows/test-and-codecov.yaml
+    runs-on: ubuntu-latest-8-cores
+    steps:
+      - uses: actions/checkout@main
+
+      - uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+      - name: Install all tools
+        uses: ./.github/tools-cache
+
+      - name: Run codecov-upload
+        uses: ./.github/codecov-upload
+        with:
+          codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
   bundle:
     runs-on: ubuntu-latest-8-cores

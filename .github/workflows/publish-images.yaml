@@ -5,9 +5,24 @@ on: # yamllint disable-line rule:truthy
     branches: [v1alpha1]
 
 jobs:
-  test-and-codecov:
-    uses: ./.github/workflows/test-and-codecov.yaml
+  codecov-upload:
+    name: Upload coverage to Codecov
+    runs-on: ubuntu-latest-8-cores
+    steps:
+      - uses: actions/checkout@main
 
+      - uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install all tools
+        uses: ./.github/tools-cache
+
+      - name: Run codecov-upload
+        uses: ./.github/codecov-upload
+        with:
+          codecov_token: ${{ secrets.CODECOV_TOKEN }}
   publish:
     name: Publish operator container images
     runs-on: ubuntu-latest-8-cores
