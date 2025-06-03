@@ -13,7 +13,7 @@ var Config = struct {
 	Image       string
 	Cluster     k8s.Cluster
 }{
-	RebootImage: "quay.io/sustainable_computing_io/kepler-reboot:v0.0.7",
+	RebootImage: "quay.io/sustainable_computing_io/kepler-reboot:v0.0.9",
 	Image:       "",
 	Cluster:     k8s.Kubernetes,
 }

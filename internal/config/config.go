@@ -71,6 +71,12 @@ type (
 		Pprof PprofDebug `yaml:"pprof"`
 	}
 
+	Kube struct {
+		Enabled *bool  `yaml:"enabled"`
+		Config  string `yaml:"config"`
+		Node    string `yaml:"nodeName"`
+	}
+
 	Config struct {
 		Log      Log      `yaml:"log"`
 		Host     Host     `yaml:"host"`
@@ -80,6 +86,8 @@ type (
 		Web      Web      `yaml:"web"`
 		Debug    Debug    `yaml:"debug"`
 		Dev      Dev      `yaml:"dev"` // WARN: do not expose dev settings as flags
+
+		Kube Kube `yaml:"kube"`
 	}
 )
 
@@ -87,6 +95,7 @@ type SkipValidation int
 
 const (
 	SkipHostValidation SkipValidation = 1
+	SkipKubeValidation SkipValidation = 2
 )
 
 const (
@@ -113,6 +122,11 @@ const (
 	ExporterPrometheusEnabledFlag = "exporter.prometheus"
 	// NOTE: not a flag
 	ExporterPrometheusDebugCollectors = "exporter.prometheus.debug-collectors"
+
+	// kubernetes flags
+	KubernetesFlag   = "kube.enable"
+	KubeConfigFlag   = "kube.config"
+	KubeNodeNameFlag = "kube.node-name"
 
 // WARN:  dev settings shouldn't be exposed as flags as flags are intended for end users
 )
@@ -149,6 +163,9 @@ func DefaultConfig() *Config {
 				Enabled: ptr.To(false),
 			},
 		},
+		Kube: Kube{
+			Enabled: ptr.To(false),
+		},
 	}
 
 	cfg.Dev.FakeCpuMeter.Enabled = ptr.To(false)
@@ -182,9 +199,17 @@ func FromFile(filePath string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open config file: %w", err)
 	}
-	defer file.Close()
+	var errRet error
+	defer func() {
+		err = file.Close()
+		if err != nil && errRet == nil {
+			errRet = err
+		}
+	}()
 
-	return Load(file)
+	cfg, errRet := Load(file)
+
+	return cfg, errRet
 }
 
 type ConfigUpdaterFn func(*Config) error
@@ -227,6 +252,10 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 
 	prometheusExporterEnabled := app.Flag(ExporterPrometheusEnabledFlag, "Enable Prometheus exporter").Default("true").Bool()
 
+	kubernetes := app.Flag(KubernetesFlag, "Monitor kubernetes").Default("false").Bool()
+	kubeconfig := app.Flag(KubeConfigFlag, "Path to a kubeconfig. Only required if out-of-cluster.").ExistingFile()
+	nodeName := app.Flag(KubeNodeNameFlag, "Name of kubernetes node on which kepler is running.").String()
+
 	return func(cfg *Config) error {
 		// Logging settings
 		if flagsSet[LogLevelFlag] {
@@ -266,6 +295,18 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 			cfg.Exporter.Prometheus.Enabled = prometheusExporterEnabled
 		}
 
+		if flagsSet[KubernetesFlag] {
+			cfg.Kube.Enabled = kubernetes
+		}
+
+		if flagsSet[KubeConfigFlag] {
+			cfg.Kube.Config = *kubeconfig
+		}
+
+		if flagsSet[KubeNodeNameFlag] {
+			cfg.Kube.Node = *nodeName
+		}
+
 		cfg.sanitize()
 		return cfg.Validate()
 	}
@@ -285,6 +326,7 @@ func (c *Config) sanitize() {
 	for i := range c.Exporter.Prometheus.DebugCollectors {
 		c.Exporter.Prometheus.DebugCollectors[i] = strings.TrimSpace(c.Exporter.Prometheus.DebugCollectors[i])
 	}
+	c.Kube.Config = strings.TrimSpace(c.Kube.Config)
 }
 
 // Validate checks for configuration errors
@@ -341,6 +383,18 @@ func (c *Config) Validate(skips ...SkipValidation) error {
 		}
 		if c.Monitor.Staleness < 0 {
 			errs = append(errs, fmt.Sprintf("invalid monitor staleness: %s can't be negative", c.Monitor.Staleness))
+		}
+	}
+	{ // Kubernetes
+		if ptr.Deref(c.Kube.Enabled, false) {
+			if c.Kube.Config != "" {
+				if err := canReadFile(c.Kube.Config); err != nil {
+					errs = append(errs, fmt.Sprintf("unreadable kubeconfig: %s", c.Kube.Config))
+				}
+			}
+			if c.Kube.Node == "" {
+				errs = append(errs, fmt.Sprintf("%s not supplied but %s set to true", KubeNodeNameFlag, KubernetesFlag))
+			}
 		}
 	}
 
@@ -415,6 +469,7 @@ func (c *Config) manualString() string {
 		{ExporterPrometheusEnabledFlag, fmt.Sprintf("%v", c.Exporter.Prometheus.Enabled)},
 		{ExporterPrometheusDebugCollectors, strings.Join(c.Exporter.Prometheus.DebugCollectors, ", ")},
 		{pprofEnabledFlag, fmt.Sprintf("%v", c.Debug.Pprof.Enabled)},
+		{KubeConfigFlag, fmt.Sprintf("%v", c.Kube.Config)},
 	}
 	sb := strings.Builder{}
 

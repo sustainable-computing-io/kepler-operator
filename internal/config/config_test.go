@@ -163,7 +163,9 @@ log:
 `
 	tmpfile, err := os.CreateTemp("", "config-*.yaml")
 	assert.NoError(t, err)
-	defer os.Remove(tmpfile.Name())
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
 
 	_, err = tmpfile.Write([]byte(yamlData))
 	assert.NoError(t, err)
@@ -289,6 +291,23 @@ func TestInvalidConfigurationValues(t *testing.T) {
 			},
 		},
 		error: "invalid web config file",
+	}, {
+		name: "unreadable kubeconfig",
+		config: &Config{
+			Kube: Kube{
+				Config:  "/non/existent/file",
+				Enabled: ptr.To(true),
+			},
+		},
+		error: "unreadable kubeconfig",
+	}, {
+		name: "kube enabled, nodeName not supplied",
+		config: &Config{
+			Kube: Kube{
+				Enabled: ptr.To(true),
+			},
+		},
+		error: "kube.node-name not supplied but kube.enable set to true",
 	}}
 
 	// test yaml marshall
@@ -473,7 +492,6 @@ func TestWebConfig(t *testing.T) {
 	t.Run("valid web config", func(t *testing.T) {
 		tempWebConfig, err := os.CreateTemp("", "temp_*web.yml")
 		assert.NoError(t, err, "cannot create temp file")
-		defer os.Remove(tempWebConfig.Name())
 		webConfig := `
 tls_server_config:
   cert_file: cert.pem
@@ -491,6 +509,7 @@ tls_server_config:
 		err = updateConfig(cfg)
 		assert.NoError(t, err, "expected config update error")
 		assert.Equal(t, cfg.Web.Config, tempWebConfig.Name(), "unexpected config update")
+		_ = os.Remove(tempWebConfig.Name())
 	})
 }
 
