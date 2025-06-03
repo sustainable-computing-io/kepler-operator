@@ -48,127 +48,22 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
+        "h": 8,
+        "w": 7,
         "x": 0,
-        "y": 16
+        "y": 0
       },
-      "id": 19,
+      "id": 15,
       "options": {
         "footer": {
           "fields": "",
-          "reducer": [
-            "sum"
-          ],
+          "reducer": [],
           "show": false
         },
         "showHeader": true
       },
       "pluginVersion": "8.5.1",
       "span": 6,
-      "styles": [
-        {
-          "alias": "Architecture",
-          "colors": [],
-          "decimals": 0,
-          "link": true,
-          "linkTargetBlank": false,
-          "pattern": "arch",
-          "thresholds": [],
-          "type": "string",
-          "unit": "short"
-        },
-        {
-          "alias": "Go Version",
-          "colors": [],
-          "decimals": 0,
-          "link": true,
-          "linkTargetBlank": false,
-          "pattern": "goversion",
-          "thresholds": [],
-          "type": "string",
-          "unit": "short"
-        },
-        {
-          "alias": "Revision",
-          "colors": [],
-          "decimals": 0,
-          "link": true,
-          "linkTargetBlank": false,
-          "pattern": "revision",
-          "thresholds": [],
-          "type": "string",
-          "unit": "short"
-        },
-        {
-          "alias": "Version",
-          "colors": [],
-          "decimals": 0,
-          "link": true,
-          "linkTargetBlank": false,
-          "pattern": "version",
-          "thresholds": [],
-          "type": "string",
-          "unit": "short"
-        }
-      ],
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "To6-2So4k"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "max(kepler_build_info{container=~\"power-monitor\"}) by (arch, goversion, revision, version)",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Node - Kepler Build Info",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "dark-blue"
-          },
-          "custom": {
-            "align": "auto",
-            "displayMode": "auto",
-            "inspect": false
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 26
-      },
-      "id": 15,
-      "options": {
-        "footer": {
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "8.5.1",
       "styles": [
         {
           "alias": "Instance",
@@ -231,8 +126,56 @@
           "refId": "A"
         }
       ],
-      "title": "Node - Kepler CPU Info",
+      "title": "CPU Info",
       "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 7,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "pluginVersion": "8.5.1",
+      "span": 6,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(kepler_node_cpu_watts{container=~\"power-monitor\", instance=~\"$node\", zone=\"$zone\"})",
+          "hide": false,
+          "interval": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Current Node Power Consumption (By Zone)",
+      "type": "singlestat",
+      "postfix": "W"
     },
     {
       "aliasColors": {},
@@ -291,10 +234,10 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (zone_type) (label_replace({__name__=~\"kepler_node_.+_watts\", instance=~\".+\"}, \"zone_type\",\"$1\",\"__name__\", \"kepler_node_(.+)_watts\"))",
+          "expr": "sum by (zone) (kepler_node_cpu_watts{container=~\"power-monitor\"})",
           "hide": false,
           "interval": "",
-          "legendFormat": "Total {{zone_type}} Watts",
+          "legendFormat": "Total {{zone}} Watts",
           "range": true,
           "refId": "A"
         }
@@ -328,6 +271,81 @@
       "yaxis": {
         "align": false
       }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "hiddenSeries": false,
+      "id": 1,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.5.1",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "kepler_node_cpu_watts{container=~\"power-monitor\", instance=~\"$node\", zone=\"$zone\"}",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "{{zone}} - {{instance}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "Node Power Consumption (W)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph"
     }
   ],
   "refresh": "",
@@ -354,6 +372,60 @@
         "regex": "",
         "skipUrlSync": false,
         "type": "datasource"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kepler_node_cpu_info{container=\"power-monitor\"}, instance)",
+        "description": "Node to choose",
+        "hide": 0,
+        "includeAll": true,
+        "defaultValue": "$__all",
+        "label": "Node",
+        "multi": true,
+        "name": "node",
+        "options": [],
+        "query": "label_values(kepler_node_cpu_info{container=\"power-monitor\"}, instance)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kepler_node_cpu_watts{container=\"power-monitor\"}, zone)",
+        "description": "Zone to choose",
+        "hide": 0,
+        "includeAll": false,
+        "label": null,
+        "multi": false,
+        "name": "zone",
+        "options": [],
+        "query": "label_values(kepler_node_cpu_watts{container=\"power-monitor\"}, zone)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       }
     ]
   },
