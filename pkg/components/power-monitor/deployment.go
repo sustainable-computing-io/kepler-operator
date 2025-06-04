@@ -342,7 +342,6 @@ func NewPowerMonitorServiceMonitor(pmi *v1alpha1.PowerMonitorInternal) *monv1.Se
 		Spec: monv1.ServiceMonitorSpec{
 			Endpoints: []monv1.Endpoint{{
 				Port:           PowerMonitorServicePortName,
-				Interval:       "15s",
 				Scheme:         "http",
 				RelabelConfigs: relabelings,
 			}},
