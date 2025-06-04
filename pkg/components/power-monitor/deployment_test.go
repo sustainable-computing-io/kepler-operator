@@ -353,17 +353,6 @@ func TestPowerMonitorDashboards(t *testing.T) {
 		scenario           string
 	}{
 		{
-			createDashboard: NewPowerMonitorNodeDashboard,
-			labels: k8s.StringMap{
-				"console.openshift.io/dashboard": "true",
-				"app.kubernetes.io/managed-by":   "kepler-operator",
-			},
-			dashboardName:      NodeDashboardName,
-			dashboardNamespace: DashboardNs,
-			cmKey:              fmt.Sprintf("%s.json", NodeDashboardName),
-			scenario:           "node dashboard case",
-		},
-		{
 			createDashboard: NewPowerMonitorInfoDashboard,
 			labels: k8s.StringMap{
 				"console.openshift.io/dashboard": "true",
