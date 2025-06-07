@@ -488,16 +488,7 @@ func (f Framework) WithPowerMonitorTolerations(taints []corev1.Taint) func(k *v1
 	}
 }
 
-func (f Framework) WithPowerMonitorAnnotation(key, val string) func(k *v1alpha1.PowerMonitor) {
-	return func(pm *v1alpha1.PowerMonitor) {
-		if pm.Annotations == nil {
-			pm.Annotations = make(map[string]string)
-		}
-		pm.Annotations[key] = val
-	}
-}
-
-func (f Framework) WithPowerMonitorAdditionalConfigMaps(configMapNames []string) func(k *v1alpha1.PowerMonitor) {
+func (f Framework) WithAdditionalConfigMaps(configMapNames []string) func(k *v1alpha1.PowerMonitor) {
 	return func(pm *v1alpha1.PowerMonitor) {
 		var configMapRefs []v1alpha1.ConfigMapRef
 		for _, name := range configMapNames {
@@ -505,6 +496,23 @@ func (f Framework) WithPowerMonitorAdditionalConfigMaps(configMapNames []string)
 		}
 		pm.Spec.Kepler.Config.AdditionalConfigMaps = configMapRefs
 	}
+}
+
+func (f Framework) NewAdditionalConfigMap(configMapName, namespace, config string) *corev1.ConfigMap {
+	cm := corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      configMapName,
+			Namespace: namespace,
+		},
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "ConfigMap",
+		},
+		Data: map[string]string{
+			"config.yaml": config,
+		},
+	}
+	return &cm
 }
 
 func (f Framework) GetSchedulableNodes() []corev1.Node {

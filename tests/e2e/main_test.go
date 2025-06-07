@@ -15,16 +15,14 @@ import (
 const (
 	keplerImage       = `quay.io/sustainable_computing_io/kepler:release-0.7.12`
 	keplerRebootImage = `quay.io/sustainable_computing_io/kepler-reboot:v0.0.9`
-	ciTestVMEnvKey    = `powermonitor.sustainable.computing.io/test-env-vm`
 )
 
 var (
 	Cluster               k8s.Cluster = k8s.Kubernetes
 	testKeplerImage       string
 	testKeplerRebootImage string
-	vmAnnotationKey       string
-	enableVMTest          bool
 	skipKeplerTests       bool
+	runningOnVM           bool
 )
 
 func TestMain(m *testing.M) {
@@ -33,9 +31,8 @@ func TestMain(m *testing.M) {
 		"Namespace where kepler and its components are deployed.")
 	flag.StringVar(&testKeplerImage, "kepler-image", keplerImage, "Kepler image to use when running Internal tests")
 	flag.StringVar(&testKeplerRebootImage, "kepler-reboot-image", keplerRebootImage, "Kepler image to use when running PowerMonitorInternal tests")
-	flag.StringVar(&vmAnnotationKey, "vm-annotation-key", ciTestVMEnvKey, "VM Annotation Key set to enable vm test environment")
-	flag.BoolVar(&enableVMTest, "enable-vm-test", false, "Enable VM test environment")
 	flag.BoolVar(&skipKeplerTests, "skip-kepler-tests", false, "Skip Kepler tests")
+	flag.BoolVar(&runningOnVM, "running-on-vm", false, "Enable VM test environment")
 	flag.Parse()
 
 	if *openshift {

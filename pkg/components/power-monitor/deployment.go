@@ -38,7 +38,6 @@ const (
 	ProcFSMountPath     = "/host/proc"
 	KeplerConfigMapPath = "/etc/kepler"
 	KeplerConfigFile    = "config.yaml"
-	EnableVMTestKey     = "powermonitor.sustainable.computing.io/test-env-vm"
 
 	// ConfigMap annotations
 	ConfigMapHashAnnotation = "powermonitor.sustainable.computing.io/config-map-hash"
@@ -455,11 +454,6 @@ func KeplerConfig(pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...strin
 	cfg, err := b.Build()
 	if err != nil {
 		return "", fmt.Errorf("failed to build config: %w", err)
-	}
-
-	val, ok := pmi.Annotations[EnableVMTestKey]
-	if ok {
-		cfg.Dev.FakeCpuMeter.Enabled = ptr.To(val == "true")
 	}
 
 	cfg.Log.Level = pmi.Spec.Kepler.Config.LogLevel

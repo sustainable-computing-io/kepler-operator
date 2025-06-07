@@ -28,7 +28,6 @@ declare CI_MODE=false
 declare NO_DEPLOY=false
 declare NO_BUILDS=false
 declare SHOW_USAGE=false
-declare ENABLE_VM_TEST=false
 declare LOGS_DIR="tmp/e2e"
 declare OPERATORS_NS="operators"
 declare TEST_TIMEOUT="15m"
@@ -213,7 +212,6 @@ run_e2e() {
 	local ret=0
 	run go test -v -failfast -timeout $TEST_TIMEOUT \
 		./tests/e2e/... "$@" \
-		-enable-vm-test=$ENABLE_VM_TEST \
 		2>&1 | tee "$LOGS_DIR/e2e.log" || ret=1
 
 	# terminate both log_events
@@ -259,10 +257,6 @@ parse_args() {
 			;;
 		--ci)
 			CI_MODE=true
-			shift
-			;;
-		--enable-vm-test)
-			ENABLE_VM_TEST=true
 			shift
 			;;
 		--image-base)
@@ -321,7 +315,6 @@ cmd_help() {
 		⚙️ Options:
 		  -h|--help        show this help
 		  --ci             run in CI mode
-		  --enable-vm-test run tests in vm environment
 		  --no-deploy      do not build and deploy Operator; useful for rerunning tests
 		  --no-builds      skip building operator images; useful when operator image is already
 		                   built and pushed

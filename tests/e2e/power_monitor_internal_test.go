@@ -4,7 +4,6 @@
 package e2e
 
 import (
-	"strconv"
 	"testing"
 	"time"
 
@@ -19,31 +18,48 @@ import (
 func TestPowerMonitorInternal_Reconciliation(t *testing.T) {
 	f := test.NewFramework(t)
 	name := "e2e-pmi"
-	// test namespace must be the deployment namespace for controller
-	// to watch the deployments / daemonsets etc
 	testNs := controller.PowerMonitorDeploymentNS
 
-	// pre-condition
+	// Pre-condition: Verify PowerMonitorInternal doesn't exist
 	f.AssertNoResourceExists(name, "", &v1alpha1.PowerMonitorInternal{})
 
-	// when
+	// Create PowerMonitorInternal
 	b := test.PowerMonitorInternalBuilder{}
-	pmi := f.CreatePowerMonitorInternal(name,
-		b.WithNamespace(testNs),
-		b.WithKeplerImage(testKeplerRebootImage),
-		b.WithCluster(Cluster),
-		b.WithAnnotation(vmAnnotationKey, strconv.FormatBool(enableVMTest)),
-	)
+	if runningOnVM {
+		configMapName := "my-custom-config"
+		f.CreatePowerMonitorInternal(name,
+			b.WithNamespace(testNs),
+			b.WithKeplerImage(testKeplerRebootImage),
+			b.WithCluster(Cluster),
+			b.WithAdditionalConfigMaps([]string{configMapName}),
+		)
+		cfm := f.NewAdditionalConfigMap(configMapName, testNs, `dev:
+  fake-cpu-meter:
+    enabled: true`)
+		err := f.Patch(cfm)
+		assert.NoError(t, err)
+	} else {
+		f.CreatePowerMonitorInternal(name,
+			b.WithNamespace(testNs),
+			b.WithKeplerImage(testKeplerRebootImage),
+			b.WithCluster(Cluster),
+		)
+	}
 
-	// then the following resources will be created
+	// Verify namespace exists
 	f.AssertResourceExists(testNs, "", &corev1.Namespace{})
-
 	ds := appsv1.DaemonSet{}
+
+	// Wait for PowerMonitorInternal to be reconciled
+	pmi := f.WaitUntilPowerMonitorInternalCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionTrue)
+
+	// Verify daemonset exists and has correct configuration
 	f.AssertResourceExists(pmi.Name, testNs, &ds)
 	containers := ds.Spec.Template.Spec.Containers
 	assert.Equal(t, 1, len(containers))
 	assert.Equal(t, 1, len(containers[0].Ports))
 	assert.EqualValues(t, 28282, containers[0].Ports[0].ContainerPort)
-	// test expected status (PowerMonitor)
+
+	// Verify PowerMonitorInternal status
 	f.AssertPowerMonitorInternalStatus(pmi.Name, test.Timeout(5*time.Minute))
 }
