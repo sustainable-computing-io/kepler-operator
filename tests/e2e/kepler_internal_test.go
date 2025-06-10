@@ -23,6 +23,10 @@ import (
 )
 
 func TestKeplerInternal_Reconciliation(t *testing.T) {
+	if skipKeplerTests {
+		t.Skip("Skipping Kepler test")
+	}
+
 	f := test.NewFramework(t)
 	name := "e2e-ki"
 	// test namespace must be the deployment namespace for controller
@@ -55,6 +59,10 @@ func TestKeplerInternal_Reconciliation(t *testing.T) {
 }
 
 func TestKeplerInternal_ReconciliationWithRedfish(t *testing.T) {
+	if skipKeplerTests {
+		t.Skip("Skipping Kepler test")
+	}
+
 	f := test.NewFramework(t)
 	name := "e2e-ki-redfish"
 	secretName := "my-redfish-secret"
