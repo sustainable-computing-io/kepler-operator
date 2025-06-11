@@ -399,10 +399,88 @@ KeplerInternalStatus represents status of KeplerInternal
         </tr>
     </thead>
     <tbody><tr>
+        <td><b><a href="#keplerinternalstatusconditionsindex">conditions</a></b></td>
+        <td>[]object</td>
+        <td>
+          conditions represent the latest available observations of kepler-internal<br/>
+        </td>
+        <td>false</td>
+      </tr><tr>
         <td><b><a href="#keplerinternalstatusexporter">exporter</a></b></td>
         <td>object</td>
         <td>
           ExporterStatus defines the observed state of Kepler Exporter<br/>
+        </td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### KeplerInternal.status.conditions[index]
+<sup><sup>[↩ Parent](#keplerinternalstatus)</sup></sup>
+
+
+
+
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b>lastTransitionTime</b></td>
+        <td>string</td>
+        <td>
+          lastTransitionTime is the last time the condition transitioned from one status to another.
+This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>
+          <br/>
+            <i>Format</i>: date-time<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>message</b></td>
+        <td>string</td>
+        <td>
+          message is a human readable message indicating details about the transition.
+This may be an empty string.<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>reason</b></td>
+        <td>string</td>
+        <td>
+          reason contains a programmatic identifier indicating the reason for the condition's last transition.<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>status</b></td>
+        <td>string</td>
+        <td>
+          status of the condition, one of True, False, Unknown.<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>type</b></td>
+        <td>string</td>
+        <td>
+          Type of Kepler Condition - Reconciled, Available ...<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>observedGeneration</b></td>
+        <td>integer</td>
+        <td>
+          observedGeneration represents the .metadata.generation that the condition was set based upon.
+For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+with respect to the current state of the instance.<br/>
+          <br/>
+            <i>Format</i>: int64<br/>
+            <i>Minimum</i>: 0<br/>
         </td>
         <td>false</td>
       </tr></tbody>
@@ -426,13 +504,6 @@ ExporterStatus defines the observed state of Kepler Exporter
         </tr>
     </thead>
     <tbody><tr>
-        <td><b><a href="#keplerinternalstatusexporterconditionsindex">conditions</a></b></td>
-        <td>[]object</td>
-        <td>
-          conditions represent the latest available observations of the kepler-exporter<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
         <td><b>currentNumberScheduled</b></td>
         <td>integer</td>
         <td>
@@ -472,6 +543,13 @@ and have one or more of the kepler pod running with a Ready Condition.<br/>
             <i>Format</i>: int32<br/>
         </td>
         <td>true</td>
+      </tr><tr>
+        <td><b><a href="#keplerinternalstatusexporterconditionsindex">conditions</a></b></td>
+        <td>[]object</td>
+        <td>
+          conditions represent the latest available observations of the kepler-exporter<br/>
+        </td>
+        <td>false</td>
       </tr><tr>
         <td><b>numberAvailable</b></td>
         <td>integer</td>
@@ -869,10 +947,88 @@ KeplerStatus defines the observed state of Kepler
         </tr>
     </thead>
     <tbody><tr>
+        <td><b><a href="#keplerstatusconditionsindex">conditions</a></b></td>
+        <td>[]object</td>
+        <td>
+          conditions represent the latest available observations of kepler-internal<br/>
+        </td>
+        <td>false</td>
+      </tr><tr>
         <td><b><a href="#keplerstatusexporter">exporter</a></b></td>
         <td>object</td>
         <td>
           ExporterStatus defines the observed state of Kepler Exporter<br/>
+        </td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### Kepler.status.conditions[index]
+<sup><sup>[↩ Parent](#keplerstatus)</sup></sup>
+
+
+
+
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b>lastTransitionTime</b></td>
+        <td>string</td>
+        <td>
+          lastTransitionTime is the last time the condition transitioned from one status to another.
+This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>
+          <br/>
+            <i>Format</i>: date-time<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>message</b></td>
+        <td>string</td>
+        <td>
+          message is a human readable message indicating details about the transition.
+This may be an empty string.<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>reason</b></td>
+        <td>string</td>
+        <td>
+          reason contains a programmatic identifier indicating the reason for the condition's last transition.<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>status</b></td>
+        <td>string</td>
+        <td>
+          status of the condition, one of True, False, Unknown.<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>type</b></td>
+        <td>string</td>
+        <td>
+          Type of Kepler Condition - Reconciled, Available ...<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>observedGeneration</b></td>
+        <td>integer</td>
+        <td>
+          observedGeneration represents the .metadata.generation that the condition was set based upon.
+For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+with respect to the current state of the instance.<br/>
+          <br/>
+            <i>Format</i>: int64<br/>
+            <i>Minimum</i>: 0<br/>
         </td>
         <td>false</td>
       </tr></tbody>
@@ -896,13 +1052,6 @@ ExporterStatus defines the observed state of Kepler Exporter
         </tr>
     </thead>
     <tbody><tr>
-        <td><b><a href="#keplerstatusexporterconditionsindex">conditions</a></b></td>
-        <td>[]object</td>
-        <td>
-          conditions represent the latest available observations of the kepler-exporter<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
         <td><b>currentNumberScheduled</b></td>
         <td>integer</td>
         <td>
@@ -942,6 +1091,13 @@ and have one or more of the kepler pod running with a Ready Condition.<br/>
             <i>Format</i>: int32<br/>
         </td>
         <td>true</td>
+      </tr><tr>
+        <td><b><a href="#keplerstatusexporterconditionsindex">conditions</a></b></td>
+        <td>[]object</td>
+        <td>
+          conditions represent the latest available observations of the kepler-exporter<br/>
+        </td>
+        <td>false</td>
       </tr><tr>
         <td><b>numberAvailable</b></td>
         <td>integer</td>

@@ -78,6 +78,9 @@ const (
 	// InvalidKeplerResource indicates the CR name was invalid
 	InvalidKeplerResource ConditionReason = "InvalidKeplerResource"
 
+	// KeplerResourceDeprecated indicates that the Kepler CR is deprecated
+	KeplerResourceDeprecated ConditionReason = "KeplerResourceDeprecated"
+
 	// DaemonSetNotFound indicates the DaemonSet created for a kepler was not found
 	DaemonSetNotFound           ConditionReason = "DaemonSetNotFound"
 	DaemonSetError              ConditionReason = "DaemonSetError"
@@ -169,7 +172,7 @@ type ExporterStatus struct {
 	// conditions represent the latest available observations of the kepler-exporter
 	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
 	// +listType=atomic
-	Conditions []Condition `json:"conditions"`
+	Conditions []Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -198,6 +201,10 @@ type Kepler struct {
 // KeplerStatus defines the observed state of Kepler
 type KeplerStatus struct {
 	Exporter ExporterStatus `json:"exporter,omitempty"`
+	// conditions represent the latest available observations of kepler-internal
+	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
+	// +listType=atomic
+	Conditions []Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -151,12 +151,12 @@ func (r *KeplerInternalReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	logger.V(6).Info("Running sub reconcilers", "kepler-internal", ki.Spec)
 
 	result, recErr := r.runReconcilers(ctx, ki)
-	updateErr := r.updateStatus(ctx, req, recErr)
-
 	if recErr != nil {
 		return result, recErr
 	}
-	return result, updateErr
+
+	// NOTE: Marking KeplerInternal as deprecated
+	return r.setDeprecatedStatus(ctx, req)
 }
 
 func (r KeplerInternalReconciler) runReconcilers(ctx context.Context, ki *v1alpha1.KeplerInternal) (ctrl.Result, error) {
@@ -187,6 +187,7 @@ func (r KeplerInternalReconciler) getInternal(ctx context.Context, req ctrl.Requ
 	return &ki, nil
 }
 
+// Note: This function is no longer in use.
 func (r KeplerInternalReconciler) updateStatus(ctx context.Context, req ctrl.Request, recErr error) error {
 	logger := r.logger.WithValues("keplerinternal", req.Name, "action", "update-status")
 	logger.V(3).Info("Start of status update")
@@ -427,6 +428,37 @@ func availableCondition(dset *appsv1.DaemonSet) v1alpha1.Condition {
 	return c
 }
 
+func (r KeplerInternalReconciler) setDeprecatedStatus(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		deprecatedKI, _ := r.getInternal(ctx, req)
+		// may be deleted
+		if deprecatedKI == nil || !deprecatedKI.GetDeletionTimestamp().IsZero() {
+			return nil
+		}
+
+		now := metav1.Now()
+		deprecatedKI.Status.Conditions = []v1alpha1.Condition{{
+			Type:               v1alpha1.Reconciled,
+			Status:             v1alpha1.ConditionDegraded,
+			ObservedGeneration: deprecatedKI.Generation,
+			LastTransitionTime: now,
+			Reason:             v1alpha1.KeplerResourceDeprecated,
+			Message:            "KeplerInternal CR is deprecated. Please use PowerMonitor CR instead.",
+		}, {
+			Type:               v1alpha1.Available,
+			Status:             v1alpha1.ConditionDegraded,
+			ObservedGeneration: deprecatedKI.Generation,
+			LastTransitionTime: now,
+			Reason:             v1alpha1.KeplerResourceDeprecated,
+			Message:            "KeplerInternal CR is deprecated. Please use PowerMonitor CR instead.",
+		}}
+		return r.Client.Status().Update(ctx, deprecatedKI)
+	})
+
+	// retry only on error
+	return ctrl.Result{}, err
+}
+
 func (r KeplerInternalReconciler) reconcilersForInternal(ki *v1alpha1.KeplerInternal) []reconciler.Reconciler {
 	rs := []reconciler.Reconciler{}
 
@@ -474,42 +506,11 @@ func exporterReconcilers(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []rec
 	}
 
 	updateResource := newUpdaterWithOwner(ki)
-	// cluster-scoped resources first
-	rs := resourceReconcilers(updateResource,
-		exporter.NewClusterRole(components.Full, ki),
-		exporter.NewClusterRoleBinding(components.Full, ki),
-	)
-	rs = append(rs, resourceReconcilers(updateResource, openshiftClusterResources(ki, cluster)...)...)
-
-	// namespace scoped
-	rs = append(rs, resourceReconcilers(updateResource,
-		exporter.NewServiceAccount(ki),
-		exporter.NewService(ki),
-		exporter.NewServiceMonitor(ki),
-		exporter.NewPrometheusRule(ki),
-	)...)
-
-	if ki.Spec.Exporter.Redfish == nil {
-		rs = append(rs, resourceReconcilers(updateResource,
-			exporter.NewDaemonSet(components.Full, ki),
-			exporter.NewConfigMap(components.Full, ki),
-		)...)
-	} else {
-		rs = append(rs,
-			reconciler.KeplerReconciler{
-				Ki: ki,
-				Ds: exporter.NewDaemonSet(components.Full, ki),
-			},
-			reconciler.KeplerConfigMapReconciler{
-				Ki:  ki,
-				Cfm: exporter.NewConfigMap(components.Full, ki),
-			},
-		)
-	}
-	rs = append(rs, resourceReconcilers(updateResource, openshiftNamespacedResources(ki, cluster)...)...)
+	rs := resourceReconcilers(updateResource, openshiftNamespacedResources(ki, cluster)...)
 	return rs
 }
 
+// NOTE: This function is no longer in use.
 func openshiftClusterResources(ki *v1alpha1.KeplerInternal, cluster k8s.Cluster) []client.Object {
 	oshift := ki.Spec.OpenShift
 	if cluster != k8s.OpenShift || !oshift.Enabled {
@@ -538,6 +539,7 @@ func openshiftNamespacedResources(ki *v1alpha1.KeplerInternal, cluster k8s.Clust
 	return res
 }
 
+// NOTE: This function is no longer in use.
 func updatersForInternalResources(ki *v1alpha1.KeplerInternal, resources ...client.Object) []reconciler.Reconciler {
 	rs := []reconciler.Reconciler{}
 	resourceUpdater := newUpdaterWithOwner(ki)

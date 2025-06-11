@@ -94,12 +94,12 @@ func (r *KeplerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	logger.V(6).Info("Running sub reconcilers", "kepler", kepler.Spec)
 
 	result, recErr := r.runKeplerReconcilers(ctx, kepler)
-	updateErr := r.updateStatus(ctx, req, recErr)
-
 	if recErr != nil {
 		return result, recErr
 	}
-	return result, updateErr
+
+	// NOTE: Marking Kepler as deprecated
+	return r.setDeprecatedStatus(ctx, req)
 }
 
 func (r KeplerReconciler) runKeplerReconcilers(ctx context.Context, kepler *v1alpha1.Kepler) (ctrl.Result, error) {
@@ -114,6 +114,7 @@ func (r KeplerReconciler) runKeplerReconcilers(ctx context.Context, kepler *v1al
 	}.Run(ctx)
 }
 
+// NOTE: This function is no longer in use.
 func (r KeplerReconciler) updateStatus(ctx context.Context, req ctrl.Request, recErr error) error {
 	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		k, _ := r.getKepler(ctx, req)
@@ -219,7 +220,7 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 		}
 
 		now := metav1.Now()
-		invalidKepler.Status.Exporter.Conditions = []v1alpha1.Condition{{
+		invalidKepler.Status.Conditions = []v1alpha1.Condition{{
 			Type:               v1alpha1.Reconciled,
 			Status:             v1alpha1.ConditionFalse,
 			ObservedGeneration: invalidKepler.Generation,
@@ -235,6 +236,37 @@ func (r KeplerReconciler) setInvalidStatus(ctx context.Context, req ctrl.Request
 			Message:            "This instance of Kepler is invalid",
 		}}
 		return r.Client.Status().Update(ctx, invalidKepler)
+	})
+
+	// retry only on error
+	return ctrl.Result{}, err
+}
+
+func (r KeplerReconciler) setDeprecatedStatus(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		deprecatedKepler, _ := r.getKepler(ctx, req)
+		// may be deleted
+		if deprecatedKepler == nil || !deprecatedKepler.GetDeletionTimestamp().IsZero() {
+			return nil
+		}
+
+		now := metav1.Now()
+		deprecatedKepler.Status.Conditions = []v1alpha1.Condition{{
+			Type:               v1alpha1.Reconciled,
+			Status:             v1alpha1.ConditionDegraded,
+			ObservedGeneration: deprecatedKepler.Generation,
+			LastTransitionTime: now,
+			Reason:             v1alpha1.KeplerResourceDeprecated,
+			Message:            "Kepler CR is deprecated. Please use PowerMonitor CR instead.",
+		}, {
+			Type:               v1alpha1.Available,
+			Status:             v1alpha1.ConditionDegraded,
+			ObservedGeneration: deprecatedKepler.Generation,
+			LastTransitionTime: now,
+			Reason:             v1alpha1.KeplerResourceDeprecated,
+			Message:            "Kepler CR is deprecated. Please use PowerMonitor CR instead.",
+		}}
+		return r.Client.Status().Update(ctx, deprecatedKepler)
 	})
 
 	// retry only on error
