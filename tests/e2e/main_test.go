@@ -24,6 +24,7 @@ var (
 	testKeplerRebootImage string
 	vmAnnotationKey       string
 	enableVMTest          bool
+	skipKeplerTests       bool
 )
 
 func TestMain(m *testing.M) {
@@ -34,6 +35,7 @@ func TestMain(m *testing.M) {
 	flag.StringVar(&testKeplerRebootImage, "kepler-reboot-image", keplerRebootImage, "Kepler image to use when running PowerMonitorInternal tests")
 	flag.StringVar(&vmAnnotationKey, "vm-annotation-key", ciTestVMEnvKey, "VM Annotation Key set to enable vm test environment")
 	flag.BoolVar(&enableVMTest, "enable-vm-test", false, "Enable VM test environment")
+	flag.BoolVar(&skipKeplerTests, "skip-kepler-tests", false, "Skip Kepler tests")
 	flag.Parse()
 
 	if *openshift {

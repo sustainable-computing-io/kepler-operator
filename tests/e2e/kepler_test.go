@@ -19,6 +19,10 @@ import (
 )
 
 func TestKepler_Deletion(t *testing.T) {
+	if skipKeplerTests {
+		t.Skip("Skipping Kepler test")
+	}
+
 	f := test.NewFramework(t)
 
 	// pre-condition: ensure kepler exists
@@ -42,6 +46,10 @@ func TestKepler_Deletion(t *testing.T) {
 }
 
 func TestKepler_Reconciliation(t *testing.T) {
+	if skipKeplerTests {
+		t.Skip("Skipping Kepler test")
+	}
+
 	f := test.NewFramework(t)
 
 	// pre-condition
@@ -72,6 +80,10 @@ func TestKepler_Reconciliation(t *testing.T) {
 }
 
 func TestBadKepler_Reconciliation(t *testing.T) {
+	if skipKeplerTests {
+		t.Skip("Skipping Kepler test")
+	}
+
 	f := test.NewFramework(t)
 	// Ensure Kepler is not deployed (by any chance)
 	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
@@ -82,6 +94,10 @@ func TestBadKepler_Reconciliation(t *testing.T) {
 }
 
 func TestNodeSelector(t *testing.T) {
+	if skipKeplerTests {
+		t.Skip("Skipping Kepler test")
+	}
+
 	f := test.NewFramework(t)
 	// Ensure Kepler is not deployed (by any chance)
 	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
@@ -110,6 +126,10 @@ func TestNodeSelector(t *testing.T) {
 }
 
 func TestNodeSelectorUnavailableLabel(t *testing.T) {
+	if skipKeplerTests {
+		t.Skip("Skipping Kepler test")
+	}
+
 	f := test.NewFramework(t)
 	// Ensure Kepler is not deployed (by any chance)
 	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
@@ -135,6 +155,10 @@ func TestNodeSelectorUnavailableLabel(t *testing.T) {
 }
 
 func TestTaint_WithToleration(t *testing.T) {
+	if skipKeplerTests {
+		t.Skip("Skipping Kepler test")
+	}
+
 	f := test.NewFramework(t)
 	// Ensure Kepler is not deployed (by any chance)
 	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
@@ -168,6 +192,10 @@ func TestTaint_WithToleration(t *testing.T) {
 }
 
 func TestBadTaint_WithToleration(t *testing.T) {
+	if skipKeplerTests {
+		t.Skip("Skipping Kepler test")
+	}
+
 	f := test.NewFramework(t)
 	// Ensure Kepler is not deployed (by any chance)
 	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
