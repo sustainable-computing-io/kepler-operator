@@ -406,9 +406,16 @@ func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Contain
 		Name:            pmi.DaemonsetName(),
 		SecurityContext: &corev1.SecurityContext{Privileged: ptr.To(true)},
 		Image:           deployment.Image,
+		ImagePullPolicy: corev1.PullAlways,
+		Env: []corev1.EnvVar{{
+			Name:      "NODE_NAME",
+			ValueFrom: k8s.EnvFromField("spec.nodeName"),
+		}},
 		Command: []string{
 			"/usr/bin/kepler",
 			fmt.Sprintf("--config.file=%s", configMapPath),
+			"--kube.enable",
+			"--kube.node-name=$(NODE_NAME)",
 		},
 		Ports: []corev1.ContainerPort{{
 			ContainerPort: int32(PowerMonitorDSPort),

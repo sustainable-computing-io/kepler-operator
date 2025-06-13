@@ -118,6 +118,8 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 			exporterCommand: []string{
 				"/usr/bin/kepler",
 				fmt.Sprintf("--config.file=%s", filepath.Join(KeplerConfigMapPath, KeplerConfigFile)),
+				"--kube.enable",
+				"--kube.node-name=$(NODE_NAME)",
 			},
 			volumeMounts: []corev1.VolumeMount{
 				{Name: "sysfs", MountPath: SysFSMountPath, ReadOnly: true},
@@ -137,6 +139,8 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 			exporterCommand: []string{
 				"/usr/bin/kepler",
 				fmt.Sprintf("--config.file=%s", filepath.Join(KeplerConfigMapPath, KeplerConfigFile)),
+				"--kube.enable",
+				"--kube.node-name=$(NODE_NAME)",
 			},
 			volumeMounts: []corev1.VolumeMount{
 				{Name: "sysfs", MountPath: SysFSMountPath, ReadOnly: true},
