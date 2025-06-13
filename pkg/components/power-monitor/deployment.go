@@ -32,7 +32,8 @@ const (
 	PowerMonitorDSPort          = 28282
 
 	// Dashboard
-	InfoDashboardName = "power-monitor-node-info"
+	InfoDashboardName          = "power-monitor-node-info"
+	NamespaceInfoDashboardName = "power-monitor-namespace-info"
 
 	SysFSMountPath      = "/host/sys"
 	ProcFSMountPath     = "/host/proc"
@@ -50,6 +51,9 @@ var (
 	}
 	//go:embed assets/dashboards/power-monitor-node-info.json
 	infoDashboardJson string
+
+	//go:embed assets/dashboards/power-monitor-namespace-info.json
+	namespaceInfoDashboardJson string
 )
 
 func NewPowerMonitorDaemonSet(detail components.Detail, pmi *v1alpha1.PowerMonitorInternal) *appsv1.DaemonSet {
@@ -135,6 +139,10 @@ func NewPowerMonitorService(pmi *v1alpha1.PowerMonitorInternal) *corev1.Service 
 			}},
 		},
 	}
+}
+
+func NewPowerMonitorNamespaceInfoDashboard(d components.Detail) *corev1.ConfigMap {
+	return openshiftDashboardConfigMap(d, NamespaceInfoDashboardName, fmt.Sprintf("%s.json", NamespaceInfoDashboardName), namespaceInfoDashboardJson)
 }
 
 func NewPowerMonitorInfoDashboard(d components.Detail) *corev1.ConfigMap {

@@ -367,6 +367,17 @@ func TestPowerMonitorDashboards(t *testing.T) {
 			cmKey:              fmt.Sprintf("%s.json", InfoDashboardName),
 			scenario:           "info dashboard case",
 		},
+		{
+			createDashboard: NewPowerMonitorNamespaceInfoDashboard,
+			labels: k8s.StringMap{
+				"console.openshift.io/dashboard": "true",
+				"app.kubernetes.io/managed-by":   "kepler-operator",
+			},
+			dashboardName:      NamespaceInfoDashboardName,
+			dashboardNamespace: DashboardNs,
+			cmKey:              fmt.Sprintf("%s.json", NamespaceInfoDashboardName),
+			scenario:           "namespace info dashboard case",
+		},
 	}
 	for _, tc := range tt {
 		tc := tc
