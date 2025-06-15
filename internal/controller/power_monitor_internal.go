@@ -219,6 +219,7 @@ func openshiftPowerMonitorNamespacedResources(pmi *v1alpha1.PowerMonitorInternal
 	if oshift.Dashboard.Enabled {
 		res = append(res,
 			powermonitor.NewPowerMonitorInfoDashboard(components.Full),
+			powermonitor.NewPowerMonitorNamespaceInfoDashboard(components.Full),
 		)
 	}
 	return res
