@@ -18,7 +18,7 @@ func (PowerMonitorInternalBuilder) WithNamespace(ns string) func(pmi *v1alpha1.P
 
 func (PowerMonitorInternalBuilder) WithKeplerImage(img string) func(pmi *v1alpha1.PowerMonitorInternal) {
 	return func(pmi *v1alpha1.PowerMonitorInternal) {
-		//k.Spec.Exporter.Deployment.Image = img
+		// k.Spec.Exporter.Deployment.Image = img
 		pmi.Spec.Kepler.Deployment.Image = img
 	}
 }
@@ -34,11 +34,12 @@ func (PowerMonitorInternalBuilder) WithCluster(c k8s.Cluster) func(pmi *v1alpha1
 	}
 }
 
-func (PowerMonitorInternalBuilder) WithAnnotation(key, val string) func(pmi *v1alpha1.PowerMonitorInternal) {
+func (PowerMonitorInternalBuilder) WithAdditionalConfigMaps(configMapNames []string) func(pmi *v1alpha1.PowerMonitorInternal) {
 	return func(pmi *v1alpha1.PowerMonitorInternal) {
-		if pmi.Annotations == nil {
-			pmi.Annotations = make(map[string]string)
+		var configMapRefs []v1alpha1.ConfigMapRef
+		for _, name := range configMapNames {
+			configMapRefs = append(configMapRefs, v1alpha1.ConfigMapRef{Name: name})
 		}
-		pmi.Annotations[key] = val
+		pmi.Spec.Kepler.Config.AdditionalConfigMaps = configMapRefs
 	}
 }
