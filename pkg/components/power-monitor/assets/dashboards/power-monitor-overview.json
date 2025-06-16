@@ -69,7 +69,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(kepler_node_cpu_watts{container=~\"power-monitor\", instance=~\"$node\", zone=\"$zone\"})",
+              "expr": "sum(kepler_node_cpu_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
               "hide": false,
               "interval": "",
               "refId": "A"
@@ -117,7 +117,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(kepler_node_cpu_active_watts{container=~\"power-monitor\", instance=~\"$node\", zone=\"$zone\"})",
+              "expr": "sum(kepler_node_cpu_active_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
               "hide": false,
               "interval": "",
               "refId": "A"
@@ -165,7 +165,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(kepler_node_cpu_idle_watts{container=~\"power-monitor\", instance=~\"$node\", zone=\"$zone\"})",
+              "expr": "sum(kepler_node_cpu_idle_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
               "hide": false,
               "interval": "",
               "refId": "A"
@@ -223,7 +223,7 @@
             "showHeader": true
           },
           "pluginVersion": "8.5.1",
-          "span": 6,
+          "span": 12,
           "styles": [
             {
               "alias": "Node Name",
@@ -358,10 +358,10 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (zone) (kepler_node_cpu_watts{container=~\"power-monitor\"})",
+              "expr": "sum by (zone) (kepler_node_cpu_watts{container=~\"power-monitor\", zone=~\"$zone\"})",
               "hide": false,
               "interval": "",
-              "legendFormat": "Total {{zone}} Watts",
+              "legendFormat": "Zone - {{zone}}",
               "range": true,
               "refId": "A"
             }
@@ -454,7 +454,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "kepler_node_cpu_watts{container=~\"power-monitor\", instance=~\"$node\", zone=\"$zone\"}",
+              "expr": "kepler_node_cpu_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"}",
               "hide": false,
               "interval": "",
               "legendFormat": "{{zone}} - {{instance}}",
@@ -530,7 +530,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "kepler_node_cpu_active_watts{container=~\"power-monitor\", instance=~\"$node\", zone=\"$zone\"}",
+              "expr": "kepler_node_cpu_active_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"}",
               "hide": false,
               "interval": "",
               "legendFormat": "{{zone}} - {{instance}}",
@@ -606,7 +606,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "kepler_node_cpu_idle_watts{container=~\"power-monitor\", instance=~\"$node\", zone=\"$zone\"}",
+              "expr": "kepler_node_cpu_idle_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"}",
               "hide": false,
               "interval": "",
               "legendFormat": "{{zone}} - {{instance}}",
@@ -689,7 +689,12 @@
         "useTags": false
       },
       {
-        "allValue": null,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
@@ -697,7 +702,8 @@
         "definition": "label_values(kepler_node_cpu_watts{container=\"power-monitor\"}, zone)",
         "description": "Zone to choose",
         "hide": 0,
-        "includeAll": false,
+        "includeAll": true,
+        "defaultValue": "$__all",
         "label": null,
         "multi": false,
         "name": "zone",
@@ -720,7 +726,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Power Monitor / Info",
+  "title": "Power Monitor / Overview",
   "uid": "125cb5f5fdbea19c3067b2b34e897ad5d2b40a52",
   "version": 4,
   "weekStart": ""

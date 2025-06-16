@@ -32,7 +32,7 @@ const (
 	PowerMonitorDSPort          = 28282
 
 	// Dashboard
-	InfoDashboardName          = "power-monitor-node-info"
+	OverviewDashboardName      = "power-monitor-overview"
 	NamespaceInfoDashboardName = "power-monitor-namespace-info"
 
 	SysFSMountPath      = "/host/sys"
@@ -48,7 +48,7 @@ var (
 	linuxNodeSelector = k8s.StringMap{
 		"kubernetes.io/os": "linux",
 	}
-	//go:embed assets/dashboards/power-monitor-node-info.json
+	//go:embed assets/dashboards/power-monitor-overview.json
 	infoDashboardJson string
 
 	//go:embed assets/dashboards/power-monitor-namespace-info.json
@@ -145,7 +145,7 @@ func NewPowerMonitorNamespaceInfoDashboard(d components.Detail) *corev1.ConfigMa
 }
 
 func NewPowerMonitorInfoDashboard(d components.Detail) *corev1.ConfigMap {
-	return openshiftDashboardConfigMap(d, InfoDashboardName, fmt.Sprintf("%s.json", InfoDashboardName), infoDashboardJson)
+	return openshiftDashboardConfigMap(d, OverviewDashboardName, fmt.Sprintf("%s.json", OverviewDashboardName), infoDashboardJson)
 }
 
 func NewPowerMonitorConfigMap(d components.Detail, pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...string) *corev1.ConfigMap {
