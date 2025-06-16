@@ -62,6 +62,30 @@
           },
           "pluginVersion": "8.5.1",
           "span": 4,
+          "styles": [
+            {
+              "alias": "Zone Name",
+              "colors": [],
+              "decimals": 0,
+              "link": true,
+              "linkTargetBlank": false,
+              "pattern": "zone",
+              "thresholds": [],
+              "type": "string",
+              "unit": "short"
+            },
+            {
+              "alias": "Watts",
+              "colors": [],
+              "decimals": 0,
+              "link": true,
+              "linkTargetBlank": false,
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "watt"
+            }
+          ],
           "targets": [
             {
               "datasource": {
@@ -69,15 +93,16 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(kepler_node_cpu_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
-              "hide": false,
+              "expr": "sum by (zone) (kepler_node_cpu_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
+              "format": "table",
               "interval": "",
+              "instant": true,
+              "range": false,
               "refId": "A"
             }
           ],
           "title": "Current Node Power Consumption By Zone",
-          "type": "singlestat",
-          "postfix": "W"
+          "type": "table"
         },
         {
           "datasource": {
@@ -110,6 +135,30 @@
           },
           "pluginVersion": "8.5.1",
           "span": 4,
+          "styles": [
+            {
+              "alias": "Zone Name",
+              "colors": [],
+              "decimals": 0,
+              "link": true,
+              "linkTargetBlank": false,
+              "pattern": "zone",
+              "thresholds": [],
+              "type": "string",
+              "unit": "short"
+            },
+            {
+              "alias": "Watts",
+              "colors": [],
+              "decimals": 0,
+              "link": true,
+              "linkTargetBlank": false,
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "watt"
+            }
+          ],
           "targets": [
             {
               "datasource": {
@@ -117,15 +166,15 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(kepler_node_cpu_active_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
-              "hide": false,
+              "expr": "sum by (zone) (kepler_node_cpu_active_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
               "interval": "",
+              "instant": true,
+              "range": false,
               "refId": "A"
             }
           ],
           "title": "Current Node Active Power Consumption By Zone",
-          "type": "singlestat",
-          "postfix": "W"
+          "type": "table"
         },
         {
           "datasource": {
@@ -158,6 +207,30 @@
           },
           "pluginVersion": "8.5.1",
           "span": 4,
+          "styles": [
+            {
+              "alias": "Zone Name",
+              "colors": [],
+              "decimals": 0,
+              "link": true,
+              "linkTargetBlank": false,
+              "pattern": "zone",
+              "thresholds": [],
+              "type": "string",
+              "unit": "short"
+            },
+            {
+              "alias": "Watts",
+              "colors": [],
+              "decimals": 0,
+              "link": true,
+              "linkTargetBlank": false,
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "watt"
+            }
+          ],
           "targets": [
             {
               "datasource": {
@@ -165,15 +238,15 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(kepler_node_cpu_idle_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
-              "hide": false,
+              "expr": "sum by (zone) (kepler_node_cpu_idle_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
               "interval": "",
+              "instant": true,
+              "range": false,
               "refId": "A"
             }
           ],
           "title": "Current Node Idle Power Consumption By Zone",
-          "type": "singlestat",
-          "postfix": "W"
+          "type": "table"
         }
       ],
       "repeat": null,
@@ -181,120 +254,6 @@
       "repeatRowId": null,
       "showTitle": false,
       "title": "Current Stats",
-      "titleSize": "h6"
-    },
-    {
-      "collapse": false,
-      "height": "250px",
-      "panels": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "fixed",
-                "fixedColor": "dark-blue"
-              },
-              "custom": {
-                "align": "auto",
-                "displayMode": "auto",
-                "inspect": false
-              },
-              "mappings": []
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 7,
-            "x": 0,
-            "y": 0
-          },
-          "id": 15,
-          "options": {
-            "footer": {
-              "fields": "",
-              "reducer": [],
-              "show": false
-            },
-            "showHeader": true
-          },
-          "pluginVersion": "8.5.1",
-          "span": 12,
-          "styles": [
-            {
-              "alias": "Node Name",
-              "colors": [],
-              "decimals": 0,
-              "link": true,
-              "linkTargetBlank": false,
-              "pattern": "instance",
-              "thresholds": [],
-              "type": "string",
-              "unit": "short"
-            },
-            {
-              "alias": "Model Name",
-              "colors": [],
-              "decimals": 0,
-              "link": true,
-              "linkTargetBlank": false,
-              "pattern": "model_name",
-              "thresholds": [],
-              "type": "string",
-              "unit": "short"
-            },
-            {
-              "alias": "Vendor ID",
-              "colors": [],
-              "decimals": 0,
-              "link": true,
-              "linkTargetBlank": false,
-              "pattern": "vendor_id",
-              "thresholds": [],
-              "type": "string",
-              "unit": "short"
-            },
-            {
-              "alias": "Cores",
-              "colors": [],
-              "decimals": 0,
-              "link": true,
-              "linkTargetBlank": false,
-              "pattern": "Value #A",
-              "thresholds": [],
-              "type": "string",
-              "unit": "short"
-            }
-          ],
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "editorMode": "code",
-              "expr": "count(kepler_node_cpu_info{container=~\"power-monitor\"}) by (instance, model_name, vendor_id)",
-              "format": "table",
-              "interval": "",
-              "legendFormat": "",
-              "instant": true,
-              "range": false,
-              "refId": "A"
-            }
-          ],
-          "title": "CPU Info",
-          "type": "table"
-        }
-      ],
-      "repeat": null,
-      "repeatIteration": null,
-      "repeatRowId": null,
-      "showTitle": true,
-      "title": "CPU Info",
       "titleSize": "h6"
     },
     {
