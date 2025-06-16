@@ -18,7 +18,7 @@
       }
     ]
   },
-  "description": "Power Monitor Namespace Info",
+  "description": "Power Monitor Namespace (Pods)",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -67,7 +67,11 @@
             "showHeader": true
           },
           "pluginVersion": "8.5.1",
-          "span": 6,
+          "span": 12,
+          "sort": {
+            "col": 1,
+            "desc": true
+          },
           "styles": [
             {
               "alias": "Namespace",
@@ -99,7 +103,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "topk(10,sum by (pod_namespace)(kepler_pod_cpu_watts{zone=~\"$zone\"}))",
+              "expr": "topk(10,sum by (pod_namespace,zone)(kepler_pod_cpu_watts{zone=~\"$zone\"}))",
               "format": "table",
               "interval": "",
               "legendFormat": "",
@@ -108,7 +112,7 @@
               "refId": "A"
             }
           ],
-          "title": "Top 10 Power Consuming Namespaces (W)",
+          "title": "Top 10 Power Consuming Namespaces (W) per Zone",
           "type": "table"
         }
       ],
@@ -180,10 +184,10 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (zone) (kepler_pod_cpu_watts{container=\"power-monitor\", pod_namespace=~\"$namespace\"})",
+              "expr": "sum by (zone) (kepler_pod_cpu_watts{container=\"power-monitor\", pod_namespace=~\"$namespace\", zone=~\"$zone\"})",
               "hide": false,
               "interval": "",
-              "legendFormat": "Total {{zone}} Watts",
+              "legendFormat": "Zone - {{zone}}",
               "range": true,
               "refId": "A"
             }
@@ -275,7 +279,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "kepler_pod_cpu_watts{container=\"power-monitor\", pod_namespace=~\"$namespace\", pod_name=~\"$pod\", zone=\"$zone\"}",
+              "expr": "kepler_pod_cpu_watts{container=\"power-monitor\", pod_namespace=~\"$namespace\", pod_name=~\"$pod\", zone=~\"$zone\"}",
               "hide": false,
               "interval": "",
               "legendFormat": "{{zone}} - {{pod_name}}",
@@ -317,7 +321,7 @@
       "repeat": null,
       "repeatIteration": null,
       "repeatRowId": null,
-      "showTitle": true,
+      "showTitle": false,
       "title": "Namespace Usage",
       "titleSize": "h6"
     }
@@ -408,7 +412,12 @@
         "useTags": false
       },
       {
-        "allValue": null,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
@@ -416,7 +425,8 @@
         "definition": "label_values(kepler_pod_cpu_watts{container=\"power-monitor\"}, zone)",
         "description": "Zone to choose",
         "hide": 0,
-        "includeAll": false,
+        "includeAll": true,
+        "defaultValue": "$__all",
         "label": null,
         "multi": false,
         "name": "zone",
@@ -439,7 +449,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Power Monitor / Namespace Info",
+  "title": "Power Monitor / Namespace (Pods)",
   "uid": "125cb5f5fdbea19c3067b2b34e897ad5d2b40a52",
   "version": 4,
   "weekStart": ""

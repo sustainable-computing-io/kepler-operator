@@ -361,9 +361,9 @@ func TestPowerMonitorDashboards(t *testing.T) {
 				"console.openshift.io/dashboard": "true",
 				"app.kubernetes.io/managed-by":   "kepler-operator",
 			},
-			dashboardName:      InfoDashboardName,
+			dashboardName:      OverviewDashboardName,
 			dashboardNamespace: DashboardNs,
-			cmKey:              fmt.Sprintf("%s.json", InfoDashboardName),
+			cmKey:              fmt.Sprintf("%s.json", OverviewDashboardName),
 			scenario:           "info dashboard case",
 		},
 		{
