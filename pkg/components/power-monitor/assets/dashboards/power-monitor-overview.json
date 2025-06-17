@@ -93,7 +93,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (zone) (kepler_node_cpu_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
+              "expr": "sum by (zone) (kepler_node_cpu_watts{job=\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
               "format": "table",
               "interval": "",
               "instant": true,
@@ -166,7 +166,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (zone) (kepler_node_cpu_active_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
+              "expr": "sum by (zone) (kepler_node_cpu_active_watts{job=\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
               "interval": "",
               "instant": true,
               "range": false,
@@ -238,7 +238,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (zone) (kepler_node_cpu_idle_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
+              "expr": "sum by (zone) (kepler_node_cpu_idle_watts{job=\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
               "interval": "",
               "instant": true,
               "range": false,
@@ -317,7 +317,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (zone) (kepler_node_cpu_watts{container=~\"power-monitor\", zone=~\"$zone\"})",
+              "expr": "sum by (zone) (kepler_node_cpu_watts{job=\"power-monitor\", zone=~\"$zone\"})",
               "hide": false,
               "interval": "",
               "legendFormat": "Zone - {{zone}}",
@@ -413,7 +413,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "kepler_node_cpu_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"}",
+              "expr": "kepler_node_cpu_watts{job=\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"}",
               "hide": false,
               "interval": "",
               "legendFormat": "{{zone}} - {{instance}}",
@@ -489,7 +489,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "kepler_node_cpu_active_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"}",
+              "expr": "kepler_node_cpu_active_watts{job=\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"}",
               "hide": false,
               "interval": "",
               "legendFormat": "{{zone}} - {{instance}}",
@@ -565,7 +565,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "kepler_node_cpu_idle_watts{container=~\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"}",
+              "expr": "kepler_node_cpu_idle_watts{job=\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"}",
               "hide": false,
               "interval": "",
               "legendFormat": "{{zone}} - {{instance}}",
@@ -628,7 +628,7 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(kepler_node_cpu_info{container=\"power-monitor\"}, instance)",
+        "definition": "label_values(kepler_node_cpu_info{job=\"power-monitor\"}, instance)",
         "description": "Node to choose",
         "hide": 0,
         "includeAll": true,
@@ -637,7 +637,7 @@
         "multi": true,
         "name": "node",
         "options": [],
-        "query": "label_values(kepler_node_cpu_info{container=\"power-monitor\"}, instance)",
+        "query": "label_values(kepler_node_cpu_info{job=\"power-monitor\"}, instance)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -658,7 +658,7 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(kepler_node_cpu_watts{container=\"power-monitor\"}, zone)",
+        "definition": "label_values(kepler_node_cpu_watts{job=\"power-monitor\"}, zone)",
         "description": "Zone to choose",
         "hide": 0,
         "includeAll": true,
@@ -667,7 +667,7 @@
         "multi": false,
         "name": "zone",
         "options": [],
-        "query": "label_values(kepler_node_cpu_watts{container=\"power-monitor\"}, zone)",
+        "query": "label_values(kepler_node_cpu_watts{job=\"power-monitor\"}, zone)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
