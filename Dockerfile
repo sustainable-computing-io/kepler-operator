@@ -1,6 +1,10 @@
 # Build the manager binary
 FROM golang:1.23 AS builder
 
+ARG VERSION
+ARG GIT_COMMIT
+ARG GIT_BRANCH
+
 WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod
@@ -13,7 +17,10 @@ RUN go mod download
 COPY . .
 
 # Build
-RUN make build
+RUN make build-manager \
+  VERSION=${VERSION} \
+  GIT_COMMIT=${GIT_COMMIT} \
+  GIT_BRANCH=${GIT_BRANCH}
 
 FROM quay.io/openshift/origin-cli:4.18 AS origincli
 
