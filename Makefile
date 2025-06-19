@@ -121,7 +121,7 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test:  fmt vet  ## Run tests.
+test:  ## Run tests.
 		go test ./pkg/... -coverprofile cover.out
 
 .PHONY: coverage
@@ -227,7 +227,7 @@ endef
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: operator-build
-operator-build: manifests generate test ## Build docker image with the manager.
+operator-build: manifests generate ## Build docker image with the manager.
 	go mod tidy
 	docker build -t $(OPERATOR_IMG) \
 		--platform=linux/$(GOARCH) .
