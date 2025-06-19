@@ -63,6 +63,11 @@ spec:
       kind: Kepler
       name: keplers.kepler.system.sustainable.computing.io
       statusDescriptors:
+      - description: conditions represent the latest available observations of kepler-internal
+        displayName: Conditions
+        path: conditions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:conditions
       - description: conditions represent the latest available observations of the
           kepler-exporter
         displayName: Conditions

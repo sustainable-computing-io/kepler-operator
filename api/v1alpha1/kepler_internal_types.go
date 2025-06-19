@@ -81,6 +81,10 @@ const (
 // KeplerInternalStatus represents status of KeplerInternal
 type KeplerInternalStatus struct {
 	Exporter ExporterStatus `json:"exporter,omitempty"`
+	// conditions represent the latest available observations of kepler-internal
+	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"
+	// +listType=atomic
+	Conditions []Condition `json:"conditions,omitempty"`
 }
 
 func (ki KeplerInternal) Namespace() string {
