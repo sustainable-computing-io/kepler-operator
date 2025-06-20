@@ -71,6 +71,8 @@ LDFLAGS=-ldflags "\
 	-X github.com/sustainable.computing.io/kepler-operator/pkg/version.gitCommit=$(GIT_COMMIT) \
 "
 
+CGO_ENABLED ?= 0
+
 .PHONY: fresh
 fresh: ## default target - sets up a k8s cluster with images ready for deployment
 	@$(MAKE) -f $(THIS_FILE) \
@@ -186,7 +188,7 @@ build: manifests generate build-manager ## Build manager binary.
 
 .PHONY: build-manager
 build-manager:
-	CGO_ENABLED=0 go build $(LDFLAGS) -o bin/manager ./cmd/...
+	CGO_ENABLED=$(CGO_ENABLED) go build $(LDFLAGS) -o bin/manager ./cmd/...
 
 OPENSHIFT ?= true
 RUN_ARGS ?=
