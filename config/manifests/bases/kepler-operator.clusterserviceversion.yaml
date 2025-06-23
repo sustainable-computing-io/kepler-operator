@@ -238,14 +238,14 @@ spec:
   - name: Kepler Project
     url: https://sustainable-computing.io/
   maintainers:
-  - email: parsingh@redhat.com
-    name: Parul Singh
-  - email: hchen@redhat.com
-    name: Huamin Chen
   - email: sthaha@redhat.com
     name: Sunil Thaha
   - email: vprashar@redhat.com
     name: Vibhu Prashar
+  - email: vimalkum@redhat.com
+    name: Vimal Kumar
+  - email: kaliu@redhat.com
+    name: Kaiyi Liu
   maturity: alpha
   minKubeVersion: 1.24.0
   provider:

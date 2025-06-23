@@ -47,7 +47,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.18.0
-    createdAt: "2025-06-23T07:18:02Z"
+    createdAt: "2025-06-23T12:23:20Z"
     description: Deploys and Manages Kepler on Kubernetes
     operators.operatorframework.io/builder: operator-sdk-v1.39.1
     operators.operatorframework.io/internal-objects: |-
@@ -385,14 +385,14 @@ spec:
   - name: Kepler Project
     url: https://sustainable-computing.io/
   maintainers:
-  - email: parsingh@redhat.com
-    name: Parul Singh
-  - email: hchen@redhat.com
-    name: Huamin Chen
   - email: sthaha@redhat.com
     name: Sunil Thaha
   - email: vprashar@redhat.com
     name: Vibhu Prashar
+  - email: vimalkum@redhat.com
+    name: Vimal Kumar
+  - email: kaliu@redhat.com
+    name: Kaiyi Liu
   maturity: alpha
   minKubeVersion: 1.24.0
   provider:
