@@ -43,7 +43,7 @@ $(error VERSION cannot be empty)
 endif
 
 KEPLER_VERSION ?=release-0.7.12
-KEPLER_REBOOT_VERSION ?=v0.0.9
+KEPLER_REBOOT_VERSION ?=v0.0.10
 
 # IMG_BASE and KEPLER_IMG_BASE are set to distinguish between Operator-specific images and Kepler-Specific images.
 # IMG_BASE is used for building and pushing operator related images.

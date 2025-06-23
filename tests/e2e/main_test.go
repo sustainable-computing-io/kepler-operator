@@ -14,7 +14,7 @@ import (
 
 const (
 	keplerImage       = `quay.io/sustainable_computing_io/kepler:release-0.7.12`
-	keplerRebootImage = `quay.io/sustainable_computing_io/kepler-reboot:v0.0.9`
+	keplerRebootImage = `quay.io/sustainable_computing_io/kepler-reboot:v0.0.10`
 )
 
 var (
