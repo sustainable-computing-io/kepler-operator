@@ -142,8 +142,8 @@ cmd_upgrade() {
 
 wait_for_kepler() {
 	header "Waiting for Kepler to be ready"
-	wait_until 10 10 "kepler to be available" condition_check "True" oc get kepler kepler \
-		-o jsonpath="{.status.exporter.conditions[?(@.type=='Available')].status}" || {
+	wait_until 10 10 "kepler to be available" condition_check "Degraded" oc get kepler kepler \
+		-o jsonpath="{.status.conditions[?(@.type=='Available')].status}" || {
 		fail "Kepler is not ready"
 		return 1
 	}
