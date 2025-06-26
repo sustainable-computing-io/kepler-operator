@@ -58,7 +58,8 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:conditions
       version: v1alpha1
-    - description: Kepler is the Schema for the keplers API
+    - description: Kepler is deprecated and will be removed in a future release. Please
+        use PowerMonitor instead.
       displayName: Kepler
       kind: Kepler
       name: keplers.kepler.system.sustainable.computing.io

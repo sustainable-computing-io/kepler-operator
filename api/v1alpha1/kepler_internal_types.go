@@ -61,7 +61,7 @@ type KeplerInternalSpec struct {
 // +kubebuilder:printcolumn:name="Node-Selector",type=string,JSONPath=`.spec.exporter.deployment.nodeSelector`,priority=10
 // +kubebuilder:printcolumn:name="Tolerations",type=string,JSONPath=`.spec.exporter.deployment.tolerations`,priority=10
 //
-// KeplerInternal is the Schema for the keplers internal API
+// KeplerInternal is deprecated and will be removed in a future release. Please use PowerMonitorInternal instead.
 type KeplerInternal struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

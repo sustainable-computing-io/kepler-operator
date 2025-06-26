@@ -50,7 +50,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: KeplerInternal is the Schema for the keplers internal API
+        description: KeplerInternal is deprecated and will be removed in a future
+          release. Please use PowerMonitorInternal instead.
         properties:
           apiVersion:
             description: |-

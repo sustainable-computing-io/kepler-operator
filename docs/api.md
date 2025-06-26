@@ -27,7 +27,7 @@ Resource Types:
 
 
 
-KeplerInternal is the Schema for the keplers internal API
+KeplerInternal is deprecated and will be removed in a future release. Please use PowerMonitorInternal instead.
 
 <table>
     <thead>
@@ -661,7 +661,7 @@ with respect to the current state of the instance.<br/>
 
 
 
-Kepler is the Schema for the keplers API
+Kepler is deprecated and will be removed in a future release. Please use PowerMonitor instead.
 
 <table>
     <thead>
