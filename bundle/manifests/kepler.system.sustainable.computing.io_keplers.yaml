@@ -57,7 +57,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Kepler is the Schema for the keplers API
+        description: Kepler is deprecated and will be removed in a future release.
+          Please use PowerMonitor instead.
         properties:
           apiVersion:
             description: |-

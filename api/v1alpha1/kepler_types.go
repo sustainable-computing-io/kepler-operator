@@ -189,7 +189,7 @@ type ExporterStatus struct {
 // +kubebuilder:printcolumn:name="Node-Selector",type=string,JSONPath=`.spec.exporter.deployment.nodeSelector`,priority=10
 // +kubebuilder:printcolumn:name="Tolerations",type=string,JSONPath=`.spec.exporter.deployment.tolerations`,priority=10
 //
-// Kepler is the Schema for the keplers API
+// Kepler is deprecated and will be removed in a future release. Please use PowerMonitor instead.
 type Kepler struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
