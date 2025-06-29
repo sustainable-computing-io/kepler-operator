@@ -14,6 +14,7 @@ declare -r OLM_CATALOG="kepler-operator-catalog"
 declare -r VERSION=${VERSION:-"0.0.0-e2e"}
 declare -r OPERATOR_DEPLOY_YAML="config/manager/base/manager.yaml"
 declare -r KEPLER_CR="config/samples/kepler.system_v1alpha1_kepler.yaml"
+declare -r POWER_MONITOR_CR="config/samples/kepler.system_v1alpha1_powermonitor.yaml"
 declare -r OPERATOR_CSV="bundle/manifests/$OPERATOR.clusterserviceversion.yaml"
 declare -r OPERATOR_DEPLOY_NAME="kepler-operator-controller"
 declare -r OPERATOR_RELEASED_BUNDLE="quay.io/sustainable_computing_io/$OPERATOR-bundle"
@@ -30,6 +31,7 @@ declare NO_BUILDS=false
 declare SHOW_USAGE=false
 declare LOGS_DIR="tmp/e2e"
 declare OPERATORS_NS="operators"
+declare POWERMONITOR_NS="power-monitor"
 declare TEST_TIMEOUT="15m"
 # declare -a PORT_FORWARDED_PIDS=()
 
@@ -122,7 +124,11 @@ cmd_upgrade() {
 	info "Creating a new Kepler CR"
 	run kubectl apply -f "$KEPLER_CR"
 
+	info "Creating new PowerMonitor CR"
+	create_power_monitor
+
 	wait_for_kepler || return 1
+	wait_for_power_monitor || return 1
 
 	info "Running Upgrade to new bundle"
 	run operator-sdk run bundle-upgrade "$BUNDLE_IMG" \
@@ -133,11 +139,34 @@ cmd_upgrade() {
 		fail "Running Bundle Upgrade failed"
 		return $ret
 	}
+
 	wait_for_operator "$OPERATORS_NS"
+
 	wait_until 10 10 "kepler images to be up to date" check_images
+
 	wait_for_kepler || return 1
+	wait_for_power_monitor || return 1
 
 	return 0
+}
+
+# creating power monitor with fake cpu meter enabled for testing Operator Upgrade and invalid PowerMonitor scenarios
+create_power_monitor() {
+	yq eval '.spec.kepler.config.additionalConfigMaps = [{"name": "power-monitor-config"}]' \
+		"$POWER_MONITOR_CR" | kubectl apply -f -
+
+	info "Creating PowerMonitor ConfigMap"
+	kubectl create -n "$POWERMONITOR_NS" -f - <<EOF
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: power-monitor-config
+    data:
+      config.yaml: |
+        dev:
+          fake-cpu-meter:
+            enabled: true
+EOF
 }
 
 wait_for_kepler() {
@@ -151,10 +180,23 @@ wait_for_kepler() {
 	return 0
 }
 
+wait_for_power_monitor() {
+	header "Waiting for PowerMonitor to be ready"
+	wait_until 10 10 "powermonitor to be available" condition_check "True" oc get powermonitor power-monitor \
+		-o jsonpath="{.status.conditions[?(@.type=='Available')].status}" || {
+		fail "PowerMonitor is not ready"
+		return 1
+	}
+	ok "PowerMonitor is ready"
+	return 0
+}
+
 check_images() {
 	header "Checking Kepler Images"
 	local actual_image=""
 	local expected_image=""
+
+	info "Checking Kepler CR image"
 	actual_image=$(kubectl get keplerinternals -o \
 		jsonpath="{.items[*].spec.exporter.deployment.image}")
 	expected_image=$(yq -r .spec.relatedImages[0].image "$OPERATOR_CSV")
@@ -162,6 +204,16 @@ check_images() {
 		fail "Kepler images are not up to date: actual: $actual_image != $expected_image"
 		return 1
 	}
+
+	info "Checking PowerMonitor CR image"
+	actual_image=$(kubectl get powermonitorinternals -o \
+		jsonpath="{.items[*].spec.kepler.deployment.image}")
+	expected_image=$(yq -r .spec.relatedImages[1].image "$OPERATOR_CSV")
+	[[ "$actual_image" != "$expected_image" ]] && {
+		fail "Kepler images are not up to date: actual: $actual_image != $expected_image"
+		return 1
+	}
+
 	ok "Kepler images are up to date"
 	return 0
 }
