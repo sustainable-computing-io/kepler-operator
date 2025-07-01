@@ -29,7 +29,6 @@ declare -r COLLECTION_DIR_DEFAULT="/must-gather"
 declare -r OPERATOR_DEPLOY_NAME="kepler-operator-controller"
 declare -r LOGFILE_NAME="gather-debug.log"
 declare -r UWM_NS="openshift-user-workload-monitoring"
-declare -r KEPLER_INSTANCE="kepler"
 declare -r POWER_MONITOR_INSTANCE="power-monitor"
 
 declare SHOW_HELP=false
@@ -146,11 +145,7 @@ get_instance() {
 		return 0
 	}
 
-	# Different jsonpath for different instance type
-	local jsonpath="{.spec.exporter.deployment.namespace}"
-	[[ "$instance_type" == "powermonitor" ]] && {
-		jsonpath="{.spec.kepler.deployment.namespace}"
-	}
+	local jsonpath="{.spec.kepler.deployment.namespace}"
 
 	# Get instance namespace from internals
 	INSTANCE_NS=$(oc get "${instance_type}internals" "$instance_name" -o jsonpath="$jsonpath")
@@ -167,25 +162,25 @@ get_events() {
 
 # Get daemon set information
 get_daemon_set() {
-	log "Getting $INSTANCE_TYPE exporter daemonset"
+	log "Getting $INSTANCE_TYPE daemonset"
 	run oc -n "$INSTANCE_NS" get ds "$INSTANCE_TYPE" -oyaml "$COLLECTION_DIR/$INSTANCE_TYPE-ds.yaml"
 }
 
 # Get config map information
 get_config_map() {
-	log "Getting $INSTANCE_TYPE exporter config map"
+	log "Getting $INSTANCE_TYPE config map"
 	run oc -n "$INSTANCE_NS" get cm "$INSTANCE_TYPE" -oyaml "$COLLECTION_DIR/$INSTANCE_TYPE-cm.yaml"
 }
 
 # Get service account information
 get_sa() {
-	log "Getting $INSTANCE_TYPE exporter service account"
+	log "Getting $INSTANCE_TYPE service account"
 	run oc -n "$INSTANCE_NS" get serviceaccount "$INSTANCE_TYPE" -oyaml "$COLLECTION_DIR/$INSTANCE_TYPE-sa.yaml"
 }
 
 # Get scc information
 get_scc() {
-	log "Getting $INSTANCE_TYPE exporter scc"
+	log "Getting $INSTANCE_TYPE scc"
 	run oc get scc "$INSTANCE_TYPE" -oyaml "$COLLECTION_DIR/$INSTANCE_TYPE-scc.yaml"
 }
 
@@ -200,26 +195,6 @@ get_pods() {
 	run oc -n "$INSTANCE_NS" get pod "$component_pod" -oyaml "$component_node_info_dir/$INSTANCE_TYPE-pod.yaml"
 }
 
-# Get cpuid information
-get_cpuid() {
-	local component_pod="$1"
-	local component_node_info_dir="$2"
-	shift 2
-
-	log "Getting information from \"cpuid\" from $INSTANCE_TYPE pod: $component_pod"
-	run oc -n "$INSTANCE_NS" exec "$component_pod" -c "$INSTANCE_TYPE" -- cpuid -1 "$component_node_info_dir/node-cpuid-info"
-}
-
-# Get environment variables
-get_env_var() {
-	local component_pod="$1"
-	local component_node_info_dir="$2"
-	shift 2
-
-	log "Getting environment variables from $INSTANCE_TYPE pod: $component_pod"
-	run oc -n "$INSTANCE_NS" exec "$component_pod" -c "$INSTANCE_TYPE" -- env "$component_node_info_dir/env-variables"
-}
-
 # Get kernel information
 get_kernel_info() {
 	local component_pod="$1"
@@ -231,26 +206,26 @@ get_kernel_info() {
 	run oc -n "$INSTANCE_NS" exec "$component_pod" -c "$INSTANCE_TYPE" -- uname -a "$component_node_info_dir/kernel-info"
 }
 
-# Get ebpf information
-get_ebpf_info() {
+# Get RAPL information
+get_rapl_info() {
 	local component_pod="$1"
 	local component_node_info_dir="$2"
 	shift 2
 
-	log "Getting ebpf information from $INSTANCE_TYPE pod: $component_pod"
+	log "Getting RAPL info from $INSTANCE_TYPE pod: $component_pod"
+	echo "rapl info:" >>"$component_node_info_dir/rapl-info"
 
-	echo "Probing the running kernel and dumping the number of eBPF-related parameters"
-	echo "ebpf related features supported by current kernel:" >>"$component_node_info_dir/kernel-ebpf-features"
-	run oc -n "$INSTANCE_NS" exec "$component_pod" -c "$INSTANCE_TYPE" -- bpftool feature probe kernel "$component_node_info_dir/kernel-ebpf-features"
-
-	echo "listing all loaded ebpf programs"
-	echo "list of all loaded ebpf programs:" >>"$component_node_info_dir/ebpf-info"
-	run oc -n "$INSTANCE_NS" exec "$component_pod" -c "$INSTANCE_TYPE" -- bpftool prog list "$component_node_info_dir/ebpf-info"
-
-	echo "listing all ebpf maps"
-	echo "list of all ebpf maps:" >>"$component_node_info_dir/ebpf-info"
-	run oc -n "$INSTANCE_NS" exec "$component_pod" -c "$INSTANCE_TYPE" -- bpftool map list "$component_node_info_dir/ebpf-info"
-
+	local rapl_cmd
+	rapl_cmd=$(
+		cat <<'EOF'
+find -L /host/sys/class/powercap/intel-rapl -name name -not -path "*/subsystem/*" 2>/dev/null |
+while read -r file; do
+  dir=${file%/*}
+  echo "${dir#/host/sys/class/powercap/intel-rapl/}: $(cat "$file")"
+done | sort -n
+EOF
+	)
+	run oc -n "$INSTANCE_NS" exec "$component_pod" -c "$INSTANCE_TYPE" -- sh -c "$rapl_cmd" "$component_node_info_dir/rapl-info"
 }
 
 # Get pod logs
@@ -263,14 +238,14 @@ get_pod_logs() {
 	run oc -n "$INSTANCE_NS" logs "$component_pod" -c "$INSTANCE_TYPE" "$component_node_info_dir/$INSTANCE_TYPE.log"
 }
 
-# Gather exporter information
-gather_exporter_info() {
+# Gather powermonitor information
+gather_powermonitor_info() {
 	[[ -z "$INSTANCE_NS" ]] && {
-		log "no $INSTANCE_TYPE found; skipping gathering $INSTANCE_TYPE exporter info"
+		log "no $INSTANCE_TYPE found; skipping gathering $INSTANCE_TYPE info"
 		return 0
 	}
 
-	log "Gathering exporter information for $INSTANCE_TYPE in namespace $INSTANCE_NS"
+	log "Gathering information for $INSTANCE_TYPE in namespace $INSTANCE_NS"
 
 	# Get resource information
 	get_events
@@ -296,16 +271,14 @@ gather_exporter_info() {
 
 		# Gather pod information
 		get_pods "$pod" "$component_pod_info_dir"
-		get_cpuid "$pod" "$component_pod_info_dir"
-		get_env_var "$pod" "$component_pod_info_dir"
 		get_kernel_info "$pod" "$component_pod_info_dir"
-		get_ebpf_info "$pod" "$component_pod_info_dir"
+		get_rapl_info "$pod" "$component_pod_info_dir"
 		get_pod_logs "$pod" "$component_pod_info_dir"
 
 		log "Completed gathering information for pod: $pod"
 	done
 
-	log "Completed gathering exporter information for $INSTANCE_TYPE"
+	log "Completed gathering powermonitor information for $INSTANCE_TYPE"
 }
 
 # Get OLM information
@@ -528,18 +501,14 @@ main() {
 	gather_olm_info
 	gather_operator_info
 
-	# Check and process available components
-	component_exists "kepler" "$KEPLER_INSTANCE" && {
-		get_internal_instances "kepler" "$KEPLER_INSTANCE"
-		get_instance "kepler" "$KEPLER_INSTANCE"
-		gather_exporter_info
-	}
-
-	component_exists "powermonitor" "$POWER_MONITOR_INSTANCE" && {
+	# Gather powermonitor information if available
+	if component_exists "powermonitor" "$POWER_MONITOR_INSTANCE"; then
 		get_internal_instances "powermonitor" "$POWER_MONITOR_INSTANCE"
 		get_instance "powermonitor" "$POWER_MONITOR_INSTANCE"
-		gather_exporter_info
-	}
+		gather_powermonitor_info
+	else
+		log "no powermonitor found; skipping gathering powermonitor info"
+	fi
 
 	# Gather monitoring information if available
 	if init_monitoring; then
