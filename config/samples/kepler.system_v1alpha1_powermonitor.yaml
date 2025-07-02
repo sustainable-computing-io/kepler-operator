@@ -9,4 +9,4 @@ metadata:
 spec:
   kepler:
     config:
-      logLevel: debug
+      logLevel: info

@@ -38,7 +38,7 @@ metadata:
           "spec": {
             "kepler": {
               "config": {
-                "logLevel": "debug"
+                "logLevel": "info"
               }
             }
           }
@@ -47,7 +47,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.18.0
-    createdAt: "2025-06-30T12:21:06Z"
+    createdAt: "2025-07-02T05:54:15Z"
     description: Deploys and Manages Kepler on Kubernetes
     operators.operatorframework.io/builder: operator-sdk-v1.39.1
     operators.operatorframework.io/internal-objects: |-
