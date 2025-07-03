@@ -89,7 +89,7 @@ fresh: ## default target - sets up a k8s cluster with images ready for deploymen
 	@echo -e ' 🔔 Next step see kepler in action:'
 	@echo -e '    ❯   ./tmp/bin/operator-sdk run bundle localhost:5001/kepler-operator-bundle:0.0.0-dev \ '
 	@echo -e '         --install-mode AllNamespaces --namespace operators --skip-tls '
-	@echo -e '    ❯ kubectl apply -f config/samples/kepler.system_v1alpha1_kepler.yaml \n'
+	@echo -e '    ❯ kubectl apply -f config/samples/kepler.system_v1alpha1_powermonitor.yaml \n'
 	@echo -e '        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
 
 
