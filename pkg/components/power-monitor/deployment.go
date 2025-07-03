@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"fmt"
 	"path/filepath"
+	"sort"
 
 	"github.com/cespare/xxhash/v2"
 	secv1 "github.com/openshift/api/security/v1"
@@ -15,9 +16,11 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/internal/config"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
+	"gopkg.in/yaml.v3"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -42,6 +45,23 @@ const (
 
 	// ConfigMap annotations
 	ConfigMapHashAnnotation = "powermonitor.sustainable.computing.io/config-map-hash"
+
+	// Secure Endpoint
+	KubeRBACProxyContainerName    = "kube-rbac-proxy"
+	SecurePort                    = 8443
+	SecurePortName                = "https"
+	KubeRBACProxyConfigMountPath  = "/etc/kube-rbac-proxy"
+	PowerMonitorTLSMountPath      = "/etc/tls/private"
+	SecretTokenHashAnnotation     = "powermonitor.sustainable.computing.io/secret-token-hash"
+	SecretTLSHashAnnotation       = "powermonitor.sustainable.computing.io/secret-tls-hash"
+	ConfigMapCAHashAnnotation     = "powermonitor.sustainable.computing.io/configmap-ca-hash"
+	SecretTLSCertName             = "power-monitor-tls"
+	SecretKubeRBACProxyConfigName = "power-monitor-kube-rbac-proxy-config"
+	SecretUWMTokenName            = "prometheus-user-workload-token"
+	PowerMonitorCertsCABundleName = "power-monitor-serving-certs-ca-bundle"
+	ServiceAccountTokenKey        = "token"
+	UWMServiceAccountName         = "prometheus-user-workload"
+	UWMNamespace                  = "openshift-user-workload-monitoring"
 )
 
 var (
@@ -82,6 +102,15 @@ func NewPowerMonitorDaemonSet(detail components.Detail, pmi *v1alpha1.PowerMonit
 		k8s.VolumeFromConfigMap("cfm", pmi.Name),
 	}
 
+	if pmi.Spec.Kepler.Deployment.Security.Mode == v1alpha1.SecurityModeRBAC {
+		rbacContainer := newKubeRBACProxyContainer(pmi)
+		pmContainers = append(pmContainers, rbacContainer)
+		volumes = append(volumes,
+			k8s.VolumeFromSecret(SecretTLSCertName, SecretTLSCertName),
+			k8s.VolumeFromSecret(SecretKubeRBACProxyConfigName, SecretKubeRBACProxyConfigName),
+		)
+	}
+
 	return &appsv1.DaemonSet{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: appsv1.SchemeGroupVersion.String(),
@@ -115,7 +144,7 @@ func NewPowerMonitorDaemonSet(detail components.Detail, pmi *v1alpha1.PowerMonit
 }
 
 func NewPowerMonitorService(pmi *v1alpha1.PowerMonitorInternal) *corev1.Service {
-	return &corev1.Service{
+	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
 			Kind:       "Service",
@@ -138,6 +167,20 @@ func NewPowerMonitorService(pmi *v1alpha1.PowerMonitorInternal) *corev1.Service 
 			}},
 		},
 	}
+	if pmi.Spec.Kepler.Deployment.Security.Mode == v1alpha1.SecurityModeRBAC {
+		service.Annotations = map[string]string{
+			"service.beta.openshift.io/serving-cert-secret-name": SecretTLSCertName,
+		}
+		service.Spec.Ports = []corev1.ServicePort{{
+			Name: SecurePortName,
+			Port: int32(SecurePort),
+			TargetPort: intstr.IntOrString{
+				Type:   intstr.String,
+				StrVal: SecurePortName,
+			},
+		}}
+	}
+	return service
 }
 
 func NewPowerMonitorNamespaceInfoDashboard(d components.Detail) *corev1.ConfigMap {
@@ -195,7 +238,7 @@ func NewPowerMonitorClusterRole(c components.Detail, pmi *v1alpha1.PowerMonitorI
 		}
 	}
 
-	return &rbacv1.ClusterRole{
+	cr := &rbacv1.ClusterRole{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: rbacv1.SchemeGroupVersion.String(),
 			Kind:       "ClusterRole",
@@ -210,6 +253,20 @@ func NewPowerMonitorClusterRole(c components.Detail, pmi *v1alpha1.PowerMonitorI
 			Verbs:     []string{"get", "watch", "list"},
 		}},
 	}
+	if pmi.Spec.Kepler.Deployment.Security.Mode == v1alpha1.SecurityModeRBAC {
+		tokenReviewRule := rbacv1.PolicyRule{
+			APIGroups: []string{"authentication.k8s.io"},
+			Resources: []string{"tokenreviews"},
+			Verbs:     []string{"create"},
+		}
+		subjectAccessReviewsRule := rbacv1.PolicyRule{
+			APIGroups: []string{"authorization.k8s.io"},
+			Resources: []string{"subjectaccessreviews"},
+			Verbs:     []string{"create"},
+		}
+		cr.Rules = append(cr.Rules, tokenReviewRule, subjectAccessReviewsRule)
+	}
+	return cr
 }
 
 func NewPowerMonitorClusterRoleBinding(c components.Detail, pmi *v1alpha1.PowerMonitorInternal) *rbacv1.ClusterRoleBinding {
@@ -317,7 +374,20 @@ func NewPowerMonitorServiceAccount(pmi *v1alpha1.PowerMonitorInternal) *corev1.S
 	}
 }
 
-func NewPowerMonitorServiceMonitor(pmi *v1alpha1.PowerMonitorInternal) *monv1.ServiceMonitor {
+func NewPowerMonitorServiceMonitor(d components.Detail, pmi *v1alpha1.PowerMonitorInternal) *monv1.ServiceMonitor {
+	if d == components.Metadata {
+		return &monv1.ServiceMonitor{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: monv1.SchemeGroupVersion.String(),
+				Kind:       "ServiceMonitor",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      pmi.Name,
+				Namespace: pmi.Namespace(),
+				Labels:    labels(pmi).ToMap(),
+			},
+		}
+	}
 	relabelings := []*monv1.RelabelConfig{{
 		Action:      "replace",
 		Regex:       "(.*)",
@@ -328,7 +398,7 @@ func NewPowerMonitorServiceMonitor(pmi *v1alpha1.PowerMonitorInternal) *monv1.Se
 		TargetLabel: "instance",
 	}}
 
-	return &monv1.ServiceMonitor{
+	sm := &monv1.ServiceMonitor{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: monv1.SchemeGroupVersion.String(),
 			Kind:       "ServiceMonitor",
@@ -350,6 +420,147 @@ func NewPowerMonitorServiceMonitor(pmi *v1alpha1.PowerMonitorInternal) *monv1.Se
 			},
 		},
 	}
+	if pmi.Spec.Kepler.Deployment.Security.Mode == v1alpha1.SecurityModeRBAC {
+		sm.Spec.Endpoints = []monv1.Endpoint{{
+			Port:           SecurePortName,
+			Scheme:         "https",
+			RelabelConfigs: relabelings,
+			Authorization: &monv1.SafeAuthorization{
+				Type: "Bearer",
+				Credentials: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: SecretUWMTokenName,
+					},
+					Key: ServiceAccountTokenKey,
+				},
+			},
+			TLSConfig: &monv1.TLSConfig{
+				SafeTLSConfig: monv1.SafeTLSConfig{
+					CA: monv1.SecretOrConfigMap{
+						ConfigMap: &corev1.ConfigMapKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: PowerMonitorCertsCABundleName,
+							},
+							Key: "service-ca.crt",
+						},
+					},
+					ServerName: fmt.Sprintf("%s.%s.svc", pmi.Name, pmi.Namespace()),
+				},
+			},
+		}}
+	}
+	return sm
+}
+
+func NewPowerMonitorCABundleConfigMap(d components.Detail, pmi *v1alpha1.PowerMonitorInternal) *corev1.ConfigMap {
+	if d == components.Metadata {
+		return &corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: corev1.SchemeGroupVersion.String(),
+				Kind:       "ConfigMap",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      PowerMonitorCertsCABundleName,
+				Namespace: pmi.Namespace(),
+			},
+		}
+	}
+	return &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      PowerMonitorCertsCABundleName,
+			Namespace: pmi.Namespace(),
+			Annotations: map[string]string{
+				"service.beta.openshift.io/inject-cabundle": "true",
+			},
+		},
+		Data: map[string]string{},
+	}
+}
+
+func NewPowerMonitorKubeRBACProxyConfig(d components.Detail, pmi *v1alpha1.PowerMonitorInternal) *corev1.Secret {
+	if d == components.Metadata {
+		return &corev1.Secret{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: corev1.SchemeGroupVersion.String(),
+				Kind:       "Secret",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      SecretKubeRBACProxyConfigName,
+				Namespace: pmi.Namespace(),
+				Labels:    labels(pmi),
+			},
+		}
+	}
+	configYAML := createKubeRBACConfig(pmi.Spec.Kepler.Deployment.Security.AllowedSANames)
+	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      SecretKubeRBACProxyConfigName,
+			Namespace: pmi.Namespace(),
+			Labels:    labels(pmi),
+		},
+		StringData: map[string]string{
+			"config.yaml": configYAML,
+		},
+		Type: corev1.SecretTypeOpaque,
+	}
+}
+
+func NewPowerMonitorUWMTokenSecret(d components.Detail, pmi *v1alpha1.PowerMonitorInternal, saToken string) *corev1.Secret {
+	if d == components.Metadata {
+		return &corev1.Secret{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: corev1.SchemeGroupVersion.String(),
+				Kind:       "Secret",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      SecretUWMTokenName,
+				Namespace: pmi.Namespace(),
+				Labels:    labels(pmi),
+			},
+		}
+	}
+	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      SecretUWMTokenName,
+			Namespace: pmi.Namespace(),
+			Labels:    labels(pmi),
+		},
+		StringData: map[string]string{
+			ServiceAccountTokenKey: saToken,
+		},
+		Type: corev1.SecretTypeOpaque,
+	}
+}
+
+func MountSecretAnnotationToDaemonset(ds *appsv1.DaemonSet, s *corev1.Secret) {
+	if ds.Spec.Template.Annotations == nil {
+		ds.Spec.Template.Annotations = make(map[string]string)
+	}
+	var data []byte
+	keys := make([]string, 0, len(s.Data))
+	for k := range s.Data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		data = append(data, []byte(k)...)
+		data = append(data, s.Data[k]...)
+	}
+	hash := xxhash.Sum64([]byte(data))
+
+	ds.Spec.Template.Annotations[SecretTLSHashAnnotation+"-"+s.Name] = fmt.Sprintf("%x", hash)
 }
 
 func openshiftDashboardConfigMap(d components.Detail, dashboardName, dashboardJSONName, dashboardJSONPath string) *corev1.ConfigMap {
@@ -448,6 +659,64 @@ func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Contain
 			{Name: "cfm", MountPath: KeplerConfigMapPath},
 		},
 	}
+}
+
+func newKubeRBACProxyContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Container {
+	deployment := pmi.Spec.Kepler.Deployment
+	return corev1.Container{
+		Name:  KubeRBACProxyContainerName,
+		Image: deployment.KubeRbacProxyImage,
+		Args: []string{
+			fmt.Sprintf("--secure-listen-address=0.0.0.0:%d", SecurePort),
+			fmt.Sprintf("--upstream=http://127.0.0.1:%d", PowerMonitorDSPort),
+			fmt.Sprintf("--auth-token-audiences=%s.%s.svc", pmi.Name, pmi.Namespace()),
+			fmt.Sprintf("--config-file=%s/config.yaml", KubeRBACProxyConfigMountPath),
+			fmt.Sprintf("--tls-cert-file=%s/tls.crt", PowerMonitorTLSMountPath),
+			fmt.Sprintf("--tls-private-key-file=%s/tls.key", PowerMonitorTLSMountPath),
+			"--allow-paths=/metrics",
+			"--logtostderr=true",
+			"--v=3",
+		},
+		Ports: []corev1.ContainerPort{{
+			Name:          SecurePortName,
+			ContainerPort: int32(SecurePort),
+		}},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("1m"),
+				corev1.ResourceMemory: resource.MustParse("15Mi"),
+			},
+		},
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: ptr.To(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+		},
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: SecretKubeRBACProxyConfigName, MountPath: KubeRBACProxyConfigMountPath, ReadOnly: true},
+			{Name: SecretTLSCertName, MountPath: PowerMonitorTLSMountPath, ReadOnly: true},
+		},
+	}
+}
+
+func createKubeRBACConfig(serviceAccountNames []string) string {
+	var config k8s.KubeRBACProxyConfig
+
+	for _, serviceAccountName := range serviceAccountNames {
+		newRule := k8s.StaticRule{
+			Path:            "/metrics",
+			ResourceRequest: false,
+			User: k8s.User{
+				Name: fmt.Sprintf("system:serviceaccount:%s", serviceAccountName),
+			},
+			Verb: "get",
+		}
+		config.Authorization.StaticRules = append(config.Authorization.StaticRules, newRule)
+	}
+	yamlData, _ := yaml.Marshal(&config)
+	return string(yamlData)
 }
 
 // KeplerConfig returns the config for the power-monitor

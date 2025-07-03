@@ -18,6 +18,16 @@ const (
 	PowerMonitorInstanceName = "power-monitor" // Enforce a specific name if needed
 )
 
+type SecurityConfig struct {
+	AllowedSANames []string
+	Mode           SecurityMode
+}
+
+var DefaultSecurityConfig = SecurityConfig{
+	AllowedSANames: nil,
+	Mode:           SecurityModeNone,
+}
+
 var pmonLog = logf.Log.WithName("power-monitor-resource")
 
 func (r *PowerMonitor) SetupWebhookWithManager(mgr ctrl.Manager) error {
@@ -33,6 +43,14 @@ var _ webhook.Defaulter = &PowerMonitor{}
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *PowerMonitor) Default() {
 	pmonLog.Info("default", "name", r.Name)
+	if r.Spec.Kepler.Deployment.Security.Mode == "" {
+		pmonLog.Info("default", "mode", DefaultSecurityConfig.Mode)
+		r.Spec.Kepler.Deployment.Security.Mode = DefaultSecurityConfig.Mode
+	}
+	if r.Spec.Kepler.Deployment.Security.AllowedSANames == nil {
+		pmonLog.Info("default", "allowed sa", DefaultSecurityConfig.AllowedSANames)
+		r.Spec.Kepler.Deployment.Security.AllowedSANames = DefaultSecurityConfig.AllowedSANames
+	}
 }
 
 // +kubebuilder:webhook:path=/validate-kepler-system-sustainable-computing-io-v1alpha1-powermonitor,mutating=false,failurePolicy=fail,sideEffects=None,groups=kepler.system.sustainable.computing.io,resources=powermonitors,verbs=create;update;delete,versions=v1alpha1,name=vpowermonitor.kb.io,admissionReviewVersions=v1

@@ -13,16 +13,18 @@ import (
 )
 
 const (
-	keplerImage       = `quay.io/sustainable_computing_io/kepler:release-0.7.12`
-	keplerRebootImage = `quay.io/sustainable_computing_io/kepler-reboot:v0.0.10`
+	keplerImage        = `quay.io/sustainable_computing_io/kepler:release-0.7.12`
+	keplerRebootImage  = `quay.io/sustainable_computing_io/kepler-reboot:v0.0.10`
+	kubeRbacProxyImage = `quay.io/brancz/kube-rbac-proxy:v0.19.0`
 )
 
 var (
-	Cluster               k8s.Cluster = k8s.Kubernetes
-	testKeplerImage       string
-	testKeplerRebootImage string
-	skipKeplerTests       bool
-	runningOnVM           bool
+	Cluster                k8s.Cluster = k8s.Kubernetes
+	testKeplerImage        string
+	testKeplerRebootImage  string
+	testKubeRbacProxyImage string
+	skipKeplerTests        bool
+	runningOnVM            bool
 )
 
 func TestMain(m *testing.M) {
@@ -31,6 +33,7 @@ func TestMain(m *testing.M) {
 		"Namespace where kepler and its components are deployed.")
 	flag.StringVar(&testKeplerImage, "kepler-image", keplerImage, "Kepler image to use when running Internal tests")
 	flag.StringVar(&testKeplerRebootImage, "kepler-reboot-image", keplerRebootImage, "Kepler image to use when running PowerMonitorInternal tests")
+	flag.StringVar(&testKubeRbacProxyImage, "kube-rbac-proxy-image", kubeRbacProxyImage, "Kube Rbac Proxy image to use when running mode rbac tests")
 	flag.BoolVar(&skipKeplerTests, "skip-kepler-tests", false, "Skip Kepler tests")
 	flag.BoolVar(&runningOnVM, "running-on-vm", false, "Enable VM test environment")
 	flag.Parse()

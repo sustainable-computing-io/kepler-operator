@@ -262,8 +262,9 @@ func newPowerMonitorInternal(d components.Detail, pm *v1alpha1.PowerMonitor) *v1
 				Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
 					PowerMonitorKeplerDeploymentSpec: pm.Spec.Kepler.Deployment,
 
-					Image:     Config.RebootImage,
-					Namespace: PowerMonitorDeploymentNS,
+					Image:              Config.RebootImage,
+					KubeRbacProxyImage: Config.KubeRbacProxyImage,
+					Namespace:          PowerMonitorDeploymentNS,
 				},
 				Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
 					LogLevel:             pm.Spec.Kepler.Config.LogLevel,

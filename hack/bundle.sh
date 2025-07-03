@@ -50,6 +50,7 @@ main() {
 			-e "s|<OPERATOR_IMG>|$OPERATOR_IMG|g" \
 			-e "s|<KEPLER_IMG>|$KEPLER_IMG|g" \
 			-e "s|<KEPLER_REBOOT_IMG>|$KEPLER_REBOOT_IMG|g" \
+			-e "s|<KUBE_RBAC_PROXY_IMG>|$KUBE_RBAC_PROXY_IMG|g" \
 			-e "s|<OLD_BUNDLE_VERSION>|$old_bundle_version|g" |
 		tee tmp/pre-bundle.yaml |
 		operator-sdk generate bundle "${gen_opts[@]}"
