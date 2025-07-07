@@ -93,7 +93,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (zone) (kepler_node_cpu_watts{job=\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
+              "expr": "sum by (zone) (kepler_node_cpu_watts{job=\"power-monitor\", zone=~\"$zone\"})",
               "format": "table",
               "interval": "",
               "instant": true,
@@ -101,7 +101,7 @@
               "refId": "A"
             }
           ],
-          "title": "Current Node Power Consumption By Zone",
+          "title": "Current Power Consumption By Zone",
           "type": "table"
         },
         {
@@ -166,14 +166,14 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (zone) (kepler_node_cpu_active_watts{job=\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
+              "expr": "sum by (zone) (kepler_node_cpu_active_watts{job=\"power-monitor\", zone=~\"$zone\"})",
               "interval": "",
               "instant": true,
               "range": false,
               "refId": "A"
             }
           ],
-          "title": "Current Node Active Power Consumption By Zone",
+          "title": "Current Active Power Consumption By Zone",
           "type": "table"
         },
         {
@@ -238,22 +238,117 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (zone) (kepler_node_cpu_idle_watts{job=\"power-monitor\", instance=~\"$node\", zone=~\"$zone\"})",
+              "expr": "sum by (zone) (kepler_node_cpu_idle_watts{job=\"power-monitor\", zone=~\"$zone\"})",
               "interval": "",
               "instant": true,
               "range": false,
               "refId": "A"
             }
           ],
-          "title": "Current Node Idle Power Consumption By Zone",
+          "title": "Current Idle Power Consumption By Zone",
           "type": "table"
         }
       ],
       "repeat": null,
       "repeatIteration": null,
       "repeatRowId": null,
-      "showTitle": false,
-      "title": "Current Stats",
+      "showTitle": true,
+      "title": "Cluster Wide Consumption",
+      "titleSize": "h6"
+    },
+    {
+      "collapsed": false,
+      "height": "250px",
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "watt"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 9,
+            "x": 7,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          },
+          "pluginVersion": "8.5.1",
+          "span": 12,
+          "styles": [
+            {
+              "alias": "Node Name",
+              "colors": [],
+              "decimals": 0,
+              "link": true,
+              "linkTargetBlank": false,
+              "pattern": "instance",
+              "thresholds": [],
+              "type": "string",
+              "unit": "short"
+            },
+            {
+              "alias": "Model Name",
+              "colors": [],
+              "decimals": 0,
+              "link": true,
+              "linkTargetBlank": false,
+              "pattern": "model_name",
+              "thresholds": [],
+              "type": "string",
+              "unit": "short"
+            },
+            {
+              "alias": "Cores",
+              "colors": [],
+              "decimals": 0,
+              "link": true,
+              "linkTargetBlank": false,
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "watt"
+            }
+          ],
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "count by (instance, model_name)(kepler_node_cpu_info{job=\"power-monitor\"})",
+              "interval": "",
+              "instant": true,
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "CPU Info",
+          "type": "table"
+        }
+      ],
+      "repeat": null,
+      "repeatIteration": null,
+      "repeatRowId": null,
+      "showTitle": true,
+      "title": "Node Info",
       "titleSize": "h6"
     },
     {
@@ -588,7 +683,7 @@
       "repeatIteration": null,
       "repeatRowId": null,
       "showTitle": true,
-      "title": "Node Usage",
+      "title": "Node Consumption",
       "titleSize": "h6"
     }
   ],
@@ -631,10 +726,9 @@
         "definition": "label_values(kepler_node_cpu_info{job=\"power-monitor\"}, instance)",
         "description": "Node to choose",
         "hide": 0,
-        "includeAll": true,
-        "defaultValue": "$__all",
+        "includeAll": false,
         "label": "Node",
-        "multi": true,
+        "multi": false,
         "name": "node",
         "options": [],
         "query": "label_values(kepler_node_cpu_info{job=\"power-monitor\"}, instance)",
