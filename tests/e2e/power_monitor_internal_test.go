@@ -32,7 +32,7 @@ func TestPowerMonitorInternal_Reconciliation(t *testing.T) {
 		configMapName := "my-custom-config"
 		f.CreatePowerMonitorInternal(name,
 			b.WithNamespace(testNs),
-			b.WithKeplerImage(testKeplerRebootImage),
+			b.WithKeplerImage(testKeplerImage),
 			b.WithKubeRbacProxyImage(testKubeRbacProxyImage),
 			b.WithCluster(Cluster),
 			b.WithAdditionalConfigMaps([]string{configMapName}),
@@ -49,7 +49,7 @@ func TestPowerMonitorInternal_Reconciliation(t *testing.T) {
 	} else {
 		f.CreatePowerMonitorInternal(name,
 			b.WithNamespace(testNs),
-			b.WithKeplerImage(testKeplerRebootImage),
+			b.WithKeplerImage(testKeplerImage),
 			b.WithKubeRbacProxyImage(testKubeRbacProxyImage),
 			b.WithCluster(Cluster),
 			b.WithSecuritySet(
@@ -94,7 +94,7 @@ func TestPowerMonitorInternal_RBAC_Reconciliation(t *testing.T) {
 		configMapName := "my-custom-config"
 		pmi = f.CreatePowerMonitorInternal(name,
 			b.WithNamespace(testNs),
-			b.WithKeplerImage(testKeplerRebootImage),
+			b.WithKeplerImage(testKeplerImage),
 			b.WithKubeRbacProxyImage(testKubeRbacProxyImage),
 			b.WithCluster(Cluster),
 			b.WithAdditionalConfigMaps([]string{configMapName}),
@@ -113,7 +113,7 @@ func TestPowerMonitorInternal_RBAC_Reconciliation(t *testing.T) {
 	} else {
 		pmi = f.CreatePowerMonitorInternal(name,
 			b.WithNamespace(testNs),
-			b.WithKeplerImage(testKeplerRebootImage),
+			b.WithKeplerImage(testKeplerImage),
 			b.WithKubeRbacProxyImage(testKubeRbacProxyImage),
 			b.WithCluster(Cluster),
 			b.WithSecuritySet(
