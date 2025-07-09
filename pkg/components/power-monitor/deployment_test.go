@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/cespare/xxhash/v2"
 	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -20,7 +21,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"k8s.io/utils/ptr"
 )
 
 func TestPowerMonitorNodeSelection(t *testing.T) {
@@ -479,6 +483,7 @@ func TestPowerMonitorConfigMap(t *testing.T) {
 		logLevel       string
 		configFileName string
 		scenario       string
+		validateConfig func(*testing.T, string, string) // function to validate config content
 	}{
 		{
 			spec: v1alpha1.PowerMonitorInternalKeplerSpec{},
@@ -491,6 +496,10 @@ func TestPowerMonitorConfigMap(t *testing.T) {
 			logLevel:       "info",
 			configFileName: KeplerConfigFile,
 			scenario:       "default case",
+			validateConfig: func(t *testing.T, configData, configFileName string) {
+				assert.Contains(t, configData, "- node")
+				assert.Contains(t, configData, "- pod")
+			},
 		},
 		{
 			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
@@ -507,6 +516,116 @@ func TestPowerMonitorConfigMap(t *testing.T) {
 			logLevel:       "debug",
 			configFileName: KeplerConfigFile,
 			scenario:       "debug case",
+			validateConfig: func(t *testing.T, configData, configFileName string) {
+				// For debug case, just verify it has default metrics levels (node,pod)
+				assert.Contains(t, configData, "- node")
+				assert.Contains(t, configData, "- pod")
+			},
+		},
+		{
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
+				Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+					LogLevel:     "info",
+					MetricLevels: []string{"node", "process"},
+				},
+			},
+			labels: k8s.StringMap{
+				"app.kubernetes.io/component":                "exporter",
+				"operator.sustainable-computing.io/internal": "power-monitor-internal",
+				"app.kubernetes.io/part-of":                  "power-monitor-internal",
+				"app.kubernetes.io/managed-by":               "kepler-operator",
+			},
+			logLevel:       "info",
+			configFileName: KeplerConfigFile,
+			scenario:       "metrics level node and process case",
+			validateConfig: func(t *testing.T, configData, configFileName string) {
+				assert.Contains(t, configData, "- node")
+				assert.Contains(t, configData, "- process")
+			},
+		},
+		{
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
+				Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+					LogLevel:     "info",
+					MetricLevels: []string{"node", "process", "container", "vm", "pod"},
+				},
+			},
+			labels: k8s.StringMap{
+				"app.kubernetes.io/component":                "exporter",
+				"operator.sustainable-computing.io/internal": "power-monitor-internal",
+				"app.kubernetes.io/part-of":                  "power-monitor-internal",
+				"app.kubernetes.io/managed-by":               "kepler-operator",
+			},
+			logLevel:       "info",
+			configFileName: KeplerConfigFile,
+			scenario:       "metrics level all case",
+			validateConfig: func(t *testing.T, configData, configFileName string) {
+				assert.Contains(t, configData, "- node")
+				assert.Contains(t, configData, "- process")
+				assert.Contains(t, configData, "- container")
+				assert.Contains(t, configData, "- vm")
+				assert.Contains(t, configData, "- pod")
+			},
+		},
+		{
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
+				Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+					LogLevel:  "info",
+					Staleness: &metav1.Duration{Duration: 2 * time.Second},
+				},
+			},
+			labels: k8s.StringMap{
+				"app.kubernetes.io/component":                "exporter",
+				"operator.sustainable-computing.io/internal": "power-monitor-internal",
+				"app.kubernetes.io/part-of":                  "power-monitor-internal",
+				"app.kubernetes.io/managed-by":               "kepler-operator",
+			},
+			logLevel:       "info",
+			configFileName: KeplerConfigFile,
+			scenario:       "staleness 2s case",
+			validateConfig: func(t *testing.T, configData, configFileName string) {
+				assert.Contains(t, configData, "staleness: 2s")
+			},
+		},
+		{
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
+				Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+					LogLevel:   "info",
+					SampleRate: &metav1.Duration{Duration: 10 * time.Second},
+				},
+			},
+			labels: k8s.StringMap{
+				"app.kubernetes.io/component":                "exporter",
+				"operator.sustainable-computing.io/internal": "power-monitor-internal",
+				"app.kubernetes.io/part-of":                  "power-monitor-internal",
+				"app.kubernetes.io/managed-by":               "kepler-operator",
+			},
+			logLevel:       "info",
+			configFileName: KeplerConfigFile,
+			scenario:       "sample rate 10s case",
+			validateConfig: func(t *testing.T, configData, configFileName string) {
+				assert.Contains(t, configData, "interval: 10s")
+			},
+		},
+		{
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
+				Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+					LogLevel:      "info",
+					MaxTerminated: ptr.To[int32](1000),
+				},
+			},
+			labels: k8s.StringMap{
+				"app.kubernetes.io/component":                "exporter",
+				"operator.sustainable-computing.io/internal": "power-monitor-internal",
+				"app.kubernetes.io/part-of":                  "power-monitor-internal",
+				"app.kubernetes.io/managed-by":               "kepler-operator",
+			},
+			logLevel:       "info",
+			configFileName: KeplerConfigFile,
+			scenario:       "max terminated 1000 case",
+			validateConfig: func(t *testing.T, configData, configFileName string) {
+				assert.Contains(t, configData, "maxTerminated: 1000")
+			},
 		},
 	}
 	for _, tc := range tt {
@@ -529,6 +648,11 @@ func TestPowerMonitorConfigMap(t *testing.T) {
 			actualData := k8s.DataFromConfigMap(cm)
 			assert.Contains(t, actualData, tc.configFileName)
 			assert.Contains(t, actualData[tc.configFileName], tc.logLevel)
+
+			// Use the test case specific validation function
+			if tc.validateConfig != nil {
+				tc.validateConfig(t, actualData[tc.configFileName], tc.configFileName)
+			}
 		})
 	}
 }
@@ -620,6 +744,7 @@ func TestKeplerConfig(t *testing.T) {
 		defaultConfig := config.DefaultConfig()
 		defaultConfig.Host.ProcFS = ProcFSMountPath
 		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
 
 		assert.NoError(t, err)
 		assert.Equal(t, defaultConfig.String(), configStr)
@@ -645,6 +770,7 @@ func TestKeplerConfig(t *testing.T) {
 		defaultConfig.Log.Level = "debug"
 		defaultConfig.Host.ProcFS = ProcFSMountPath
 		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
 
 		assert.NoError(t, err)
 		assert.Equal(t, defaultConfig.String(), configStr)
@@ -672,6 +798,7 @@ func TestKeplerConfig(t *testing.T) {
 		defaultConfig := config.DefaultConfig()
 		defaultConfig.Host.ProcFS = ProcFSMountPath
 		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
 
 		assert.NoError(t, err)
 		assert.Equal(t, defaultConfig.String(), configStr) // PMI spec config takes precedence over additional config
@@ -700,6 +827,7 @@ func TestKeplerConfig(t *testing.T) {
 		defaultConfig.Host.ProcFS = ProcFSMountPath
 		defaultConfig.Host.SysFS = SysFSMountPath
 		defaultConfig.Log.Format = "json"
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
 
 		assert.NoError(t, err)
 		assert.Equal(t, defaultConfig.String(), configStr)
@@ -726,6 +854,481 @@ func TestKeplerConfig(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to build config")
 		assert.Empty(t, configStr)
+	})
+
+	// Test cases for different MetricLevels configurations
+	metricsLevelTests := []struct {
+		name          string
+		metricLevels  []string
+		expectedLevel config.Level
+	}{
+		{
+			name:          "With MetricLevels set to node only",
+			metricLevels:  []string{"node"},
+			expectedLevel: config.MetricsLevelNode,
+		},
+		{
+			name:          "With MetricLevels set to node and process",
+			metricLevels:  []string{"node", "process"},
+			expectedLevel: config.MetricsLevelNode | config.MetricsLevelProcess,
+		},
+		{
+			name:          "With MetricLevels set to all",
+			metricLevels:  []string{"node", "process", "container", "vm", "pod"},
+			expectedLevel: config.MetricsLevelAll,
+		},
+		{
+			name:          "With MetricLevels set to container and VM",
+			metricLevels:  []string{"container", "vm"},
+			expectedLevel: config.MetricsLevelContainer | config.MetricsLevelVM,
+		},
+		{
+			name:          "With MetricLevels set to pod only",
+			metricLevels:  []string{"pod"},
+			expectedLevel: config.MetricsLevelPod,
+		},
+	}
+
+	for _, tc := range metricsLevelTests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			pmi := &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+							LogLevel:     "info",
+							MetricLevels: tc.metricLevels,
+						},
+					},
+				},
+			}
+
+			configStr, err := KeplerConfig(pmi)
+
+			defaultConfig := config.DefaultConfig()
+			defaultConfig.Host.ProcFS = ProcFSMountPath
+			defaultConfig.Host.SysFS = SysFSMountPath
+			defaultConfig.Exporter.Prometheus.MetricsLevel = tc.expectedLevel
+
+			assert.NoError(t, err)
+			assert.Equal(t, defaultConfig.String(), configStr)
+		})
+	}
+
+	// Test cases for different Staleness configurations
+	stalenessTests := []struct {
+		name      string
+		staleness *metav1.Duration
+	}{
+		{
+			name:      "With Staleness set to 1 second",
+			staleness: &metav1.Duration{Duration: 1 * time.Second},
+		},
+		{
+			name:      "With Staleness set to 100 milliseconds",
+			staleness: &metav1.Duration{Duration: 100 * time.Millisecond},
+		},
+		{
+			name:      "With Staleness set to 5 seconds",
+			staleness: &metav1.Duration{Duration: 5 * time.Second},
+		},
+		{
+			name:      "With Staleness set to 0 (zero value)",
+			staleness: &metav1.Duration{Duration: 0},
+		},
+	}
+
+	for _, tc := range stalenessTests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			pmi := &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+							LogLevel:  "info",
+							Staleness: tc.staleness,
+						},
+					},
+				},
+			}
+
+			configStr, err := KeplerConfig(pmi)
+
+			defaultConfig := config.DefaultConfig()
+			defaultConfig.Host.ProcFS = ProcFSMountPath
+			defaultConfig.Host.SysFS = SysFSMountPath
+			defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
+			defaultConfig.Monitor.Staleness = tc.staleness.Duration
+
+			assert.NoError(t, err)
+			assert.Equal(t, defaultConfig.String(), configStr)
+		})
+	}
+
+	t.Run("With Staleness set to zero (explicit zero value)", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel:  "info",
+						Staleness: &metav1.Duration{Duration: 0}, // Explicit zero value, should use 0
+					},
+				},
+			},
+		}
+
+		configStr, err := KeplerConfig(pmi)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
+		defaultConfig.Monitor.Staleness = 0 // Should use the explicit zero value
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
+	})
+
+	t.Run("With Staleness not set (nil pointer, default behavior)", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel:  "info",
+						Staleness: nil, // Not set, should use PowerMonitor default
+					},
+				},
+			},
+		}
+
+		configStr, err := KeplerConfig(pmi)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
+		defaultConfig.Monitor.Staleness = 500 * time.Millisecond // Should use PowerMonitor default
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
+	})
+
+	// Test cases for different SampleRate configurations
+	sampleRateTests := []struct {
+		name       string
+		sampleRate *metav1.Duration
+	}{
+		{
+			name:       "With SampleRate set to 1 second",
+			sampleRate: &metav1.Duration{Duration: 1 * time.Second},
+		},
+		{
+			name:       "With SampleRate set to 10 seconds",
+			sampleRate: &metav1.Duration{Duration: 10 * time.Second},
+		},
+		{
+			name:       "With SampleRate set to 30 seconds",
+			sampleRate: &metav1.Duration{Duration: 30 * time.Second},
+		},
+		{
+			name:       "With SampleRate set to 0 (zero value)",
+			sampleRate: &metav1.Duration{Duration: 0},
+		},
+	}
+
+	for _, tc := range sampleRateTests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			pmi := &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+							LogLevel:   "info",
+							SampleRate: tc.sampleRate,
+						},
+					},
+				},
+			}
+
+			configStr, err := KeplerConfig(pmi)
+
+			defaultConfig := config.DefaultConfig()
+			defaultConfig.Host.ProcFS = ProcFSMountPath
+			defaultConfig.Host.SysFS = SysFSMountPath
+			defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
+			defaultConfig.Monitor.Interval = tc.sampleRate.Duration
+
+			assert.NoError(t, err)
+			assert.Equal(t, defaultConfig.String(), configStr)
+		})
+	}
+
+	t.Run("With SampleRate set to zero (explicit zero value)", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel:   "info",
+						SampleRate: &metav1.Duration{Duration: 0}, // Explicit zero value, should use 0
+					},
+				},
+			},
+		}
+
+		configStr, err := KeplerConfig(pmi)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
+		defaultConfig.Monitor.Interval = 0 // Should use the explicit zero value
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
+	})
+
+	t.Run("With SampleRate not set (nil pointer, default behavior)", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel:   "info",
+						SampleRate: nil, // Not set, should use PowerMonitor default
+					},
+				},
+			},
+		}
+
+		configStr, err := KeplerConfig(pmi)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
+		defaultConfig.Monitor.Interval = 5 * time.Second // Should use PowerMonitor default
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
+	})
+
+	// Test cases for different MaxTerminated configurations
+	maxTerminatedTests := []struct {
+		name          string
+		maxTerminated *int32
+	}{
+		{
+			name:          "With MaxTerminated set to 100",
+			maxTerminated: ptr.To[int32](100),
+		},
+		{
+			name:          "With MaxTerminated set to 0 (disabled)",
+			maxTerminated: ptr.To[int32](0),
+		},
+		{
+			name:          "With MaxTerminated set to -1 (unlimited)",
+			maxTerminated: ptr.To[int32](-1),
+		},
+		{
+			name:          "With MaxTerminated set to 2000",
+			maxTerminated: ptr.To[int32](2000),
+		},
+	}
+
+	for _, tc := range maxTerminatedTests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			pmi := &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+							LogLevel:      "info",
+							MaxTerminated: tc.maxTerminated,
+						},
+					},
+				},
+			}
+
+			configStr, err := KeplerConfig(pmi)
+
+			defaultConfig := config.DefaultConfig()
+			defaultConfig.Host.ProcFS = ProcFSMountPath
+			defaultConfig.Host.SysFS = SysFSMountPath
+			defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
+			defaultConfig.Monitor.MaxTerminated = int(*tc.maxTerminated)
+
+			assert.NoError(t, err)
+			assert.Equal(t, defaultConfig.String(), configStr)
+		})
+	}
+
+	t.Run("With MaxTerminated set to nil (default behavior)", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel:      "info",
+						MaxTerminated: nil, // Nil value, should use PowerMonitor default
+					},
+				},
+			},
+		}
+
+		configStr, err := KeplerConfig(pmi)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
+		defaultConfig.Monitor.MaxTerminated = 500 // Should use PowerMonitor default
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
+	})
+
+	t.Run("With MetricLevels set to nil (default behavior)", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel:     "info",
+						MetricLevels: nil, // Nil/empty value, should use PowerMonitor default
+					},
+				},
+			},
+		}
+
+		configStr, err := KeplerConfig(pmi)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault // Should use PowerMonitor default
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
+	})
+
+	// Additional test cases to verify our updated default value behavior
+	t.Run("With minimal config (LogLevel only, other defaults)", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel: "info", // Must set LogLevel to avoid validation error
+						// Other fields not set - should use PowerMonitor defaults
+					},
+				},
+			},
+		}
+
+		configStr, err := KeplerConfig(pmi)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
+		// When no staleness/sample rate is set, should use PowerMonitor defaults (same as config defaults)
+		defaultConfig.Monitor.Staleness = 500 * time.Millisecond
+		defaultConfig.Monitor.Interval = 5 * time.Second
+		defaultConfig.Monitor.MaxTerminated = 500
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
+	})
+
+	t.Run("With mixed values (staleness 2s, sample rate default)", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel:  "info",
+						Staleness: &metav1.Duration{Duration: 2 * time.Second}, // Explicitly set
+						// SampleRate not set, should use default
+					},
+				},
+			},
+		}
+
+		configStr, err := KeplerConfig(pmi)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
+		defaultConfig.Monitor.Staleness = 2 * time.Second // Should use explicitly set value
+		defaultConfig.Monitor.Interval = 5 * time.Second  // Should use default since not set
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
+	})
+
+	t.Run("With mixed values (sample rate 10s, staleness default)", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel:   "info",
+						SampleRate: &metav1.Duration{Duration: 10 * time.Second}, // Explicitly set
+						// Staleness not set, should use default
+					},
+				},
+			},
+		}
+
+		configStr, err := KeplerConfig(pmi)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
+		defaultConfig.Monitor.Staleness = 500 * time.Millisecond // Should use default since not set
+		defaultConfig.Monitor.Interval = 10 * time.Second        // Should use explicitly set value
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
 	})
 }
 

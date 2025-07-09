@@ -89,6 +89,47 @@ spec:
                       logLevel:
                         default: info
                         type: string
+                      maxTerminated:
+                        default: 500
+                        description: |-
+                          MaxTerminated controls terminated workload tracking behavior
+                          Negative values: track unlimited terminated workloads (no capacity limit)
+                          Zero: disable terminated workload tracking completely
+                          Positive values: track top N terminated workloads by energy consumption
+                        format: int32
+                        type: integer
+                      metricLevels:
+                        default:
+                        - node
+                        - pod
+                        - vm
+                        description: |-
+                          MetricLevels specifies which metrics levels to export
+                          Valid values are combinations of: node, process, container, vm, pod
+                        items:
+                          enum:
+                          - node
+                          - process
+                          - container
+                          - vm
+                          - pod
+                          type: string
+                        type: array
+                        x-kubernetes-list-type: set
+                      sampleRate:
+                        default: 5s
+                        description: |-
+                          SampleRate specifies the interval for monitoring resources (processes, containers, vms, etc.)
+                          Must be a positive duration (e.g., "5s", "1m", "30s"). Negative values are not allowed.
+                        pattern: ^[0-9]+(\.[0-9]+)?(ns|us|ms|s|m|h)$
+                        type: string
+                      staleness:
+                        default: 500ms
+                        description: |-
+                          Staleness specifies how long to wait before considering calculated power values as stale
+                          Must be a positive duration (e.g., "500ms", "5s", "1h"). Negative values are not allowed.
+                        pattern: ^[0-9]+(\.[0-9]+)?(ns|us|ms|s|m|h)$
+                        type: string
                     type: object
                   deployment:
                     properties:

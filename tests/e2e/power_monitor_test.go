@@ -571,3 +571,149 @@ func TestPowerMonitor_RBAC_Reconciliation(t *testing.T) {
 	f.AssertNoResourceExists(controller.PowerMonitorDeploymentNS, "", &corev1.Namespace{})
 	f.AssertNoResourceExists(ds.Name, ds.Namespace, &ds)
 }
+
+func TestPowerMonitor_NewConfigFields(t *testing.T) {
+	f := test.NewFramework(t)
+
+	// Pre-condition: Verify PowerMonitor doesn't exist
+	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{})
+
+	// Create PowerMonitor with all new config fields
+	if runningOnVM {
+		configMapName := "my-custom-config"
+		f.CreatePowerMonitor(
+			"power-monitor",
+			f.WithAdditionalConfigMaps([]string{configMapName}),
+			f.WithMaxTerminated(250), // Custom MaxTerminated
+			f.WithStaleness("1s"),    // Custom Staleness (1 second)
+			f.WithSampleRate("10s"),  // Custom SampleRate (10 seconds)
+			f.WithPowerMonitorSecuritySet(
+				v1alpha1.SecurityModeNone,
+				[]string{},
+			),
+		)
+		cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, `dev:
+  fake-cpu-meter:
+    enabled: true`)
+		err := f.Patch(cfm)
+		assert.NoError(t, err)
+	} else {
+		f.CreatePowerMonitor(
+			"power-monitor",
+			f.WithMaxTerminated(250), // Custom MaxTerminated
+			f.WithStaleness("1s"),    // Custom Staleness (1 second)
+			f.WithSampleRate("10s"),  // Custom SampleRate (10 seconds)
+			f.WithPowerMonitorSecuritySet(
+				v1alpha1.SecurityModeNone,
+				[]string{},
+			),
+		)
+	}
+
+	// Wait until PowerMonitor is available
+	pm := f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Available, v1alpha1.ConditionTrue)
+
+	// Verify DaemonSet exists
+	ds := appsv1.DaemonSet{}
+	f.AssertResourceExists(
+		pm.Name,
+		controller.PowerMonitorDeploymentNS,
+		&ds,
+		test.Timeout(10*time.Second),
+	)
+
+	// Verify the spec values are properly set
+	assert.NotNil(t, pm.Spec.Kepler.Config.MaxTerminated, "MaxTerminated should be set")
+	assert.Equal(t, int32(250), *pm.Spec.Kepler.Config.MaxTerminated, "MaxTerminated should be 250")
+
+	assert.NotNil(t, pm.Spec.Kepler.Config.Staleness, "Staleness should be set")
+	assert.Equal(t, 1*time.Second, pm.Spec.Kepler.Config.Staleness.Duration, "Staleness should be 1 second")
+
+	assert.NotNil(t, pm.Spec.Kepler.Config.SampleRate, "SampleRate should be set")
+	assert.Equal(t, 10*time.Second, pm.Spec.Kepler.Config.SampleRate.Duration, "SampleRate should be 10 seconds")
+
+	// Verify the configuration is applied in the ConfigMap
+	mainConfigMap := corev1.ConfigMap{}
+	f.AssertResourceExists(pm.Name, controller.PowerMonitorDeploymentNS, &mainConfigMap)
+	configData := mainConfigMap.Data["config.yaml"]
+
+	// Check that our custom values are present in the generated config
+	assert.Contains(t, configData, "maxTerminated: 250", "Config should contain custom MaxTerminated value")
+	assert.Contains(t, configData, "staleness: 1s", "Config should contain custom Staleness value")
+	assert.Contains(t, configData, "interval: 10s", "Config should contain custom SampleRate value")
+
+	// Verify standard default values are still present
+	assert.Contains(t, configData, "sysfs: /host/sys", "Default sysfs path should be present")
+	assert.Contains(t, configData, "procfs: /host/proc", "Default procfs path should be present")
+}
+
+func TestPowerMonitor_ZeroValueConfigFields(t *testing.T) {
+	f := test.NewFramework(t)
+
+	// Pre-condition: Verify PowerMonitor doesn't exist
+	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{})
+
+	// Create PowerMonitor with zero values for new config fields
+	if runningOnVM {
+		configMapName := "my-custom-config"
+		f.CreatePowerMonitor(
+			"power-monitor",
+			f.WithAdditionalConfigMaps([]string{configMapName}),
+			f.WithMaxTerminated(0), // Zero MaxTerminated (disabled)
+			f.WithStaleness("0s"),  // Zero Staleness
+			f.WithSampleRate("0s"), // Zero SampleRate
+			f.WithPowerMonitorSecuritySet(
+				v1alpha1.SecurityModeNone,
+				[]string{},
+			),
+		)
+		cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, `dev:
+  fake-cpu-meter:
+    enabled: true`)
+		err := f.Patch(cfm)
+		assert.NoError(t, err)
+	} else {
+		f.CreatePowerMonitor(
+			"power-monitor",
+			f.WithMaxTerminated(0), // Zero MaxTerminated (disabled)
+			f.WithStaleness("0s"),  // Zero Staleness
+			f.WithSampleRate("0s"), // Zero SampleRate
+			f.WithPowerMonitorSecuritySet(
+				v1alpha1.SecurityModeNone,
+				[]string{},
+			),
+		)
+	}
+
+	// Wait until PowerMonitor is available
+	pm := f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Available, v1alpha1.ConditionTrue)
+
+	// Verify DaemonSet exists
+	ds := appsv1.DaemonSet{}
+	f.AssertResourceExists(
+		pm.Name,
+		controller.PowerMonitorDeploymentNS,
+		&ds,
+		test.Timeout(10*time.Second),
+	)
+
+	// Verify the spec values are properly set to zero
+	assert.NotNil(t, pm.Spec.Kepler.Config.MaxTerminated, "MaxTerminated should be set")
+	assert.Equal(t, int32(0), *pm.Spec.Kepler.Config.MaxTerminated, "MaxTerminated should be 0")
+
+	assert.NotNil(t, pm.Spec.Kepler.Config.Staleness, "Staleness should be set")
+	assert.Equal(t, 0*time.Second, pm.Spec.Kepler.Config.Staleness.Duration, "Staleness should be 0")
+
+	assert.NotNil(t, pm.Spec.Kepler.Config.SampleRate, "SampleRate should be set")
+	assert.Equal(t, 0*time.Second, pm.Spec.Kepler.Config.SampleRate.Duration, "SampleRate should be 0")
+
+	// Verify the configuration is applied in the ConfigMap
+	mainConfigMap := corev1.ConfigMap{}
+	f.AssertResourceExists(pm.Name, controller.PowerMonitorDeploymentNS, &mainConfigMap)
+	configData := mainConfigMap.Data["config.yaml"]
+
+	// Check that our zero values are present in the generated config
+	assert.Contains(t, configData, "maxTerminated: 0", "Config should contain zero MaxTerminated value")
+	assert.Contains(t, configData, "staleness: 0s", "Config should contain zero Staleness value")
+	assert.Contains(t, configData, "interval: 0s", "Config should contain zero SampleRate value")
+}

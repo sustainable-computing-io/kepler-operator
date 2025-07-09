@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/cespare/xxhash/v2"
 	secv1 "github.com/openshift/api/security/v1"
@@ -544,30 +545,6 @@ func NewPowerMonitorUWMTokenSecret(d components.Detail, pmi *v1alpha1.PowerMonit
 	}
 }
 
-// KeplerConfig returns the config for the power-monitor
-func KeplerConfig(pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...string) (string, error) {
-	// Start with default config
-	b := &config.Builder{}
-
-	for _, additionalConfig := range additionalConfigs {
-		b.Merge(additionalConfig)
-	}
-
-	cfg, err := b.Build()
-	if err != nil {
-		return "", fmt.Errorf("failed to build config: %w", err)
-	}
-
-	cfg.Log.Level = pmi.Spec.Kepler.Config.LogLevel
-	cfg.Host.SysFS = SysFSMountPath
-	cfg.Host.ProcFS = ProcFSMountPath
-
-	if err := cfg.Validate(config.SkipHostValidation); err != nil {
-		return config.DefaultConfig().String(), err
-	}
-	return cfg.String(), nil
-}
-
 // AnnotateDaemonSetWithConfigMapHash sets annotations on the DaemonSet's pod template to trigger a rollout when the ConfigMap changes
 func AnnotateDaemonSetWithConfigMapHash(ds *appsv1.DaemonSet, cfm *corev1.ConfigMap) {
 	if ds.Spec.Template.Annotations == nil {
@@ -753,4 +730,72 @@ func createKubeRBACConfig(serviceAccountNames []string) string {
 	}
 	yamlData, _ := yaml.Marshal(&config)
 	return string(yamlData)
+}
+
+// KeplerConfig returns the config for the power-monitor
+func KeplerConfig(pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...string) (string, error) {
+	// Start with default config
+	b := &config.Builder{}
+
+	for _, additionalConfig := range additionalConfigs {
+		b.Merge(additionalConfig)
+	}
+
+	cfg, err := b.Build()
+	if err != nil {
+		return "", fmt.Errorf("failed to build config: %w", err)
+	}
+
+	cfg.Log.Level = pmi.Spec.Kepler.Config.LogLevel
+	cfg.Host.SysFS = SysFSMountPath
+	cfg.Host.ProcFS = ProcFSMountPath
+
+	// Set metrics level if specified, otherwise use PowerMonitor default
+	if len(pmi.Spec.Kepler.Config.MetricLevels) > 0 {
+		level, err := config.ParseLevel(pmi.Spec.Kepler.Config.MetricLevels)
+		if err != nil {
+			cfg.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
+		} else {
+			cfg.Exporter.Prometheus.MetricsLevel = level
+		}
+	} else {
+		cfg.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault
+	}
+
+	// Set staleness if specified, otherwise use PowerMonitor default
+	if pmi.Spec.Kepler.Config.Staleness != nil {
+		cfg.Monitor.Staleness = pmi.Spec.Kepler.Config.Staleness.Duration
+	} else {
+		cfg.Monitor.Staleness = 500 * time.Millisecond
+	}
+
+	// Set sample rate if specified, otherwise use PowerMonitor default
+	if pmi.Spec.Kepler.Config.SampleRate != nil {
+		cfg.Monitor.Interval = pmi.Spec.Kepler.Config.SampleRate.Duration
+	} else {
+		cfg.Monitor.Interval = 5 * time.Second
+	}
+
+	// Set max terminated if specified, otherwise use PowerMonitor default
+	if pmi.Spec.Kepler.Config.MaxTerminated != nil {
+		cfg.Monitor.MaxTerminated = int(*pmi.Spec.Kepler.Config.MaxTerminated)
+	} else {
+		cfg.Monitor.MaxTerminated = 500
+	}
+
+	if err := cfg.Validate(config.SkipHostValidation); err != nil {
+		return config.DefaultConfig().String(), err
+	}
+	return cfg.String(), nil
+}
+
+// MountConfigMapToDaemonSet sets annotations on the DaemonSet's pod template to trigger a rollout when the ConfigMap changes
+func MountConfigMapToDaemonSet(ds *appsv1.DaemonSet, cfm *corev1.ConfigMap) {
+	if ds.Spec.Template.Annotations == nil {
+		ds.Spec.Template.Annotations = make(map[string]string)
+	}
+
+	hash := xxhash.Sum64([]byte(cfm.Data[KeplerConfigFile]))
+
+	ds.Spec.Template.Annotations[ConfigMapHashAnnotation+"-"+cfm.Name] = fmt.Sprintf("%x", hash)
 }

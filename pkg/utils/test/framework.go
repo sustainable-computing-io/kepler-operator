@@ -510,6 +510,26 @@ func (f Framework) WithAdditionalConfigMaps(configMapNames []string) func(k *v1a
 	}
 }
 
+func (f Framework) WithMaxTerminated(maxTerminated int32) func(k *v1alpha1.PowerMonitor) {
+	return func(pm *v1alpha1.PowerMonitor) {
+		pm.Spec.Kepler.Config.MaxTerminated = &maxTerminated
+	}
+}
+
+func (f Framework) WithStaleness(staleness string) func(k *v1alpha1.PowerMonitor) {
+	return func(pm *v1alpha1.PowerMonitor) {
+		duration, _ := time.ParseDuration(staleness)
+		pm.Spec.Kepler.Config.Staleness = &metav1.Duration{Duration: duration}
+	}
+}
+
+func (f Framework) WithSampleRate(sampleRate string) func(k *v1alpha1.PowerMonitor) {
+	return func(pm *v1alpha1.PowerMonitor) {
+		duration, _ := time.ParseDuration(sampleRate)
+		pm.Spec.Kepler.Config.SampleRate = &metav1.Duration{Duration: duration}
+	}
+}
+
 func (f Framework) NewAdditionalConfigMap(configMapName, namespace, config string) *corev1.ConfigMap {
 	cm := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
