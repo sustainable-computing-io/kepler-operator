@@ -98,8 +98,6 @@ func main() {
 	// NOTE: RELATED_IMAGE_KEPLER can be set as env or flag, flag takes precedence over env
 	keplerImage := os.Getenv("RELATED_IMAGE_KEPLER")
 	flag.StringVar(&controller.Config.Image, "kepler.image", keplerImage, "kepler image")
-	keplerRebootImg := os.Getenv("RELATED_IMAGE_KEPLER_REBOOT")
-	flag.StringVar(&controller.Config.RebootImage, "kepler-reboot.image", keplerRebootImg, "kepler reboot image")
 	kubeRbacProxyImg := os.Getenv("RELATED_IMAGE_KUBE_RBAC_PROXY")
 	flag.StringVar(&controller.Config.KubeRbacProxyImage, "kube-rbac-proxy.image", kubeRbacProxyImg, "kube rbac proxy image")
 
