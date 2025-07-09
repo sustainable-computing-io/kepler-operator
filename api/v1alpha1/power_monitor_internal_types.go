@@ -23,6 +23,9 @@ type PowerMonitorInternalKeplerDeploymentSpec struct {
 	// +kubebuilder:validation:MinLength=3
 	Image string `json:"image"`
 
+	// +kubebuilder:validation:MinLength=3
+	KubeRbacProxyImage string `json:"kubeRbacProxyImage,omitempty"`
+
 	// +kubebuilder:validation:MinLength=1
 	Namespace string `json:"namespace"`
 }

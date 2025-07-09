@@ -31,6 +31,7 @@ import (
 	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/internal/controller"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
+	powermonitor "github.com/sustainable.computing.io/kepler-operator/pkg/components/power-monitor"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/version"
 	//+kubebuilder:scaffold:imports
@@ -99,6 +100,8 @@ func main() {
 	flag.StringVar(&controller.Config.Image, "kepler.image", keplerImage, "kepler image")
 	keplerRebootImg := os.Getenv("RELATED_IMAGE_KEPLER_REBOOT")
 	flag.StringVar(&controller.Config.RebootImage, "kepler-reboot.image", keplerRebootImg, "kepler reboot image")
+	kubeRbacProxyImg := os.Getenv("RELATED_IMAGE_KUBE_RBAC_PROXY")
+	flag.StringVar(&controller.Config.KubeRbacProxyImage, "kube-rbac-proxy.image", kubeRbacProxyImg, "kube rbac proxy image")
 
 	opts := zap.Options{
 		Development: true,
@@ -132,6 +135,10 @@ func main() {
 
 	if openshift {
 		controller.Config.Cluster = k8s.OpenShift
+		keplersystemv1alpha1.DefaultSecurityConfig.Mode = keplersystemv1alpha1.SecurityModeRBAC
+		keplersystemv1alpha1.DefaultSecurityConfig.AllowedSANames = []string{
+			fmt.Sprintf("%s:%s", powermonitor.UWMNamespace, powermonitor.UWMServiceAccountName),
+		}
 	}
 
 	// Metrics endpoint is enabled in 'config/default/kustomization.yaml'. The Metrics options configure the server.
@@ -169,6 +176,7 @@ func main() {
 			}
 			if openshift {
 				cacheNs[exporter.DashboardNs] = cache.Config{}
+				cacheNs[powermonitor.UWMNamespace] = cache.Config{}
 			}
 			for _, ns := range additionalNamespaces {
 				cacheNs[ns] = cache.Config{}

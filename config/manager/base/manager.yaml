@@ -73,10 +73,13 @@ spec:
               value: "<KEPLER_IMG>"
             - name: RELATED_IMAGE_KEPLER_REBOOT
               value: "<KEPLER_REBOOT_IMG>"
+            - name: RELATED_IMAGE_KUBE_RBAC_PROXY
+              value: "<KUBE_RBAC_PROXY_IMG>"
           args:
             - --leader-elect
             - --kepler.image=$(RELATED_IMAGE_KEPLER)
             - --kepler-reboot.image=$(RELATED_IMAGE_KEPLER_REBOOT)
+            - --kube-rbac-proxy.image=$(RELATED_IMAGE_KUBE_RBAC_PROXY)
             - --zap-log-level=5
           image: "<OPERATOR_IMG>"
           imagePullPolicy: IfNotPresent

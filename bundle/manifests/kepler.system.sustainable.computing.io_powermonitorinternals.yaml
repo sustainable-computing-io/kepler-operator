@@ -99,6 +99,9 @@ spec:
                       image:
                         minLength: 3
                         type: string
+                      kubeRbacProxyImage:
+                        minLength: 3
+                        type: string
                       namespace:
                         minLength: 1
                         type: string
@@ -108,6 +111,21 @@ spec:
                         default:
                           kubernetes.io/os: linux
                         description: Defines which Nodes the Pod is scheduled on
+                        type: object
+                      security:
+                        description: If set, defines the security mode and allowed
+                          SANames
+                        properties:
+                          allowedSANames:
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          mode:
+                            enum:
+                            - none
+                            - rbac
+                            type: string
                         type: object
                       tolerations:
                         default:

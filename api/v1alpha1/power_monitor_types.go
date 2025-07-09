@@ -13,6 +13,21 @@ const (
 	InvalidPowerMonitorResource ConditionReason = "InvalidPowerMonitorResource"
 )
 
+type SecurityMode string
+
+const (
+	SecurityModeNone SecurityMode = "none"
+	SecurityModeRBAC SecurityMode = "rbac"
+)
+
+type PowerMonitorKeplerDeploymentSecuritySpec struct {
+	// +kubebuilder:validation:Enum=none;rbac
+	Mode SecurityMode `json:"mode,omitempty"`
+	// +optional
+	// +listType=atomic
+	AllowedSANames []string `json:"allowedSANames,omitempty"`
+}
+
 type PowerMonitorKeplerDeploymentSpec struct {
 	// Defines which Nodes the Pod is scheduled on
 	// +optional
@@ -23,6 +38,9 @@ type PowerMonitorKeplerDeploymentSpec struct {
 	// +optional
 	// +kubebuilder:default={{"key": "", "operator": "Exists", "value": "", "effect": ""}}
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// If set, defines the security mode and allowed SANames
+	Security PowerMonitorKeplerDeploymentSecuritySpec `json:"security,omitempty"`
 }
 
 type PowerMonitorKeplerConfigSpec struct {

@@ -1354,6 +1354,13 @@ PowerMonitorInternalSpec defines the desired state of PowerMonitorInternalSpec
         </td>
         <td>true</td>
       </tr><tr>
+        <td><b>kubeRbacProxyImage</b></td>
+        <td>string</td>
+        <td>
+          <br/>
+        </td>
+        <td>false</td>
+      </tr><tr>
         <td><b>nodeSelector</b></td>
         <td>map[string]string</td>
         <td>
@@ -1363,12 +1370,55 @@ PowerMonitorInternalSpec defines the desired state of PowerMonitorInternalSpec
         </td>
         <td>false</td>
       </tr><tr>
+        <td><b><a href="#powermonitorinternalspeckeplerdeploymentsecurity">security</a></b></td>
+        <td>object</td>
+        <td>
+          If set, defines the security mode and allowed SANames<br/>
+        </td>
+        <td>false</td>
+      </tr><tr>
         <td><b><a href="#powermonitorinternalspeckeplerdeploymenttolerationsindex">tolerations</a></b></td>
         <td>[]object</td>
         <td>
           If specified, define Pod's tolerations<br/>
           <br/>
             <i>Default</i>: [map[effect: key: operator:Exists value:]]<br/>
+        </td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### PowerMonitorInternal.spec.kepler.deployment.security
+<sup><sup>[↩ Parent](#powermonitorinternalspeckeplerdeployment)</sup></sup>
+
+
+
+If set, defines the security mode and allowed SANames
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b>allowedSANames</b></td>
+        <td>[]string</td>
+        <td>
+          <br/>
+        </td>
+        <td>false</td>
+      </tr><tr>
+        <td><b>mode</b></td>
+        <td>enum</td>
+        <td>
+          <br/>
+          <br/>
+            <i>Enum</i>: none, rbac<br/>
         </td>
         <td>false</td>
       </tr></tbody>
@@ -1969,12 +2019,55 @@ ConfigMapRef defines a reference to a ConfigMap
         </td>
         <td>false</td>
       </tr><tr>
+        <td><b><a href="#powermonitorspeckeplerdeploymentsecurity">security</a></b></td>
+        <td>object</td>
+        <td>
+          If set, defines the security mode and allowed SANames<br/>
+        </td>
+        <td>false</td>
+      </tr><tr>
         <td><b><a href="#powermonitorspeckeplerdeploymenttolerationsindex">tolerations</a></b></td>
         <td>[]object</td>
         <td>
           If specified, define Pod's tolerations<br/>
           <br/>
             <i>Default</i>: [map[effect: key: operator:Exists value:]]<br/>
+        </td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### PowerMonitor.spec.kepler.deployment.security
+<sup><sup>[↩ Parent](#powermonitorspeckeplerdeployment)</sup></sup>
+
+
+
+If set, defines the security mode and allowed SANames
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b>allowedSANames</b></td>
+        <td>[]string</td>
+        <td>
+          <br/>
+        </td>
+        <td>false</td>
+      </tr><tr>
+        <td><b>mode</b></td>
+        <td>enum</td>
+        <td>
+          <br/>
+          <br/>
+            <i>Enum</i>: none, rbac<br/>
         </td>
         <td>false</td>
       </tr></tbody>

@@ -23,6 +23,12 @@ func (PowerMonitorInternalBuilder) WithKeplerImage(img string) func(pmi *v1alpha
 	}
 }
 
+func (PowerMonitorInternalBuilder) WithKubeRbacProxyImage(img string) func(pmi *v1alpha1.PowerMonitorInternal) {
+	return func(pmi *v1alpha1.PowerMonitorInternal) {
+		pmi.Spec.Kepler.Deployment.KubeRbacProxyImage = img
+	}
+}
+
 func (PowerMonitorInternalBuilder) WithCluster(c k8s.Cluster) func(pmi *v1alpha1.PowerMonitorInternal) {
 	return func(pmi *v1alpha1.PowerMonitorInternal) {
 		pmi.Spec.OpenShift = v1alpha1.PowerMonitorInternalOpenShiftSpec{
@@ -41,5 +47,12 @@ func (PowerMonitorInternalBuilder) WithAdditionalConfigMaps(configMapNames []str
 			configMapRefs = append(configMapRefs, v1alpha1.ConfigMapRef{Name: name})
 		}
 		pmi.Spec.Kepler.Config.AdditionalConfigMaps = configMapRefs
+	}
+}
+
+func (PowerMonitorInternalBuilder) WithSecuritySet(mode v1alpha1.SecurityMode, allowedSANames []string) func(pmi *v1alpha1.PowerMonitorInternal) {
+	return func(pmi *v1alpha1.PowerMonitorInternal) {
+		pmi.Spec.Kepler.Deployment.Security.Mode = mode
+		pmi.Spec.Kepler.Deployment.Security.AllowedSANames = allowedSANames
 	}
 }

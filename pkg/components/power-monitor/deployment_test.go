@@ -10,13 +10,17 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/cespare/xxhash/v2"
+	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/internal/config"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func TestPowerMonitorNodeSelection(t *testing.T) {
@@ -106,6 +110,7 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 		exporterCommand []string
 		volumeMounts    []corev1.VolumeMount
 		volumes         []corev1.Volume
+		containers      []string
 		scenario        string
 		addConfigMap    bool
 		configMap       *corev1.ConfigMap
@@ -130,7 +135,8 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 				k8s.VolumeFromHost("procfs", "/proc"),
 				k8s.VolumeFromConfigMap("cfm", "power-monitor-internal"),
 			},
-			scenario: "default case",
+			containers: []string{"power-monitor-internal"},
+			scenario:   "default case",
 		},
 		{
 			spec:    v1alpha1.PowerMonitorInternalKeplerSpec{},
@@ -151,6 +157,7 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 				k8s.VolumeFromHost("procfs", "/proc"),
 				k8s.VolumeFromConfigMap("cfm", "power-monitor-internal"),
 			},
+			containers:   []string{"power-monitor-internal"},
 			addConfigMap: true,
 			configMap: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -164,6 +171,38 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 				ConfigMapHashAnnotation + "-power-monitor-internal": "123",
 			},
 			scenario: "configmap case",
+		},
+		{
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
+				Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+					PowerMonitorKeplerDeploymentSpec: v1alpha1.PowerMonitorKeplerDeploymentSpec{
+						Security: v1alpha1.PowerMonitorKeplerDeploymentSecuritySpec{
+							Mode: v1alpha1.SecurityModeRBAC,
+						},
+					},
+				},
+			},
+			hostPID: true,
+			exporterCommand: []string{
+				"/usr/bin/kepler",
+				fmt.Sprintf("--config.file=%s", filepath.Join(KeplerConfigMapPath, KeplerConfigFile)),
+				"--kube.enable",
+				"--kube.node-name=$(NODE_NAME)",
+			},
+			volumeMounts: []corev1.VolumeMount{
+				{Name: "sysfs", MountPath: SysFSMountPath, ReadOnly: true},
+				{Name: "procfs", MountPath: ProcFSMountPath, ReadOnly: true},
+				{Name: "cfm", MountPath: KeplerConfigMapPath},
+			},
+			volumes: []corev1.Volume{
+				k8s.VolumeFromHost("sysfs", "/sys"),
+				k8s.VolumeFromHost("procfs", "/proc"),
+				k8s.VolumeFromConfigMap("cfm", "power-monitor-internal"),
+				k8s.VolumeFromSecret(SecretTLSCertName, SecretTLSCertName),
+				k8s.VolumeFromSecret(SecretKubeRBACProxyConfigName, SecretKubeRBACProxyConfigName),
+			},
+			containers: []string{"power-monitor-internal", KubeRBACProxyContainerName},
+			scenario:   "rbac case",
 		},
 	}
 	for _, tc := range tt {
@@ -195,10 +234,126 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 			actualVolumes := k8s.VolumesFromDS(ds)
 			assert.Equal(t, tc.volumes, actualVolumes)
 
+			actualContainers := k8s.ContainerNamesFromDS(ds)
+			assert.Equal(t, tc.containers, actualContainers)
+
 			if tc.addConfigMap {
 				actualAnnotation := k8s.AnnotationFromDS(ds)
 				assert.Contains(t, actualAnnotation, ConfigMapHashAnnotation+"-power-monitor-internal")
 			}
+		})
+	}
+}
+
+func TestPowerMonitorClusterRole(t *testing.T) {
+	tt := []struct {
+		spec     v1alpha1.PowerMonitorInternalKeplerSpec
+		rules    []rbacv1.PolicyRule
+		scenario string
+	}{
+		{
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{},
+			rules: []rbacv1.PolicyRule{{
+				APIGroups: []string{""},
+				Resources: []string{"nodes/metrics", "nodes/proxy", "nodes/stats", "pods"},
+				Verbs:     []string{"get", "watch", "list"},
+			}},
+			scenario: "default case",
+		},
+		{
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
+				Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+					PowerMonitorKeplerDeploymentSpec: v1alpha1.PowerMonitorKeplerDeploymentSpec{
+						Security: v1alpha1.PowerMonitorKeplerDeploymentSecuritySpec{
+							Mode: v1alpha1.SecurityModeRBAC,
+						},
+					},
+				},
+			},
+			rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{""},
+					Resources: []string{"nodes/metrics", "nodes/proxy", "nodes/stats", "pods"},
+					Verbs:     []string{"get", "watch", "list"},
+				},
+				{
+					APIGroups: []string{"authentication.k8s.io"},
+					Resources: []string{"tokenreviews"},
+					Verbs:     []string{"create"},
+				},
+				{
+					APIGroups: []string{"authorization.k8s.io"},
+					Resources: []string{"subjectaccessreviews"},
+					Verbs:     []string{"create"},
+				},
+			},
+			scenario: "rbac case",
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			pmi := v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: tc.spec,
+				},
+			}
+			cr := NewPowerMonitorClusterRole(components.Full, &pmi)
+			assert.Equal(t, tc.rules, cr.Rules)
+		})
+	}
+}
+
+func TestPowerMonitorClusterRoleBinding(t *testing.T) {
+	tt := []struct {
+		name      string
+		namespace string
+		roleRef   rbacv1.RoleRef
+		subjects  []rbacv1.Subject
+		scenario  string
+	}{
+		{
+			name:      "power-monitor-internal",
+			namespace: "power-monitor-internal",
+			roleRef: rbacv1.RoleRef{
+				APIGroup: "rbac.authorization.k8s.io",
+				Kind:     "ClusterRole",
+				Name:     "power-monitor-internal",
+			},
+			subjects: []rbacv1.Subject{{
+				Kind:      "ServiceAccount",
+				Name:      "power-monitor-internal",
+				Namespace: "power-monitor-internal",
+			}},
+			scenario: "default case",
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			pmi := v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: tc.name,
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+							Namespace: tc.namespace,
+						},
+					},
+				},
+			}
+			crb := NewPowerMonitorClusterRoleBinding(components.Full, &pmi)
+			assert.Equal(t, tc.name, crb.Name)
+			assert.Equal(t, tc.roleRef, crb.RoleRef)
+			assert.Equal(t, tc.subjects, crb.Subjects)
 		})
 	}
 }
@@ -238,13 +393,16 @@ func TestSCCAllows(t *testing.T) {
 
 func TestPowerMonitorService(t *testing.T) {
 	tt := []struct {
+		spec        v1alpha1.PowerMonitorInternalKeplerSpec
 		podSelector k8s.StringMap
 		port        int
 		portName    string
-		targetPort  int
+		targetPort  intstr.IntOrString
+		annotations map[string]string
 		scenario    string
 	}{
 		{
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{},
 			podSelector: k8s.StringMap{
 				"app.kubernetes.io/name":                     "power-monitor-exporter",
 				"app.kubernetes.io/component":                "exporter",
@@ -254,8 +412,33 @@ func TestPowerMonitorService(t *testing.T) {
 			},
 			port:       PowerMonitorDSPort,
 			portName:   PowerMonitorServicePortName,
-			targetPort: PowerMonitorDSPort,
+			targetPort: intstr.FromInt(PowerMonitorDSPort),
 			scenario:   "default case",
+		},
+		{
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
+				Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+					PowerMonitorKeplerDeploymentSpec: v1alpha1.PowerMonitorKeplerDeploymentSpec{
+						Security: v1alpha1.PowerMonitorKeplerDeploymentSecuritySpec{
+							Mode: v1alpha1.SecurityModeRBAC,
+						},
+					},
+				},
+			},
+			podSelector: k8s.StringMap{
+				"app.kubernetes.io/name":                     "power-monitor-exporter",
+				"app.kubernetes.io/component":                "exporter",
+				"operator.sustainable-computing.io/internal": "power-monitor-internal",
+				"app.kubernetes.io/part-of":                  "power-monitor-internal",
+				"app.kubernetes.io/managed-by":               "kepler-operator",
+			},
+			port:       SecurePort,
+			portName:   SecurePortName,
+			targetPort: intstr.FromString(SecurePortName),
+			annotations: map[string]string{
+				"service.beta.openshift.io/serving-cert-secret-name": SecretTLSCertName,
+			},
+			scenario: "rbac case",
 		},
 	}
 	for _, tc := range tt {
@@ -267,9 +450,7 @@ func TestPowerMonitorService(t *testing.T) {
 					Name: "power-monitor-internal",
 				},
 				Spec: v1alpha1.PowerMonitorInternalSpec{
-					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
-						Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{},
-					},
+					Kepler: tc.spec,
 				},
 			}
 			s := NewPowerMonitorService(&pmi)
@@ -280,7 +461,13 @@ func TestPowerMonitorService(t *testing.T) {
 			assert.Equal(t, len(actualPorts), 1)
 			assert.Equal(t, int(actualPorts[0].Port), tc.port)
 			assert.Equal(t, actualPorts[0].Name, tc.portName)
-			assert.Equal(t, actualPorts[0].TargetPort.IntValue(), tc.targetPort)
+			assert.Equal(t, tc.targetPort, actualPorts[0].TargetPort)
+			if tc.scenario == "rbac case" {
+				assert.Contains(t, s.Annotations, "service.beta.openshift.io/serving-cert-secret-name")
+				assert.Equal(t, s.Annotations["service.beta.openshift.io/serving-cert-secret-name"], SecretTLSCertName)
+			} else {
+				assert.NotContains(t, s.Annotations, "service.beta.openshift.io/serving-cert-secret-name")
+			}
 		})
 	}
 }
@@ -540,4 +727,301 @@ func TestKeplerConfig(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to build config")
 		assert.Empty(t, configStr)
 	})
+}
+
+func TestPowerMonitorServiceMonitor(t *testing.T) {
+	tt := []struct {
+		spec      v1alpha1.PowerMonitorInternalKeplerSpec
+		namespace string
+		endpoints []monv1.Endpoint
+		selector  metav1.LabelSelector
+		scenario  string
+	}{
+		{
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{},
+			endpoints: []monv1.Endpoint{{
+				Port:   PowerMonitorServicePortName,
+				Scheme: "http",
+				RelabelConfigs: []*monv1.RelabelConfig{{
+					Action:      "replace",
+					Regex:       "(.*)",
+					Replacement: "$1",
+					SourceLabels: []monv1.LabelName{
+						"__meta_kubernetes_pod_node_name",
+					},
+					TargetLabel: "instance",
+				}},
+			}},
+			selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/component":                "exporter",
+					"operator.sustainable-computing.io/internal": "power-monitor-internal",
+					"app.kubernetes.io/part-of":                  "power-monitor-internal",
+					"app.kubernetes.io/managed-by":               "kepler-operator",
+				},
+			},
+			scenario: "default case",
+		},
+		{
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
+				Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+					PowerMonitorKeplerDeploymentSpec: v1alpha1.PowerMonitorKeplerDeploymentSpec{
+						Security: v1alpha1.PowerMonitorKeplerDeploymentSecuritySpec{
+							Mode: v1alpha1.SecurityModeRBAC,
+						},
+					},
+					Namespace: "power-monitor-internal",
+				},
+			},
+			endpoints: []monv1.Endpoint{{
+				Port:   SecurePortName,
+				Scheme: "https",
+				RelabelConfigs: []*monv1.RelabelConfig{{
+					Action:      "replace",
+					Regex:       "(.*)",
+					Replacement: "$1",
+					SourceLabels: []monv1.LabelName{
+						"__meta_kubernetes_pod_node_name",
+					},
+					TargetLabel: "instance",
+				}},
+				Authorization: &monv1.SafeAuthorization{
+					Type: "Bearer",
+					Credentials: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: SecretUWMTokenName,
+						},
+						Key: ServiceAccountTokenKey,
+					},
+				},
+				TLSConfig: &monv1.TLSConfig{
+					SafeTLSConfig: monv1.SafeTLSConfig{
+						CA: monv1.SecretOrConfigMap{
+							ConfigMap: &corev1.ConfigMapKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: PowerMonitorCertsCABundleName,
+								},
+								Key: "service-ca.crt",
+							},
+						},
+						ServerName: "power-monitor-internal.power-monitor-internal.svc",
+					},
+				},
+			}},
+			selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/component":                "exporter",
+					"operator.sustainable-computing.io/internal": "power-monitor-internal",
+					"app.kubernetes.io/part-of":                  "power-monitor-internal",
+					"app.kubernetes.io/managed-by":               "kepler-operator",
+				},
+			},
+			scenario: "rbac case",
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			pmi := v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: tc.spec,
+				},
+			}
+			sm := NewPowerMonitorServiceMonitor(components.Full, &pmi)
+			assert.Equal(t, tc.endpoints, sm.Spec.Endpoints)
+			assert.Equal(t, tc.selector, sm.Spec.Selector)
+		})
+	}
+}
+
+func TestPowerMonitorCABundleConfigMap(t *testing.T) {
+	tt := []struct {
+		name        string
+		namespace   string
+		annotations map[string]string
+		scenario    string
+	}{
+		{
+			name:      PowerMonitorCertsCABundleName,
+			namespace: "power-monitor-internal",
+			annotations: map[string]string{
+				"service.beta.openshift.io/inject-cabundle": "true",
+			},
+			scenario: "tls case",
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			pmi := v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+							Namespace: tc.namespace,
+						},
+					},
+				},
+			}
+			cm := NewPowerMonitorCABundleConfigMap(components.Full, &pmi)
+			assert.Equal(t, tc.name, cm.Name)
+			assert.Equal(t, tc.namespace, cm.Namespace)
+			assert.Equal(t, tc.annotations, cm.Annotations)
+		})
+	}
+}
+
+func TestPowerMonitorKubeRBACProxyConfig(t *testing.T) {
+	tt := []struct {
+		spec       v1alpha1.PowerMonitorInternalKeplerSpec
+		name       string
+		labels     k8s.StringMap
+		configData map[string]string
+		scenario   string
+	}{
+		{
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
+				Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+					PowerMonitorKeplerDeploymentSpec: v1alpha1.PowerMonitorKeplerDeploymentSpec{
+						Security: v1alpha1.PowerMonitorKeplerDeploymentSecuritySpec{
+							Mode:           v1alpha1.SecurityModeRBAC,
+							AllowedSANames: []string{"test-sa"},
+						},
+					},
+					Namespace: "power-monitor-internal",
+				},
+			},
+			name: SecretKubeRBACProxyConfigName,
+			labels: k8s.StringMap{
+				"app.kubernetes.io/component":                "exporter",
+				"operator.sustainable-computing.io/internal": "power-monitor-internal",
+				"app.kubernetes.io/part-of":                  "power-monitor-internal",
+				"app.kubernetes.io/managed-by":               "kepler-operator",
+			},
+			configData: map[string]string{
+				"config.yaml": createKubeRBACConfig([]string{"test-sa"}),
+			},
+			scenario: "rbac case",
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			pmi := v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: tc.spec,
+				},
+			}
+			secret := NewPowerMonitorKubeRBACProxyConfig(components.Full, &pmi)
+			assert.Equal(t, tc.name, secret.Name)
+			assert.Equal(t, pmi.Spec.Kepler.Deployment.Namespace, secret.Namespace)
+			assert.Equal(t, tc.labels.ToMap(), secret.Labels)
+			assert.Equal(t, tc.configData, secret.StringData)
+			assert.Equal(t, corev1.SecretTypeOpaque, secret.Type)
+		})
+	}
+}
+
+func TestPowerMonitorUWMTokenSecret(t *testing.T) {
+	tt := []struct {
+		name      string
+		namespace string
+		labels    k8s.StringMap
+		tokenData map[string]string
+		scenario  string
+	}{
+		{
+			name:      SecretUWMTokenName,
+			namespace: "power-monitor-internal",
+			labels: k8s.StringMap{
+				"app.kubernetes.io/component":                "exporter",
+				"operator.sustainable-computing.io/internal": "power-monitor-internal",
+				"app.kubernetes.io/part-of":                  "power-monitor-internal",
+				"app.kubernetes.io/managed-by":               "kepler-operator",
+			},
+			tokenData: map[string]string{
+				ServiceAccountTokenKey: "test-token",
+			},
+			scenario: "uwm and rbac case",
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			pmi := v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+							Namespace: tc.namespace,
+						},
+					},
+				},
+			}
+			secret := NewPowerMonitorUWMTokenSecret(components.Full, &pmi, "test-token")
+			assert.Equal(t, tc.name, secret.Name)
+			assert.Equal(t, tc.namespace, secret.Namespace)
+			assert.Equal(t, tc.labels.ToMap(), secret.Labels)
+			assert.Equal(t, tc.tokenData, secret.StringData)
+			assert.Equal(t, corev1.SecretTypeOpaque, secret.Type)
+		})
+	}
+}
+
+func TestMountSecretAnnotationToDaemonset(t *testing.T) {
+	tt := []struct {
+		secret     *corev1.Secret
+		annotation map[string]string
+		scenario   string
+	}{
+		{
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: SecretTLSCertName,
+				},
+				Data: map[string][]byte{
+					"tls.crt": []byte("cert-data"),
+					"tls.key": []byte("key-data"),
+				},
+			},
+			annotation: map[string]string{
+				SecretTLSHashAnnotation + "-" + SecretTLSCertName: fmt.Sprintf("%x", xxhash.Sum64([]byte("tls.crtcert-datatls.keykey-data"))),
+			},
+			scenario: "tls secret case",
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			pmi := v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor-internal",
+				},
+			}
+			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
+			MountSecretAnnotationToDaemonset(ds, tc.secret)
+			actualAnnotation := k8s.AnnotationFromDS(ds)
+			assert.Equal(t, tc.annotation, actualAnnotation)
+		})
+	}
 }
