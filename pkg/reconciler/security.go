@@ -183,7 +183,7 @@ func (r KubeRBACProxyObjectsChecker) Reconcile(ctx context.Context, c client.Cli
 			Error:  err,
 		}
 	}
-	powermonitor.MountSecretAnnotationToDaemonset(r.Ds, proxyConfig) // rename from Mount to Set
+	powermonitor.AnnotateDaemonSetWithSecretHash(r.Ds, proxyConfig)
 	// check power monitor tls secret
 	var pmTLS *corev1.Secret
 	if err := retryWithTimeout(ctx, timeout, retryDelay, func() error {
@@ -215,7 +215,7 @@ func (r KubeRBACProxyObjectsChecker) Reconcile(ctx context.Context, c client.Cli
 			Error:  err,
 		}
 	}
-	powermonitor.MountSecretAnnotationToDaemonset(r.Ds, pmTLS)
+	powermonitor.AnnotateDaemonSetWithSecretHash(r.Ds, pmTLS)
 
 	if r.EnableUWM {
 		// check ca bundle

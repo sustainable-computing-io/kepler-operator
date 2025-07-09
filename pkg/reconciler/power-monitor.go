@@ -32,7 +32,7 @@ func (r PowerMonitorDeployer) Reconcile(ctx context.Context, c client.Client, s 
 	}
 
 	cfm := powermonitor.NewPowerMonitorConfigMap(components.Full, r.Pmi, additionalConfigs...)
-	powermonitor.MountConfigMapToDaemonSet(r.Ds, cfm)
+	powermonitor.AnnotateDaemonSetWithConfigMapHash(r.Ds, cfm)
 
 	// Update the ConfigMap
 	return Updater{Owner: r.Pmi, Resource: cfm}.Reconcile(ctx, c, s)
