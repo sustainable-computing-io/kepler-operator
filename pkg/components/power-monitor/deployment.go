@@ -544,7 +544,43 @@ func NewPowerMonitorUWMTokenSecret(d components.Detail, pmi *v1alpha1.PowerMonit
 	}
 }
 
-func MountSecretAnnotationToDaemonset(ds *appsv1.DaemonSet, s *corev1.Secret) {
+// KeplerConfig returns the config for the power-monitor
+func KeplerConfig(pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...string) (string, error) {
+	// Start with default config
+	b := &config.Builder{}
+
+	for _, additionalConfig := range additionalConfigs {
+		b.Merge(additionalConfig)
+	}
+
+	cfg, err := b.Build()
+	if err != nil {
+		return "", fmt.Errorf("failed to build config: %w", err)
+	}
+
+	cfg.Log.Level = pmi.Spec.Kepler.Config.LogLevel
+	cfg.Host.SysFS = SysFSMountPath
+	cfg.Host.ProcFS = ProcFSMountPath
+
+	if err := cfg.Validate(config.SkipHostValidation); err != nil {
+		return config.DefaultConfig().String(), err
+	}
+	return cfg.String(), nil
+}
+
+// AnnotateDaemonSetWithConfigMapHash sets annotations on the DaemonSet's pod template to trigger a rollout when the ConfigMap changes
+func AnnotateDaemonSetWithConfigMapHash(ds *appsv1.DaemonSet, cfm *corev1.ConfigMap) {
+	if ds.Spec.Template.Annotations == nil {
+		ds.Spec.Template.Annotations = make(map[string]string)
+	}
+
+	hash := xxhash.Sum64([]byte(cfm.Data[KeplerConfigFile]))
+
+	ds.Spec.Template.Annotations[ConfigMapHashAnnotation+"-"+cfm.Name] = fmt.Sprintf("%x", hash)
+}
+
+// AnnotateDaemonSetWithSecretHash sets annotations on the DaemonSet's pod template to trigger a rollout when the Secret changes
+func AnnotateDaemonSetWithSecretHash(ds *appsv1.DaemonSet, s *corev1.Secret) {
 	if ds.Spec.Template.Annotations == nil {
 		ds.Spec.Template.Annotations = make(map[string]string)
 	}
@@ -717,39 +753,4 @@ func createKubeRBACConfig(serviceAccountNames []string) string {
 	}
 	yamlData, _ := yaml.Marshal(&config)
 	return string(yamlData)
-}
-
-// KeplerConfig returns the config for the power-monitor
-func KeplerConfig(pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...string) (string, error) {
-	// Start with default config
-	b := &config.Builder{}
-
-	for _, additionalConfig := range additionalConfigs {
-		b.Merge(additionalConfig)
-	}
-
-	cfg, err := b.Build()
-	if err != nil {
-		return "", fmt.Errorf("failed to build config: %w", err)
-	}
-
-	cfg.Log.Level = pmi.Spec.Kepler.Config.LogLevel
-	cfg.Host.SysFS = SysFSMountPath
-	cfg.Host.ProcFS = ProcFSMountPath
-
-	if err := cfg.Validate(config.SkipHostValidation); err != nil {
-		return config.DefaultConfig().String(), err
-	}
-	return cfg.String(), nil
-}
-
-// MountConfigMapToDaemonSet sets annotations on the DaemonSet's pod template to trigger a rollout when the ConfigMap changes
-func MountConfigMapToDaemonSet(ds *appsv1.DaemonSet, cfm *corev1.ConfigMap) {
-	if ds.Spec.Template.Annotations == nil {
-		ds.Spec.Template.Annotations = make(map[string]string)
-	}
-
-	hash := xxhash.Sum64([]byte(cfm.Data[KeplerConfigFile]))
-
-	ds.Spec.Template.Annotations[ConfigMapHashAnnotation+"-"+cfm.Name] = fmt.Sprintf("%x", hash)
 }

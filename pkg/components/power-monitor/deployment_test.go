@@ -219,7 +219,7 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 			}
 			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
 			if tc.addConfigMap {
-				MountConfigMapToDaemonSet(ds, tc.configMap)
+				AnnotateDaemonSetWithConfigMapHash(ds, tc.configMap)
 			}
 
 			actualHostPID := k8s.HostPIDFromDS(ds)
@@ -986,7 +986,7 @@ func TestPowerMonitorUWMTokenSecret(t *testing.T) {
 	}
 }
 
-func TestMountSecretAnnotationToDaemonset(t *testing.T) {
+func TestAnnotateDaemonSetWithSecretHash(t *testing.T) {
 	tt := []struct {
 		secret     *corev1.Secret
 		annotation map[string]string
@@ -1019,7 +1019,7 @@ func TestMountSecretAnnotationToDaemonset(t *testing.T) {
 				},
 			}
 			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
-			MountSecretAnnotationToDaemonset(ds, tc.secret)
+			AnnotateDaemonSetWithSecretHash(ds, tc.secret)
 			actualAnnotation := k8s.AnnotationFromDS(ds)
 			assert.Equal(t, tc.annotation, actualAnnotation)
 		})
