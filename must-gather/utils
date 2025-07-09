@@ -17,10 +17,9 @@ log() {
 }
 
 run() {
-	length=$(($# - 1))
-	cmd=${*:1:$length}
-	gather_file="${*: -1}"
+	local gather_file="${!#}"
+	local cmd_args=("${@:1:$#-1}")
 
-	log_file "$cmd"
-	$cmd >>"$gather_file" 2>>"$LOGFILE_PATH" || true
+	log_file "${cmd_args[@]}"
+	"${cmd_args[@]}" >>"$gather_file" 2>>"$LOGFILE_PATH" || true
 }
