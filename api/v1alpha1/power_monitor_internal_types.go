@@ -39,6 +39,38 @@ type PowerMonitorInternalKeplerConfigSpec struct {
 	// +optional
 	// +listType=atomic
 	AdditionalConfigMaps []ConfigMapRef `json:"additionalConfigMaps,omitempty"`
+
+	// MetricLevels specifies which metrics levels to export
+	// Valid values are combinations of: node, process, container, vm, pod
+	// +optional
+	// +listType=set
+	// +kubebuilder:default={"node","pod","vm"}
+	// +kubebuilder:validation:items:Enum=node;process;container;vm;pod
+	MetricLevels []string `json:"metricLevels,omitempty"`
+
+	// Staleness specifies how long to wait before considering calculated power values as stale
+	// Must be a positive duration (e.g., "500ms", "5s", "1h"). Negative values are not allowed.
+	// +optional
+	// +kubebuilder:default="500ms"
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern="^[0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h)$"
+	Staleness *metav1.Duration `json:"staleness,omitempty"`
+
+	// SampleRate specifies the interval for monitoring resources (processes, containers, vms, etc.)
+	// Must be a positive duration (e.g., "5s", "1m", "30s"). Negative values are not allowed.
+	// +optional
+	// +kubebuilder:default="5s"
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern="^[0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h)$"
+	SampleRate *metav1.Duration `json:"sampleRate,omitempty"`
+
+	// MaxTerminated controls terminated workload tracking behavior
+	// Negative values: track unlimited terminated workloads (no capacity limit)
+	// Zero: disable terminated workload tracking completely
+	// Positive values: track top N terminated workloads by energy consumption
+	// +optional
+	// +kubebuilder:default=500
+	MaxTerminated *int32 `json:"maxTerminated,omitempty"`
 }
 
 type PowerMonitorInternalKeplerSpec struct {

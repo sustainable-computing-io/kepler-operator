@@ -6,7 +6,9 @@ package config
 import (
 	"fmt"
 	"io"
+	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -39,12 +41,25 @@ type (
 		} `yaml:"fake-cpu-meter"`
 	}
 	Web struct {
-		Config string `yaml:"configFile"`
+		Config          string   `yaml:"configFile"`
+		ListenAddresses []string `yaml:"listenAddresses"`
 	}
 
 	Monitor struct {
 		Interval  time.Duration `yaml:"interval"`  // Interval for monitoring resources
 		Staleness time.Duration `yaml:"staleness"` // Time after which calculated values are considered stale
+
+		// MaxTerminated controls terminated workload tracking behavior:
+		// <0: Any negative value indicates to track unlimited terminated workloads (no capacity limit)
+		// =0: Disable terminated workload tracking completely
+		// >0: Track top N terminated workloads by energy consumption
+		MaxTerminated int `yaml:"maxTerminated"`
+
+		// MinTerminatedEnergyThreshold sets the minimum energy consumption threshold for terminated workloads
+		// Only terminated workloads with energy consumption above this threshold will be tracked
+		// Value is in joules (e.g., 10 = 10 joules)
+		// TODO: Add support for parsing energy units like "10J", "500mJ", "2kJ"
+		MinTerminatedEnergyThreshold int64 `yaml:"minTerminatedEnergyThreshold"`
 	}
 
 	// Exporter configuration
@@ -55,6 +70,7 @@ type (
 	PrometheusExporter struct {
 		Enabled         *bool    `yaml:"enabled"`
 		DebugCollectors []string `yaml:"debugCollectors"`
+		MetricsLevel    Level    `yaml:"metricsLevel"`
 	}
 
 	Exporter struct {
@@ -91,6 +107,45 @@ type (
 	}
 )
 
+// MetricsLevelValue is a custom kingpin.Value that parses metrics levels directly into metrics.Level
+type MetricsLevelValue struct {
+	level *Level
+}
+
+// NewMetricsLevelValue creates a new MetricsLevelValue with the given target
+func NewMetricsLevelValue(target *Level) *MetricsLevelValue {
+	return &MetricsLevelValue{level: target}
+}
+
+// Set implements kingpin.Value interface - parses and accumulates metrics levels
+func (m *MetricsLevelValue) Set(value string) error {
+	// Parse the single value into a level
+	level, err := ParseLevel([]string{value})
+	if err != nil {
+		return err
+	}
+
+	// If this is the first value, initialize to 0 first to clear any default
+	allLevels := MetricsLevelAll
+	if *m.level == allLevels {
+		*m.level = 0
+	}
+
+	// Accumulate the level using bitwise OR
+	*m.level |= level
+	return nil
+}
+
+// String implements kingpin.Value interface
+func (m *MetricsLevelValue) String() string {
+	return m.level.String()
+}
+
+// IsCumulative implements kingpin.Value interface to support multiple values
+func (m *MetricsLevelValue) IsCumulative() bool {
+	return true
+}
+
 type SkipValidation int
 
 const (
@@ -106,15 +161,17 @@ const (
 	HostSysFSFlag  = "host.sysfs"
 	HostProcFSFlag = "host.procfs"
 
-	MonitorIntervalFlag = "monitor.interval"
-	MonitorStaleness    = "monitor.staleness" // not a flag
+	MonitorIntervalFlag      = "monitor.interval"
+	MonitorStaleness         = "monitor.staleness" // not a flag
+	MonitorMaxTerminatedFlag = "monitor.max-terminated"
 
 	// RAPL
 	RaplZones = "rapl.zones" // not a flag
 
 	pprofEnabledFlag = "debug.pprof"
 
-	WebConfigFlag = "web.config-file"
+	WebConfigFlag        = "web.config-file"
+	WebListenAddressFlag = "web.listen-address"
 
 	// Exporters
 	ExporterStdoutEnabledFlag = "exporter.stdout"
@@ -122,6 +179,7 @@ const (
 	ExporterPrometheusEnabledFlag = "exporter.prometheus"
 	// NOTE: not a flag
 	ExporterPrometheusDebugCollectors = "exporter.prometheus.debug-collectors"
+	ExporterPrometheusMetricsFlag     = "metrics"
 
 	// kubernetes flags
 	KubernetesFlag   = "kube.enable"
@@ -148,6 +206,9 @@ func DefaultConfig() *Config {
 		Monitor: Monitor{
 			Interval:  5 * time.Second,
 			Staleness: 500 * time.Millisecond,
+
+			MaxTerminated:                500,
+			MinTerminatedEnergyThreshold: 10, // 10 Joules
 		},
 		Exporter: Exporter{
 			Stdout: StdoutExporter{
@@ -156,12 +217,16 @@ func DefaultConfig() *Config {
 			Prometheus: PrometheusExporter{
 				Enabled:         ptr.To(true),
 				DebugCollectors: []string{"go"},
+				MetricsLevel:    MetricsLevelAll,
 			},
 		},
 		Debug: Debug{
 			Pprof: PprofDebug{
 				Enabled: ptr.To(false),
 			},
+		},
+		Web: Web{
+			ListenAddresses: []string{":28282"},
 		},
 		Kube: Kube{
 			Enabled: ptr.To(false),
@@ -243,14 +308,20 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 	// monitor
 	monitorInterval := app.Flag(MonitorIntervalFlag,
 		"Interval for monitoring resources (processes, container, vm, etc...); 0 to disable").Default("5s").Duration()
+	monitorMaxTerminated := app.Flag(MonitorMaxTerminatedFlag,
+		"Maximum number of terminated workloads to track; 0 to disable, -1 for unlimited").Default("500").Int()
 
 	enablePprof := app.Flag(pprofEnabledFlag, "Enable pprof debug endpoints").Default("false").Bool()
 	webConfig := app.Flag(WebConfigFlag, "Web config file path").Default("").String()
+	webListenAddresses := app.Flag(WebListenAddressFlag, "Web server listen addresses").Default(":28282").Strings()
 
 	// exporters
 	stdoutExporterEnabled := app.Flag(ExporterStdoutEnabledFlag, "Enable stdout exporter").Default("false").Bool()
 
 	prometheusExporterEnabled := app.Flag(ExporterPrometheusEnabledFlag, "Enable Prometheus exporter").Default("true").Bool()
+
+	metricsLevel := MetricsLevelAll
+	app.Flag(ExporterPrometheusMetricsFlag, "Metrics levels to export (node,process,container,vm,pod)").SetValue(NewMetricsLevelValue(&metricsLevel))
 
 	kubernetes := app.Flag(KubernetesFlag, "Monitor kubernetes").Default("false").Bool()
 	kubeconfig := app.Flag(KubeConfigFlag, "Path to a kubeconfig. Only required if out-of-cluster.").ExistingFile()
@@ -278,6 +349,9 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 		if flagsSet[MonitorIntervalFlag] {
 			cfg.Monitor.Interval = *monitorInterval
 		}
+		if flagsSet[MonitorMaxTerminatedFlag] {
+			cfg.Monitor.MaxTerminated = *monitorMaxTerminated
+		}
 
 		if flagsSet[pprofEnabledFlag] {
 			cfg.Debug.Pprof.Enabled = enablePprof
@@ -287,12 +361,20 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 			cfg.Web.Config = *webConfig
 		}
 
+		if flagsSet[WebListenAddressFlag] {
+			cfg.Web.ListenAddresses = *webListenAddresses
+		}
+
 		if flagsSet[ExporterStdoutEnabledFlag] {
 			cfg.Exporter.Stdout.Enabled = stdoutExporterEnabled
 		}
 
 		if flagsSet[ExporterPrometheusEnabledFlag] {
 			cfg.Exporter.Prometheus.Enabled = prometheusExporterEnabled
+		}
+
+		if flagsSet[ExporterPrometheusMetricsFlag] {
+			cfg.Exporter.Prometheus.MetricsLevel = metricsLevel
 		}
 
 		if flagsSet[KubernetesFlag] {
@@ -318,6 +400,9 @@ func (c *Config) sanitize() {
 	c.Host.SysFS = strings.TrimSpace(c.Host.SysFS)
 	c.Host.ProcFS = strings.TrimSpace(c.Host.ProcFS)
 	c.Web.Config = strings.TrimSpace(c.Web.Config)
+	for i := range c.Web.ListenAddresses {
+		c.Web.ListenAddresses[i] = strings.TrimSpace(c.Web.ListenAddresses[i])
+	}
 
 	for i := range c.Rapl.Zones {
 		c.Rapl.Zones[i] = strings.TrimSpace(c.Rapl.Zones[i])
@@ -377,12 +462,30 @@ func (c *Config) Validate(skips ...SkipValidation) error {
 			}
 		}
 	}
+	{ // Web listen addresses
+		if len(c.Web.ListenAddresses) == 0 {
+			errs = append(errs, "at least one web listen address must be specified")
+		}
+		for _, addr := range c.Web.ListenAddresses {
+			if addr == "" {
+				errs = append(errs, "web listen address cannot be empty")
+				continue
+			}
+			if err := validateListenAddress(addr); err != nil {
+				errs = append(errs, fmt.Sprintf("invalid web listen address %q: %s", addr, err.Error()))
+			}
+		}
+	}
 	{ // Monitor
 		if c.Monitor.Interval < 0 {
 			errs = append(errs, fmt.Sprintf("invalid monitor interval: %s can't be negative", c.Monitor.Interval))
 		}
 		if c.Monitor.Staleness < 0 {
 			errs = append(errs, fmt.Sprintf("invalid monitor staleness: %s can't be negative", c.Monitor.Staleness))
+		}
+
+		if c.Monitor.MinTerminatedEnergyThreshold < 0 {
+			errs = append(errs, fmt.Sprintf("invalid monitor min terminated energy threshold: %d can't be negative", c.Monitor.MinTerminatedEnergyThreshold))
 		}
 	}
 	{ // Kubernetes
@@ -443,6 +546,37 @@ func canReadFile(path string) error {
 	return nil
 }
 
+func validateListenAddress(addr string) error {
+	if addr == "" {
+		return fmt.Errorf("address cannot be empty")
+	}
+
+	// Use Go's standard library to parse host:port
+	_, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return fmt.Errorf("invalid address format: %w", err)
+	}
+
+	// Validate port (host can be empty for listening on all interfaces)
+	if err := validatePort(port); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validatePort(port string) error {
+	portNum, err := strconv.Atoi(port)
+	if err != nil {
+		return fmt.Errorf("port must be numeric, got %s", port)
+	}
+
+	if portNum < 1 || portNum > 65535 {
+		return fmt.Errorf("port must be between 1 and 65535, got %d", portNum)
+	}
+	return nil
+}
+
 func (c *Config) String() string {
 	bytes, err := yaml.Marshal(c)
 	if err == nil {
@@ -464,10 +598,12 @@ func (c *Config) manualString() string {
 		{HostProcFSFlag, c.Host.ProcFS},
 		{MonitorIntervalFlag, c.Monitor.Interval.String()},
 		{MonitorStaleness, c.Monitor.Staleness.String()},
+		{MonitorMaxTerminatedFlag, fmt.Sprintf("%d", c.Monitor.MaxTerminated)},
 		{RaplZones, strings.Join(c.Rapl.Zones, ", ")},
 		{ExporterStdoutEnabledFlag, fmt.Sprintf("%v", c.Exporter.Stdout.Enabled)},
 		{ExporterPrometheusEnabledFlag, fmt.Sprintf("%v", c.Exporter.Prometheus.Enabled)},
 		{ExporterPrometheusDebugCollectors, strings.Join(c.Exporter.Prometheus.DebugCollectors, ", ")},
+		{ExporterPrometheusMetricsFlag, c.Exporter.Prometheus.MetricsLevel.String()},
 		{pprofEnabledFlag, fmt.Sprintf("%v", c.Debug.Pprof.Enabled)},
 		{KubeConfigFlag, fmt.Sprintf("%v", c.Kube.Config)},
 	}
