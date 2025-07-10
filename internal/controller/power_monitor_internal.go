@@ -364,7 +364,7 @@ func openshiftPowerMonitorNamespacedResources(pmi *v1alpha1.PowerMonitorInternal
 	return res
 }
 
-func securityPowerMonitorReconcilers(pmi *v1alpha1.PowerMonitorInternal, enableRBAC, enableUWM bool) []reconciler.Reconciler {
+func securityPowerMonitorReconcilers(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Cluster, enableRBAC, enableUWM bool) []reconciler.Reconciler {
 	rs := []reconciler.Reconciler{}
 	rs = append(rs,
 		reconciler.KubeRBACProxyConfigReconciler{
@@ -379,6 +379,7 @@ func securityPowerMonitorReconcilers(pmi *v1alpha1.PowerMonitorInternal, enableR
 		},
 		reconciler.UWMSecretTokenReconciler{
 			Pmi:        pmi,
+			Cluster:    cluster,
 			EnableRBAC: enableRBAC,
 			EnableUWM:  enableUWM,
 		},
@@ -418,7 +419,7 @@ func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Clust
 	rs = append(rs, resourceReconcilers(updateResource, openshiftPowerMonitorClusterResources(pmi, cluster)...)...)
 
 	// kube rbac proxy resources
-	rs = append(rs, securityPowerMonitorReconcilers(pmi, enableRBAC, enableUWM)...)
+	rs = append(rs, securityPowerMonitorReconcilers(pmi, cluster, enableRBAC, enableUWM)...)
 
 	// namespace scoped
 	rs = append(rs, resourceReconcilers(updateResource,
@@ -435,6 +436,7 @@ func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Clust
 		},
 		reconciler.KubeRBACProxyObjectsChecker{
 			Pmi:        pmi,
+			Cluster:    cluster,
 			Ds:         ds,
 			EnableRBAC: enableRBAC,
 			EnableUWM:  enableUWM,

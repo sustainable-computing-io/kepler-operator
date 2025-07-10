@@ -11,6 +11,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	powermonitor "github.com/sustainable.computing.io/kepler-operator/pkg/components/power-monitor"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -22,8 +23,9 @@ import (
 )
 
 var (
-	timeout    = 60 * time.Second
-	retryDelay = 3 * time.Second
+	openshiftTimeout = 60 * time.Second
+	k8sTimeout       = 6 * time.Second
+	retryDelay       = 3 * time.Second
 )
 
 // KubeRBACProxyConfigReconciler reconciles configuration for allowed SAs
@@ -73,6 +75,7 @@ func (r CABundleConfigReconciler) Reconcile(ctx context.Context, c client.Client
 // UWMSecretTokenReconciler reconciles the User Workload Monitoring Secret Token
 type UWMSecretTokenReconciler struct {
 	Pmi        *v1alpha1.PowerMonitorInternal
+	Cluster    k8s.Cluster
 	EnableRBAC bool
 	EnableUWM  bool
 }
@@ -85,6 +88,11 @@ func (r UWMSecretTokenReconciler) Reconcile(ctx context.Context, c client.Client
 			"",
 		)
 		return Deleter{Resource: tokenSecret}.Reconcile(ctx, c, s)
+	}
+	// set timeout based on cluster type
+	timeout := k8sTimeout
+	if r.Cluster == k8s.OpenShift {
+		timeout = openshiftTimeout
 	}
 	var promAccount *corev1.ServiceAccount
 	if err := retryWithTimeout(ctx, timeout, retryDelay, func() error {
@@ -143,6 +151,7 @@ func (r UWMSecretTokenReconciler) Reconcile(ctx context.Context, c client.Client
 // KubeRBACProxyObjectsChecker checks if all required objects for kube-rbac-proxy are present
 type KubeRBACProxyObjectsChecker struct {
 	Pmi        *v1alpha1.PowerMonitorInternal
+	Cluster    k8s.Cluster
 	Ds         *appsv1.DaemonSet
 	EnableRBAC bool
 	EnableUWM  bool
@@ -151,6 +160,11 @@ type KubeRBACProxyObjectsChecker struct {
 func (r KubeRBACProxyObjectsChecker) Reconcile(ctx context.Context, c client.Client, s *runtime.Scheme) Result {
 	if !r.EnableRBAC {
 		return Result{}
+	}
+	// set timeout based on cluster type
+	timeout := k8sTimeout
+	if r.Cluster == k8s.OpenShift {
+		timeout = openshiftTimeout
 	}
 	// check kube rbac proxy config secret
 	var proxyConfig *corev1.Secret
