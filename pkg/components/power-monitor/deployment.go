@@ -633,6 +633,12 @@ func podSelector(pmi *v1alpha1.PowerMonitorInternal) k8s.StringMap {
 func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Container {
 	deployment := pmi.Spec.Kepler.Deployment
 	configMapPath := filepath.Join(KeplerConfigMapPath, KeplerConfigFile)
+	webListenAddress := fmt.Sprintf("0.0.0.0:%d", PowerMonitorDSPort)
+
+	if pmi.Spec.Kepler.Deployment.Security.Mode == v1alpha1.SecurityModeRBAC {
+		webListenAddress = fmt.Sprintf("127.0.0.1:%d", PowerMonitorDSPort)
+	}
+
 	return corev1.Container{
 		Name:            pmi.DaemonsetName(),
 		SecurityContext: &corev1.SecurityContext{Privileged: ptr.To(true)},
@@ -647,6 +653,7 @@ func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Contain
 			fmt.Sprintf("--config.file=%s", configMapPath),
 			"--kube.enable",
 			"--kube.node-name=$(NODE_NAME)",
+			fmt.Sprintf("--web.listen-address=%s", webListenAddress),
 		},
 		Ports: []corev1.ContainerPort{{
 			ContainerPort: int32(PowerMonitorDSPort),

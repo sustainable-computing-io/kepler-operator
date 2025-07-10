@@ -128,6 +128,7 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 				fmt.Sprintf("--config.file=%s", filepath.Join(KeplerConfigMapPath, KeplerConfigFile)),
 				"--kube.enable",
 				"--kube.node-name=$(NODE_NAME)",
+				fmt.Sprintf("--web.listen-address=0.0.0.0:%d", PowerMonitorDSPort),
 			},
 			volumeMounts: []corev1.VolumeMount{
 				{Name: "sysfs", MountPath: SysFSMountPath, ReadOnly: true},
@@ -150,6 +151,7 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 				fmt.Sprintf("--config.file=%s", filepath.Join(KeplerConfigMapPath, KeplerConfigFile)),
 				"--kube.enable",
 				"--kube.node-name=$(NODE_NAME)",
+				fmt.Sprintf("--web.listen-address=0.0.0.0:%d", PowerMonitorDSPort),
 			},
 			volumeMounts: []corev1.VolumeMount{
 				{Name: "sysfs", MountPath: SysFSMountPath, ReadOnly: true},
@@ -192,6 +194,7 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 				fmt.Sprintf("--config.file=%s", filepath.Join(KeplerConfigMapPath, KeplerConfigFile)),
 				"--kube.enable",
 				"--kube.node-name=$(NODE_NAME)",
+				fmt.Sprintf("--web.listen-address=127.0.0.1:%d", PowerMonitorDSPort),
 			},
 			volumeMounts: []corev1.VolumeMount{
 				{Name: "sysfs", MountPath: SysFSMountPath, ReadOnly: true},
