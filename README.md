@@ -1,7 +1,7 @@
 # Kepler Operator
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![CI Status](https://github.com/sustainable-computing-io/kepler-operator/actions/workflows/publish-images.yaml/badge.svg)](https://github.com/sustainable-computing-io/kepler-operator/actions/workflows/publish-images.yaml)
+[![CI Status](https://github.com/sustainable-computing-io/kepler-operator/actions/workflows/push.yaml/badge.svg)](https://github.com/sustainable-computing-io/kepler-operator/actions/workflows/push.yaml)
 [![Codecov](https://codecov.io/gh/sustainable-computing-io/kepler-operator/graph/badge.svg?token=036JVLMN2V)](https://codecov.io/gh/sustainable-computing-io/kepler-operator)
 [![Release](https://img.shields.io/github/v/release/sustainable-computing-io/kepler-operator)](https://github.com/sustainable-computing-io/kepler-operator/releases)
 
