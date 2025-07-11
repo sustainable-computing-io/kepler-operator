@@ -14,7 +14,6 @@ declare -r OLM_CATALOG="kepler-operator-catalog"
 declare -r VERSION=${VERSION:-"0.0.0-e2e"}
 declare -r OPERATOR_DEPLOY_YAML="config/manager/base/manager.yaml"
 declare -r KEPLER_CR="config/samples/kepler.system_v1alpha1_kepler.yaml"
-declare -r POWER_MONITOR_CR="config/samples/kepler.system_v1alpha1_powermonitor.yaml"
 declare -r OPERATOR_CSV="bundle/manifests/$OPERATOR.clusterserviceversion.yaml"
 declare -r OPERATOR_DEPLOY_NAME="kepler-operator-controller"
 declare -r OPERATOR_RELEASED_BUNDLE="quay.io/sustainable_computing_io/$OPERATOR-bundle"
@@ -30,6 +29,7 @@ declare NO_DEPLOY=false
 declare NO_BUILDS=false
 declare SHOW_USAGE=false
 declare LOGS_DIR="tmp/e2e"
+declare POWERMONITOR_RELEASED_CR="tmp/power-monitor-released.yaml"
 declare OPERATORS_NS="operators"
 declare POWERMONITOR_NS="power-monitor"
 declare TEST_TIMEOUT="15m"
@@ -125,7 +125,7 @@ cmd_upgrade() {
 	run kubectl apply -f "$KEPLER_CR"
 
 	info "Creating new PowerMonitor CR"
-	create_power_monitor
+	create_power_monitor "$replaced_version"
 
 	wait_for_kepler || return 1
 	wait_for_power_monitor || return 1
@@ -152,11 +152,30 @@ cmd_upgrade() {
 
 # creating power monitor with fake cpu meter enabled for testing Operator Upgrade and invalid PowerMonitor scenarios
 create_power_monitor() {
-	yq eval '.spec.kepler.config.additionalConfigMaps = [{"name": "power-monitor-config"}]' \
-		"$POWER_MONITOR_CR" | kubectl apply -f -
+	local released_version="$1"
+	shift 1
+
+	local operator_csv_name="$OPERATOR.v$released_version"
+	run kubectl get csv "$operator_csv_name"
+
+	info "Getting PowerMonitor example from CSV for previous released version: $released_version"
+	kubectl get csv "$operator_csv_name" -o yaml |
+		yq -P '.metadata.annotations."alm-examples" | fromjson | .[] | select(.kind == "PowerMonitor")' |
+		tee "$POWERMONITOR_RELEASED_CR"
+
+	info "Adding addionalConfigMaps to enable fake cpu meter for upgrade tests"
+	yq eval -i '.spec.kepler.config.additionalConfigMaps = [{"name": "power-monitor-config"}]' \
+		"$POWERMONITOR_RELEASED_CR"
+
+	info "Setting the Security mode as none for tests"
+	yq eval -i '.spec.kepler.deployment.security.mode = "none"' "$POWERMONITOR_RELEASED_CR"
+
+	cat "$POWERMONITOR_RELEASED_CR"
+
+	run kubectl apply -f "$POWERMONITOR_RELEASED_CR"
 
 	info "Creating PowerMonitor ConfigMap"
-	kubectl create -n "$POWERMONITOR_NS" -f - <<EOF
+	run kubectl create -n "$POWERMONITOR_NS" -f - <<EOF
     apiVersion: v1
     kind: ConfigMap
     metadata:

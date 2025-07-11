@@ -10,3 +10,6 @@ spec:
   kepler:
     config:
       logLevel: info
+    deployment:
+      security:
+        mode: none
