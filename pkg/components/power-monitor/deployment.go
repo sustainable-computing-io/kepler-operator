@@ -191,7 +191,7 @@ func NewPowerMonitorInfoDashboard(d components.Detail) *corev1.ConfigMap {
 	return openshiftDashboardConfigMap(d, OverviewDashboardName, fmt.Sprintf("%s.json", OverviewDashboardName), infoDashboardJson)
 }
 
-func NewPowerMonitorConfigMap(d components.Detail, pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...string) *corev1.ConfigMap {
+func NewPowerMonitorConfigMap(d components.Detail, pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...string) (*corev1.ConfigMap, error) {
 	if d == components.Metadata {
 		return &corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
@@ -203,10 +203,10 @@ func NewPowerMonitorConfigMap(d components.Detail, pmi *v1alpha1.PowerMonitorInt
 				Namespace: pmi.Namespace(),
 				Labels:    labels(pmi).ToMap(),
 			},
-		}
+		}, nil
 	}
 
-	config, _ := KeplerConfig(pmi, additionalConfigs...)
+	config, err := KeplerConfig(pmi, additionalConfigs...)
 
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
@@ -221,7 +221,7 @@ func NewPowerMonitorConfigMap(d components.Detail, pmi *v1alpha1.PowerMonitorInt
 		Data: k8s.StringMap{
 			KeplerConfigFile: config,
 		},
-	}
+	}, err
 }
 
 func NewPowerMonitorClusterRole(c components.Detail, pmi *v1alpha1.PowerMonitorInternal) *rbacv1.ClusterRole {
@@ -481,7 +481,7 @@ func NewPowerMonitorCABundleConfigMap(d components.Detail, pmi *v1alpha1.PowerMo
 	}
 }
 
-func NewPowerMonitorKubeRBACProxyConfig(d components.Detail, pmi *v1alpha1.PowerMonitorInternal) *corev1.Secret {
+func NewPowerMonitorKubeRBACProxyConfig(d components.Detail, pmi *v1alpha1.PowerMonitorInternal) (*corev1.Secret, error) {
 	if d == components.Metadata {
 		return &corev1.Secret{
 			TypeMeta: metav1.TypeMeta{
@@ -493,9 +493,9 @@ func NewPowerMonitorKubeRBACProxyConfig(d components.Detail, pmi *v1alpha1.Power
 				Namespace: pmi.Namespace(),
 				Labels:    labels(pmi),
 			},
-		}
+		}, nil
 	}
-	configYAML := createKubeRBACConfig(pmi.Spec.Kepler.Deployment.Security.AllowedSANames)
+	configYAML, err := createKubeRBACConfig(pmi.Spec.Kepler.Deployment.Security.AllowedSANames)
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -510,7 +510,7 @@ func NewPowerMonitorKubeRBACProxyConfig(d components.Detail, pmi *v1alpha1.Power
 			"config.yaml": configYAML,
 		},
 		Type: corev1.SecretTypeOpaque,
-	}
+	}, err
 }
 
 func NewPowerMonitorUWMTokenSecret(d components.Detail, pmi *v1alpha1.PowerMonitorInternal, saToken string) *corev1.Secret {
@@ -737,7 +737,7 @@ func newKubeRBACProxyContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Contai
 	}
 }
 
-func createKubeRBACConfig(serviceAccountNames []string) string {
+func createKubeRBACConfig(serviceAccountNames []string) (string, error) {
 	var config k8s.KubeRBACProxyConfig
 
 	for _, serviceAccountName := range serviceAccountNames {
@@ -751,6 +751,6 @@ func createKubeRBACConfig(serviceAccountNames []string) string {
 		}
 		config.Authorization.StaticRules = append(config.Authorization.StaticRules, newRule)
 	}
-	yamlData, _ := yaml.Marshal(&config)
-	return string(yamlData)
+	yamlData, err := yaml.Marshal(&config)
+	return string(yamlData), err
 }

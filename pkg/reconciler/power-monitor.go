@@ -31,7 +31,10 @@ func (r PowerMonitorDeployer) Reconcile(ctx context.Context, c client.Client, s 
 		return Result{Action: Stop, Error: fmt.Errorf("error creating config: %w", err)}
 	}
 
-	cfm := powermonitor.NewPowerMonitorConfigMap(components.Full, r.Pmi, additionalConfigs...)
+	cfm, err := powermonitor.NewPowerMonitorConfigMap(components.Full, r.Pmi, additionalConfigs...)
+	if err != nil {
+		return Result{Action: Stop, Error: fmt.Errorf("error creating configmap: %w", err)}
+	}
 	powermonitor.AnnotateDaemonSetWithConfigMapHash(r.Ds, cfm)
 
 	// Update the ConfigMap
