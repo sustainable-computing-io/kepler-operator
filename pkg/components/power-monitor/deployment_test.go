@@ -489,7 +489,11 @@ func TestPowerMonitorConfigMap(t *testing.T) {
 		validateConfig func(*testing.T, string, string) // function to validate config content
 	}{
 		{
-			spec: v1alpha1.PowerMonitorInternalKeplerSpec{},
+			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
+				Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+					LogLevel: "info",
+				},
+			},
 			labels: k8s.StringMap{
 				"app.kubernetes.io/component":                "exporter",
 				"operator.sustainable-computing.io/internal": "power-monitor-internal",
@@ -643,7 +647,8 @@ func TestPowerMonitorConfigMap(t *testing.T) {
 					Kepler: tc.spec,
 				},
 			}
-			cm := NewPowerMonitorConfigMap(components.Full, &pmi)
+			cm, err := NewPowerMonitorConfigMap(components.Full, &pmi)
+			assert.NoError(t, err)
 
 			actualLabels := k8s.LabelsFromConfigMap(cm)
 			assert.Equal(t, tc.labels.ToMap(), actualLabels)
@@ -1488,11 +1493,10 @@ func TestPowerMonitorCABundleConfigMap(t *testing.T) {
 
 func TestPowerMonitorKubeRBACProxyConfig(t *testing.T) {
 	tt := []struct {
-		spec       v1alpha1.PowerMonitorInternalKeplerSpec
-		name       string
-		labels     k8s.StringMap
-		configData map[string]string
-		scenario   string
+		spec     v1alpha1.PowerMonitorInternalKeplerSpec
+		name     string
+		labels   k8s.StringMap
+		scenario string
 	}{
 		{
 			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
@@ -1513,9 +1517,6 @@ func TestPowerMonitorKubeRBACProxyConfig(t *testing.T) {
 				"app.kubernetes.io/part-of":                  "power-monitor-internal",
 				"app.kubernetes.io/managed-by":               "kepler-operator",
 			},
-			configData: map[string]string{
-				"config.yaml": createKubeRBACConfig([]string{"test-sa"}),
-			},
 			scenario: "rbac case",
 		},
 	}
@@ -1532,11 +1533,17 @@ func TestPowerMonitorKubeRBACProxyConfig(t *testing.T) {
 					Kepler: tc.spec,
 				},
 			}
-			secret := NewPowerMonitorKubeRBACProxyConfig(components.Full, &pmi)
+			rbacConfig, err := createKubeRBACConfig([]string{"test-sa"})
+			assert.NoError(t, err)
+			configData := map[string]string{
+				"config.yaml": rbacConfig,
+			}
+			secret, err := NewPowerMonitorKubeRBACProxyConfig(components.Full, &pmi)
+			assert.NoError(t, err)
 			assert.Equal(t, tc.name, secret.Name)
 			assert.Equal(t, pmi.Spec.Kepler.Deployment.Namespace, secret.Namespace)
 			assert.Equal(t, tc.labels.ToMap(), secret.Labels)
-			assert.Equal(t, tc.configData, secret.StringData)
+			assert.Equal(t, configData, secret.StringData)
 			assert.Equal(t, corev1.SecretTypeOpaque, secret.Type)
 		})
 	}

@@ -37,16 +37,20 @@ type KubeRBACProxyConfigReconciler struct {
 
 func (r KubeRBACProxyConfigReconciler) Reconcile(ctx context.Context, c client.Client, s *runtime.Scheme) Result {
 	if !r.EnableRBAC {
-		secretKubeRBACConfig := powermonitor.NewPowerMonitorKubeRBACProxyConfig(
+		// when retrieving KubeRBACProxyConfig Metadata, the error return value is always nil
+		secretKubeRBACConfig, _ := powermonitor.NewPowerMonitorKubeRBACProxyConfig(
 			components.Metadata,
 			r.Pmi,
 		)
 		return Deleter{Resource: secretKubeRBACConfig}.Reconcile(ctx, c, s)
 	}
-	secretKubeRBACConfig := powermonitor.NewPowerMonitorKubeRBACProxyConfig(
+	secretKubeRBACConfig, err := powermonitor.NewPowerMonitorKubeRBACProxyConfig(
 		components.Full,
 		r.Pmi,
 	)
+	if err != nil {
+		return Result{Action: Stop, Error: fmt.Errorf("error creating kube-rbac-proxy configmap: %w", err)}
+	}
 	return Updater{Owner: r.Pmi, Resource: secretKubeRBACConfig}.Reconcile(ctx, c, s)
 }
 
