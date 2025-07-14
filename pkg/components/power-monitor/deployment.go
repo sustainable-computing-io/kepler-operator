@@ -661,10 +661,11 @@ func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Contain
 		}},
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/metrics",
-					Port:   intstr.IntOrString{Type: intstr.Int, IntVal: int32(PowerMonitorDSPort)},
-					Scheme: "HTTP",
+				Exec: &corev1.ExecAction{
+					Command: []string{
+						"curl", "-f", "-s",
+						fmt.Sprintf("http://%s/metrics", webListenAddress),
+					},
 				},
 			},
 			FailureThreshold:    5,

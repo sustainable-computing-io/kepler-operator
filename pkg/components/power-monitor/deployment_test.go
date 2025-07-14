@@ -109,16 +109,17 @@ func TestPowerMonitorTolerations(t *testing.T) {
 
 func TestPowerMonitorDaemonSet(t *testing.T) {
 	tt := []struct {
-		spec            v1alpha1.PowerMonitorInternalKeplerSpec
-		hostPID         bool
-		exporterCommand []string
-		volumeMounts    []corev1.VolumeMount
-		volumes         []corev1.Volume
-		containers      []string
-		scenario        string
-		addConfigMap    bool
-		configMap       *corev1.ConfigMap
-		annotation      map[string]string
+		spec                     v1alpha1.PowerMonitorInternalKeplerSpec
+		hostPID                  bool
+		exporterCommand          []string
+		volumeMounts             []corev1.VolumeMount
+		volumes                  []corev1.Volume
+		containers               []string
+		scenario                 string
+		addConfigMap             bool
+		configMap                *corev1.ConfigMap
+		annotation               map[string]string
+		expectedLivenessProbeURL string
 	}{
 		{
 			spec:    v1alpha1.PowerMonitorInternalKeplerSpec{},
@@ -140,8 +141,9 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 				k8s.VolumeFromHost("procfs", "/proc"),
 				k8s.VolumeFromConfigMap("cfm", "power-monitor-internal"),
 			},
-			containers: []string{"power-monitor-internal"},
-			scenario:   "default case",
+			containers:               []string{"power-monitor-internal"},
+			scenario:                 "default case",
+			expectedLivenessProbeURL: fmt.Sprintf("http://0.0.0.0:%d/metrics", PowerMonitorDSPort),
 		},
 		{
 			spec:    v1alpha1.PowerMonitorInternalKeplerSpec{},
@@ -176,7 +178,8 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 			annotation: map[string]string{
 				ConfigMapHashAnnotation + "-power-monitor-internal": "123",
 			},
-			scenario: "configmap case",
+			scenario:                 "configmap case",
+			expectedLivenessProbeURL: fmt.Sprintf("http://0.0.0.0:%d/metrics", PowerMonitorDSPort),
 		},
 		{
 			spec: v1alpha1.PowerMonitorInternalKeplerSpec{
@@ -208,8 +211,9 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 				k8s.VolumeFromSecret(SecretTLSCertName, SecretTLSCertName),
 				k8s.VolumeFromSecret(SecretKubeRBACProxyConfigName, SecretKubeRBACProxyConfigName),
 			},
-			containers: []string{"power-monitor-internal", KubeRBACProxyContainerName},
-			scenario:   "rbac case",
+			containers:               []string{"power-monitor-internal", KubeRBACProxyContainerName},
+			scenario:                 "rbac case",
+			expectedLivenessProbeURL: fmt.Sprintf("http://127.0.0.1:%d/metrics", PowerMonitorDSPort),
 		},
 	}
 	for _, tc := range tt {
@@ -248,6 +252,14 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 				actualAnnotation := k8s.AnnotationFromDS(ds)
 				assert.Contains(t, actualAnnotation, ConfigMapHashAnnotation+"-power-monitor-internal")
 			}
+
+			// Validate liveness probe configuration
+			container := ds.Spec.Template.Spec.Containers[0]
+			assert.NotNil(t, container.LivenessProbe, "liveness probe should be configured")
+
+			expectedCommand := []string{"curl", "-f", "-s", tc.expectedLivenessProbeURL}
+			assert.Equal(t, expectedCommand, container.LivenessProbe.Exec.Command,
+				"liveness probe exec command should use curl with correct URL")
 		})
 	}
 }
