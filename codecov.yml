@@ -1,0 +1,3 @@
+ignore:
+  - pkg/utils/k8s/           # Exclude all utils related to k8s
+  - pkg/utils/test/          # Exclude the test utils directory
