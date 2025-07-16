@@ -84,10 +84,8 @@ func main() {
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 
-	flag.StringVar(&controller.PowerMonitorDeploymentNS, "power-monitor.deployment-namespace", controller.PowerMonitorDeploymentNS,
+	flag.StringVar(&controller.PowerMonitorDeploymentNS, "deployment-namespace", controller.PowerMonitorDeploymentNS,
 		"Namespace where power monitoring components are deployed.")
-	flag.StringVar(&controller.KeplerDeploymentNS, "deployment-namespace", controller.KeplerDeploymentNS,
-		"Namespace where kepler and its components are deployed.")
 
 	flag.CommandLine.Var(flag.Value(&additionalNamespaces), "watch-namespaces",
 		"Namespaces other than deployment-namespace where kepler-internal may be deployed.")
@@ -169,7 +167,6 @@ func main() {
 		// TODO: add new introduced namespace from KeplerInternal.Spec.Deployment.Namespace
 		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
 			cacheNs := map[string]cache.Config{
-				controller.KeplerDeploymentNS:       {},
 				controller.PowerMonitorDeploymentNS: {},
 			}
 			if openshift {

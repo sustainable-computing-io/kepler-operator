@@ -261,6 +261,7 @@ watch_operator_errors() {
 }
 
 # run_e2e takes an optional set of args to be passed to go test
+# TODO: Remove logging events for kepler-operator ns once we remove old Kepler CR e2e tests
 run_e2e() {
 	header "Running e2e tests"
 
