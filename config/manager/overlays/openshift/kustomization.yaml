@@ -14,4 +14,4 @@ patches:
         value: --openshift
       - op: add
         path: /spec/template/spec/containers/0/args/1
-        value: --deployment-namespace=kepler-operator
+        value: --deployment-namespace=power-monitor
