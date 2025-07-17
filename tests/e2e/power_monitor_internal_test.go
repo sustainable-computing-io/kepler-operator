@@ -14,13 +14,13 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/internal/controller"
 	powermonitor "github.com/sustainable.computing.io/kepler-operator/pkg/components/power-monitor"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/test"
+	"github.com/sustainable.computing.io/kepler-operator/tests/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
 func TestPowerMonitorInternal_Reconciliation(t *testing.T) {
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 	name := "e2e-pmi"
 	testNs := controller.PowerMonitorDeploymentNS
 
@@ -28,7 +28,7 @@ func TestPowerMonitorInternal_Reconciliation(t *testing.T) {
 	f.AssertNoResourceExists(name, "", &v1alpha1.PowerMonitorInternal{})
 
 	// Create PowerMonitorInternal
-	b := test.PowerMonitorInternalBuilder{}
+	b := utils.PowerMonitorInternalBuilder{}
 	if runningOnVM {
 		configMapName := "my-custom-config"
 		f.CreatePowerMonitorInternal(name,
@@ -75,11 +75,11 @@ func TestPowerMonitorInternal_Reconciliation(t *testing.T) {
 	assert.EqualValues(t, 28282, containers[0].Ports[0].ContainerPort)
 
 	// Verify PowerMonitorInternal status
-	f.AssertPowerMonitorInternalStatus(pmi.Name, test.Timeout(5*time.Minute))
+	f.AssertPowerMonitorInternalStatus(pmi.Name, utils.Timeout(5*time.Minute))
 }
 
 func TestPowerMonitorInternal_RBAC_Reconciliation(t *testing.T) {
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 	name := "e2e-pmi"
 	// test namespace must be the deployment namespace for controller
 	// to watch the deployments / daemonsets etc
@@ -89,7 +89,7 @@ func TestPowerMonitorInternal_RBAC_Reconciliation(t *testing.T) {
 	f.AssertNoResourceExists(name, "", &v1alpha1.PowerMonitorInternal{})
 
 	// when
-	b := test.PowerMonitorInternalBuilder{}
+	b := utils.PowerMonitorInternalBuilder{}
 	var pmi *v1alpha1.PowerMonitorInternal
 	if runningOnVM {
 		configMapName := "my-custom-config"
@@ -185,7 +185,7 @@ func TestPowerMonitorInternal_RBAC_Reconciliation(t *testing.T) {
 		tlsCertSecretName,
 		testNs,
 		&tlsSecret,
-		test.Timeout(5*time.Minute),
+		utils.Timeout(5*time.Minute),
 	)
 	assert.NotEmpty(t, tlsSecret.Data["tls.crt"], "TLS cert should be present")
 	assert.NotEmpty(t, tlsSecret.Data["tls.key"], "TLS key should be present")

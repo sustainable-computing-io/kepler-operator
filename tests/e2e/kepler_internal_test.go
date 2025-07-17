@@ -14,7 +14,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/internal/controller"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/test"
+	"github.com/sustainable.computing.io/kepler-operator/tests/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -27,7 +27,7 @@ func TestKeplerInternal_Reconciliation(t *testing.T) {
 		t.Skip("Skipping Kepler test")
 	}
 
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 	name := "e2e-ki"
 	// test namespace must be the deployment namespace for controller
 	// to watch the deployments / daemonsets etc
@@ -37,7 +37,7 @@ func TestKeplerInternal_Reconciliation(t *testing.T) {
 	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{})
 
 	// when
-	b := test.InternalBuilder{}
+	b := utils.InternalBuilder{}
 	ki := f.CreateInternal(name,
 		b.WithNamespace(testNs),
 		b.WithExporterImage(testKeplerImage),
@@ -55,7 +55,7 @@ func TestKeplerInternal_Reconciliation(t *testing.T) {
 	assert.Equal(t, 1, len(containers[0].Ports))
 	assert.EqualValues(t, 9108, containers[0].Ports[0].ContainerPort)
 	// test expected status
-	f.AssertInternalStatus(ki.Name, test.Timeout(5*time.Minute))
+	f.AssertInternalStatus(ki.Name, utils.Timeout(5*time.Minute))
 }
 
 func TestKeplerInternal_ReconciliationWithRedfish(t *testing.T) {
@@ -63,7 +63,7 @@ func TestKeplerInternal_ReconciliationWithRedfish(t *testing.T) {
 		t.Skip("Skipping Kepler test")
 	}
 
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 	name := "e2e-ki-redfish"
 	secretName := "my-redfish-secret"
 	// test namespace must be the deployment namespace for controller
@@ -74,7 +74,7 @@ func TestKeplerInternal_ReconciliationWithRedfish(t *testing.T) {
 	f.AssertNoResourceExists(name, "", &v1alpha1.KeplerInternal{})
 
 	// when
-	b := test.InternalBuilder{}
+	b := utils.InternalBuilder{}
 	ki := f.CreateInternal(name,
 		b.WithNamespace(testNs),
 		b.WithExporterImage(testKeplerImage),

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 The Kepler Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package reconciler
+package e2e
 
 import (
 	"fmt"
@@ -9,7 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/test"
+	"github.com/sustainable.computing.io/kepler-operator/tests/e2e/utils"
+	"github.com/sustainable.computing.io/kepler-operator/pkg/reconciler"
 	"golang.org/x/net/context"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,10 +32,10 @@ func TestDeleterReconcile(t *testing.T) {
 	for _, tc := range tt {
 		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {
-			f := test.NewFramework(t, test.WithClient(c))
-			deleter := Deleter{Resource: tc.resource}
+			f := utils.NewFramework(t, utils.WithClient(c))
+			deleter := reconciler.Deleter{Resource: tc.resource}
 			result := deleter.Reconcile(context.TODO(), c, f.Scheme())
-			assert.Exactly(t, Continue, result.Action)
+			assert.Exactly(t, reconciler.Continue, result.Action)
 			assert.NoError(t, result.Error)
 
 			dummy := tc.resource.DeepCopyObject().(client.Object)
