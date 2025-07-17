@@ -273,8 +273,8 @@ run_e2e() {
 	watch_operator_errors "$error_log" &
 
 	local ret=0
-	run go -C tests/e2e test -v -failfast -timeout $TEST_TIMEOUT \
-		. "$@" \
+	run go test -C tests -v -failfast -timeout $TEST_TIMEOUT \
+		./e2e/... "$@" \
 		2>&1 | tee "$LOGS_DIR/e2e.log" || ret=1
 
 	# terminate both log_events
