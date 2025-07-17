@@ -1,25 +1,34 @@
 // SPDX-FileCopyrightText: 2025 The Kepler Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package e2e
+package reconciler
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
-	"github.com/sustainable.computing.io/kepler-operator/tests/e2e/utils"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/reconciler"
 	"golang.org/x/net/context"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestDeleterReconcile(t *testing.T) {
+	// Set up scheme with the types we need
+	testScheme := runtime.NewScheme()
+	require.NoError(t, clientgoscheme.AddToScheme(testScheme))
+	require.NoError(t, corev1.AddToScheme(testScheme))
+	require.NoError(t, appsv1.AddToScheme(testScheme))
+
 	dep := k8s.Deployment("ns", "name").Build()
-	c := fake.NewFakeClient(dep)
+	c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(dep).Build()
 
 	tt := []struct {
 		scenario string
@@ -32,10 +41,9 @@ func TestDeleterReconcile(t *testing.T) {
 	for _, tc := range tt {
 		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {
-			f := utils.NewFramework(t, utils.WithClient(c))
-			deleter := reconciler.Deleter{Resource: tc.resource}
-			result := deleter.Reconcile(context.TODO(), c, f.Scheme())
-			assert.Exactly(t, reconciler.Continue, result.Action)
+			deleter := Deleter{Resource: tc.resource}
+			result := deleter.Reconcile(context.TODO(), c, testScheme)
+			assert.Exactly(t, Continue, result.Action)
 			assert.NoError(t, result.Error)
 
 			dummy := tc.resource.DeepCopyObject().(client.Object)

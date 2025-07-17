@@ -6,9 +6,6 @@ WORKDIR /workspace
 COPY go.mod go.mod
 COPY go.sum go.sum
 
-# Cache dependencies before building source
-RUN go mod download
-
 # Install kubectl and oc
 RUN curl -L -o oc.tar.gz https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/openshift-client-linux.tar.gz \
   && tar -xvzf oc.tar.gz \
@@ -21,9 +18,9 @@ COPY api/ api/
 COPY internal/ internal/
 COPY tests/ tests/
 
-# Set workdir to e2e tests and get test dependencies
-WORKDIR /workspace/tests/e2e
+WORKDIR /workspace/tests
+
 RUN go mod download
 
 # Compile test into e2e.test binary
-RUN go test -c .
+RUN go test -c ./e2e/

@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/sustainable.computing.io/kepler-operator/tests/e2e/utils/oc"
+	"github.com/sustainable.computing.io/kepler-operator/tests/utils/oc"
 )
 
 func Test_GetNodes(t *testing.T) {
