@@ -481,25 +481,31 @@ func TestPowerMonitor_RBAC_Reconciliation(t *testing.T) {
 		)
 	}
 
-	// generate missing certs required in openshift
-	clusterIssuerName := "selfsigned-cluster-issuer"
-	caCertName := "power-monitor-ca"
-	caCertSecretName := "power-monitor-ca-secret"
-	pmIssuerName := "power-monitor-ca-issuer"
-	tlsCertName := powermonitor.SecretTLSCertName
 	tlsCertSecretName := powermonitor.SecretTLSCertName
-	f.DeployOpenshiftCerts(
-		pm.Name,
-		controller.PowerMonitorDeploymentNS,
-		clusterIssuerName,
-		caCertName,
-		caCertSecretName,
-		pmIssuerName,
-		tlsCertName,
-		tlsCertSecretName,
-	)
-	// wait for reconciliation to be ready
-	time.Sleep(60 * time.Second)
+	var caCertSource string
+
+	if Cluster == k8s.Kubernetes {
+		// For Kubernetes clusters, deploy cert-manager and dependencies
+		clusterIssuerName := "selfsigned-cluster-issuer"
+		caCertName := "power-monitor-ca"
+		caCertSecretName := "power-monitor-ca-secret"
+		pmIssuerName := "power-monitor-ca-issuer"
+		f.DeployOpenshiftCerts(
+			pm.Name,
+			controller.PowerMonitorDeploymentNS,
+			clusterIssuerName,
+			caCertName,
+			caCertSecretName,
+			pmIssuerName,
+			tlsCertSecretName,
+			tlsCertSecretName,
+		)
+		caCertSource = caCertSecretName
+	} else {
+		f.WaitUntilPowerMonitorCondition(pm.Name, v1alpha1.Reconciled, v1alpha1.ConditionTrue)
+		f.WaitForOpenshiftCerts(pm.Name, controller.PowerMonitorDeploymentNS, tlsCertSecretName)
+		caCertSource = tlsCertSecretName
+	}
 
 	// then
 	f.AssertResourceExists(controller.PowerMonitorDeploymentNS, "", &corev1.Namespace{})
@@ -538,35 +544,63 @@ func TestPowerMonitor_RBAC_Reconciliation(t *testing.T) {
 	)
 	assert.NotEmpty(t, tlsSecret.Data["tls.crt"], "TLS cert should be present")
 	assert.NotEmpty(t, tlsSecret.Data["tls.key"], "TLS key should be present")
+
 	// deploy successful curl job
 	successfulJobName := "successful-test-curl"
 	successfulTestSAName := "successful-test-curl-sa"
 	successfulTestCurlNs := "successful-test-namespace"
-	logs := f.CreateCurlPowerMonitorTestSuite(
-		successfulJobName,
-		successfulTestSAName,
-		successfulTestCurlNs,
-		audience,
-		serviceURL,
-		caCertSecretName,
-		controller.PowerMonitorDeploymentNS,
-	)
-	assert.True(t, strings.Contains(logs, "HTTP/2 200"), fmt.Sprintf("expected %s to successfully access (200) the secure endpoint but it did not", successfulJobName))
+	var jobLogs string
+
+	if Cluster == k8s.Kubernetes {
+		jobLogs = f.CreateCurlPowerMonitorTestSuite(
+			successfulJobName,
+			successfulTestSAName,
+			successfulTestCurlNs,
+			audience,
+			serviceURL,
+			caCertSource,
+			controller.PowerMonitorDeploymentNS,
+		)
+	} else {
+		jobLogs = f.CreateCurlPowerMonitorTestSuiteForOpenShift(
+			successfulJobName,
+			successfulTestSAName,
+			successfulTestCurlNs,
+			audience,
+			serviceURL,
+			caCertSource,
+			controller.PowerMonitorDeploymentNS,
+		)
+	}
+	assert.True(t, strings.Contains(jobLogs, "HTTP/2 200"), fmt.Sprintf("expected %s to successfully access (200) the secure endpoint but it did not", successfulJobName))
 
 	// deploy blocked curl job
 	failedJobname := "failed-test-curl"
 	failedTestSAName := "failed-test-curl-sa"
 	failedTestCurlNs := "failed-test-namespace"
-	logs = f.CreateCurlPowerMonitorTestSuite(
-		failedJobname,
-		failedTestSAName,
-		failedTestCurlNs,
-		audience,
-		serviceURL,
-		caCertSecretName,
-		controller.PowerMonitorDeploymentNS,
-	)
-	assert.True(t, strings.Contains(logs, "HTTP/2 403"), fmt.Sprintf("expected %s to receive a forbidden error (403) when attempting to access secure endpoint but did not", failedJobname))
+
+	if Cluster == k8s.Kubernetes {
+		jobLogs = f.CreateCurlPowerMonitorTestSuite(
+			failedJobname,
+			failedTestSAName,
+			failedTestCurlNs,
+			audience,
+			serviceURL,
+			caCertSource,
+			controller.PowerMonitorDeploymentNS,
+		)
+	} else {
+		jobLogs = f.CreateCurlPowerMonitorTestSuiteForOpenShift(
+			failedJobname,
+			failedTestSAName,
+			failedTestCurlNs,
+			audience,
+			serviceURL,
+			caCertSource,
+			controller.PowerMonitorDeploymentNS,
+		)
+	}
+	assert.True(t, strings.Contains(jobLogs, "HTTP/2 403"), fmt.Sprintf("expected %s to receive a forbidden error (403) when attempting to access secure endpoint but did not", failedJobname))
 	f.DeletePowerMonitor("power-monitor")
 	f.AssertNoResourceExists(controller.PowerMonitorDeploymentNS, "", &corev1.Namespace{})
 	f.AssertNoResourceExists(ds.Name, ds.Namespace, &ds)

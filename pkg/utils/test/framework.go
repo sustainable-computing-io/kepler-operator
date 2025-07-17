@@ -1135,28 +1135,6 @@ func (f Framework) DeleteSA(name, ns string, fns ...AssertOptionFn) {
 	}, fns...)
 }
 
-// func (f Framework) getJobPod(jobName, ns string) (*corev1.Pod, error) {
-// 	f.T.Helper()
-// 	pods := corev1.PodList{}
-// 	err := f.client.List(context.TODO(), &pods, client.InNamespace(ns), client.MatchingLabels{"job-name": jobName})
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to retrieve job pods:%s :%v", jobName, err)
-// 	}
-// 	if len(pods.Items) == 0 {
-// 		return nil, fmt.Errorf("no pods associated with job %s", jobName)
-// 	}
-// 	successfulPods := []corev1.Pod{}
-// 	for _, pod := range pods.Items {
-// 		if pod.Status.Phase == corev1.PodSucceeded {
-// 			successfulPods = append(successfulPods, pod)
-// 		}
-// 	}
-// 	if len(successfulPods) != 1 {
-// 		return nil, fmt.Errorf("there should be exactly one successful pod associated with job %s", jobName)
-// 	}
-// 	return &successfulPods[0], nil
-// }
-
 func tolerateTaints(taints []corev1.Taint) []corev1.Toleration {
 	var to []corev1.Toleration
 	for _, ta := range taints {
@@ -1175,4 +1153,92 @@ func isSchedulableNode(n corev1.Node) bool {
 		return t.Effect == corev1.TaintEffectNoSchedule ||
 			t.Effect == corev1.TaintEffectNoExecute
 	}) == -1
+}
+
+func (f Framework) WaitForOpenshiftCerts(serviceName, serviceNamespace, tlsCertSecretName string) {
+	f.T.Helper()
+	f.WaitUntil("OpenShift TLS secret is created", func(ctx context.Context) (bool, error) {
+		tlsSecret := corev1.Secret{}
+		err := f.client.Get(ctx, client.ObjectKey{
+			Name:      tlsCertSecretName,
+			Namespace: serviceNamespace,
+		}, &tlsSecret)
+		if err != nil {
+			return false, nil
+		}
+
+		// Check if the secret has the required TLS data
+		if len(tlsSecret.Data["tls.crt"]) == 0 || len(tlsSecret.Data["tls.key"]) == 0 {
+			return false, nil
+		}
+
+		return true, nil
+	})
+}
+
+func (f Framework) CreateCAConfigMapFromOpenshiftServiceCert(name, ns, tlsCertSecretName, tlsCertSecretNs string) *corev1.ConfigMap {
+	newCAConfigMap := corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			Annotations: map[string]string{
+				"service.beta.openshift.io/inject-cabundle": "true",
+			},
+		},
+		Data: map[string]string{},
+	}
+
+	err := f.Patch(&newCAConfigMap)
+	if err != nil {
+		f.T.Fatalf("failed to create CA ConfigMap with injection annotation: %v", err)
+	}
+
+	f.WaitUntil("OpenShift injects service CA into ConfigMap", func(ctx context.Context) (bool, error) {
+		caConfigMap := corev1.ConfigMap{}
+		err := f.client.Get(ctx, client.ObjectKey{
+			Name:      name,
+			Namespace: ns,
+		}, &caConfigMap)
+		if err != nil {
+			return false, nil
+		}
+
+		// Check if OpenShift has injected the CA certificate
+		serviceCaCert := caConfigMap.Data["service-ca.crt"]
+		if len(serviceCaCert) == 0 {
+			return false, nil
+		}
+
+		return true, nil
+	})
+
+	return &newCAConfigMap
+}
+
+func (f Framework) CreateCurlPowerMonitorTestSuiteForOpenShift(testJobName, testSAName, testNs, audience, serviceURL, caCertConfigMapName, caCertConfigMapNs string) string {
+	f.CreateNamespace(testNs)
+
+	f.CreateSA(testSAName, testNs)
+
+	caConfigMapName := "test-monitoring-serving-certs-ca-bundle"
+	f.CreateCAConfigMapFromOpenshiftServiceCert(caConfigMapName, testNs, caCertConfigMapName, caCertConfigMapNs)
+
+	curlJob := f.CreateCurlPowerMonitorJob(testJobName, testNs, testSAName, caConfigMapName, audience, serviceURL)
+	f.WaitUntil(fmt.Sprintf("job %s in %s is complete", testJobName, testNs), func(ctx context.Context) (bool, error) {
+		err := f.client.Get(ctx, client.ObjectKeyFromObject(curlJob), curlJob)
+		if err != nil {
+			return false, err
+		}
+		return curlJob.Status.Succeeded > 0, nil
+	}, Timeout(5*time.Minute))
+
+	logs, err := oc.Literal().From("oc logs job/%s -n %s", testJobName, testNs).Run()
+	if err != nil {
+		f.T.Errorf("failed to get job pod's logs: %s :%v", testJobName, err)
+	}
+	return logs
 }
