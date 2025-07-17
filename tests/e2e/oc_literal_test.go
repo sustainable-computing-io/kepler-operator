@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/test/oc"
+	"github.com/sustainable.computing.io/kepler-operator/tests/e2e/utils/oc"
 )
 
 const podSpecTemplate = `

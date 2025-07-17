@@ -19,14 +19,14 @@ import (
 
 	powermonitor "github.com/sustainable.computing.io/kepler-operator/pkg/components/power-monitor"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/test"
+	"github.com/sustainable.computing.io/kepler-operator/tests/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 func TestPowerMonitor_Deletion(t *testing.T) {
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 
 	// Pre-condition: Verify PowerMonitor doesn't exist
 	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{})
@@ -66,12 +66,12 @@ func TestPowerMonitor_Deletion(t *testing.T) {
 		pm.Name,
 		controller.PowerMonitorDeploymentNS,
 		&ds,
-		test.Timeout(10*time.Second),
+		utils.Timeout(10*time.Second),
 	)
 }
 
 func TestPowerMonitor_Reconciliation(t *testing.T) {
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 
 	// Pre-condition: Verify PowerMonitor doesn't exist
 	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{})
@@ -124,10 +124,10 @@ func TestPowerMonitor_Reconciliation(t *testing.T) {
 }
 
 func TestBadPowerMonitor_Reconciliation(t *testing.T) {
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 
 	// Pre-condition: Verify PowerMonitor doesn't exist
-	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{}, test.Timeout(10*time.Second))
+	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{}, utils.Timeout(10*time.Second))
 	f.AssertNoResourceExists("invalid-name", "", &v1alpha1.PowerMonitor{})
 
 	// Attempt to create PowerMonitor with invalid name
@@ -137,10 +137,10 @@ func TestBadPowerMonitor_Reconciliation(t *testing.T) {
 }
 
 func TestPowerMonitorNodeSelector(t *testing.T) {
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 
 	// Pre-condition: Verify PowerMonitor doesn't exist
-	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{}, test.Timeout(10*time.Second))
+	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{}, utils.Timeout(10*time.Second))
 
 	// Label a node
 	nodes := f.GetSchedulableNodes()
@@ -187,10 +187,10 @@ func TestPowerMonitorNodeSelector(t *testing.T) {
 }
 
 func TestPowerMonitorNodeSelectorUnavailableLabel(t *testing.T) {
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 
 	// Pre-condition: Verify PowerMonitor doesn't exist
-	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{}, test.Timeout(10*time.Second))
+	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{}, utils.Timeout(10*time.Second))
 
 	// Verify nodes exist
 	nodes := f.GetSchedulableNodes()
@@ -233,10 +233,10 @@ func TestPowerMonitorNodeSelectorUnavailableLabel(t *testing.T) {
 }
 
 func TestPowerMonitorTaint_WithToleration(t *testing.T) {
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 
 	// Pre-condition: Verify PowerMonitor doesn't exist
-	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{}, test.Timeout(10*time.Second))
+	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{}, utils.Timeout(10*time.Second))
 
 	// Taint a node
 	nodes := f.GetSchedulableNodes()
@@ -286,10 +286,10 @@ func TestPowerMonitorTaint_WithToleration(t *testing.T) {
 }
 
 func TestBadPowerMonitorTaint_WithToleration(t *testing.T) {
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 
 	// Pre-condition: Verify PowerMonitor doesn't exist
-	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{}, test.Timeout(10*time.Second))
+	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{}, utils.Timeout(10*time.Second))
 
 	// Taint a node
 	nodes := f.GetSchedulableNodes()
@@ -343,7 +343,7 @@ func TestBadPowerMonitorTaint_WithToleration(t *testing.T) {
 }
 
 func TestPowerMonitor_ReconciliationWithAdditionalConfigMap(t *testing.T) {
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 	configMapName := "my-custom-config"
 
 	// Pre-condition: Verify PowerMonitor doesn't exist
@@ -445,7 +445,7 @@ dev:
 }
 
 func TestPowerMonitor_RBAC_Reconciliation(t *testing.T) {
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 
 	// pre-condition
 	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{})
@@ -540,7 +540,7 @@ func TestPowerMonitor_RBAC_Reconciliation(t *testing.T) {
 		tlsCertSecretName,
 		controller.PowerMonitorDeploymentNS,
 		&tlsSecret,
-		test.Timeout(5*time.Minute),
+		utils.Timeout(5*time.Minute),
 	)
 	assert.NotEmpty(t, tlsSecret.Data["tls.crt"], "TLS cert should be present")
 	assert.NotEmpty(t, tlsSecret.Data["tls.key"], "TLS key should be present")
@@ -607,7 +607,7 @@ func TestPowerMonitor_RBAC_Reconciliation(t *testing.T) {
 }
 
 func TestPowerMonitor_NewConfigFields(t *testing.T) {
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 
 	// Pre-condition: Verify PowerMonitor doesn't exist
 	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{})
@@ -653,7 +653,7 @@ func TestPowerMonitor_NewConfigFields(t *testing.T) {
 		pm.Name,
 		controller.PowerMonitorDeploymentNS,
 		&ds,
-		test.Timeout(10*time.Second),
+		utils.Timeout(10*time.Second),
 	)
 
 	// Verify the spec values are properly set
@@ -682,7 +682,7 @@ func TestPowerMonitor_NewConfigFields(t *testing.T) {
 }
 
 func TestPowerMonitor_ZeroValueConfigFields(t *testing.T) {
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 
 	// Pre-condition: Verify PowerMonitor doesn't exist
 	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{})
@@ -728,7 +728,7 @@ func TestPowerMonitor_ZeroValueConfigFields(t *testing.T) {
 		pm.Name,
 		controller.PowerMonitorDeploymentNS,
 		&ds,
-		test.Timeout(10*time.Second),
+		utils.Timeout(10*time.Second),
 	)
 
 	// Verify the spec values are properly set to zero

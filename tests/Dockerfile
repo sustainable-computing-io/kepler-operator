@@ -21,5 +21,9 @@ COPY api/ api/
 COPY internal/ internal/
 COPY tests/ tests/
 
+# Set workdir to e2e tests and get test dependencies
+WORKDIR /workspace/tests/e2e
+RUN go mod download
+
 # Compile test into e2e.test binary
-RUN go test -c ./tests/e2e/
+RUN go test -c .

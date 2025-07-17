@@ -13,7 +13,7 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/internal/controller"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/test"
+	"github.com/sustainable.computing.io/kepler-operator/tests/e2e/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -23,7 +23,7 @@ func TestKepler_Deletion(t *testing.T) {
 		t.Skip("Skipping Kepler test")
 	}
 
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 
 	// pre-condition: ensure kepler exists
 	f.CreateKepler("kepler")
@@ -35,7 +35,7 @@ func TestKepler_Deletion(t *testing.T) {
 		k.Name,
 		controller.KeplerDeploymentNS,
 		&ds,
-		test.Timeout(10*time.Second),
+		utils.Timeout(10*time.Second),
 	)
 
 	f.DeleteKepler("kepler")
@@ -50,7 +50,7 @@ func TestKepler_Reconciliation(t *testing.T) {
 		t.Skip("Skipping Kepler test")
 	}
 
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 
 	// pre-condition
 	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{})
@@ -84,9 +84,9 @@ func TestBadKepler_Reconciliation(t *testing.T) {
 		t.Skip("Skipping Kepler test")
 	}
 
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 	// Ensure Kepler is not deployed (by any chance)
-	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
+	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, utils.Timeout(10*time.Second))
 	f.AssertNoResourceExists("invalid-name", "", &v1alpha1.Kepler{})
 	kepler := f.NewKepler("invalid-name")
 	err := f.Patch(&kepler)
@@ -98,9 +98,9 @@ func TestNodeSelector(t *testing.T) {
 		t.Skip("Skipping Kepler test")
 	}
 
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 	// Ensure Kepler is not deployed (by any chance)
-	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
+	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, utils.Timeout(10*time.Second))
 
 	nodes := f.GetSchedulableNodes()
 	assert.NotZero(t, len(nodes), "got zero nodes")
@@ -130,9 +130,9 @@ func TestNodeSelectorUnavailableLabel(t *testing.T) {
 		t.Skip("Skipping Kepler test")
 	}
 
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 	// Ensure Kepler is not deployed (by any chance)
-	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
+	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, utils.Timeout(10*time.Second))
 
 	nodes := f.GetSchedulableNodes()
 	assert.NotZero(t, len(nodes), "got zero nodes")
@@ -159,9 +159,9 @@ func TestTaint_WithToleration(t *testing.T) {
 		t.Skip("Skipping Kepler test")
 	}
 
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 	// Ensure Kepler is not deployed (by any chance)
-	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
+	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, utils.Timeout(10*time.Second))
 
 	var err error
 	// choose one node
@@ -196,9 +196,9 @@ func TestBadTaint_WithToleration(t *testing.T) {
 		t.Skip("Skipping Kepler test")
 	}
 
-	f := test.NewFramework(t)
+	f := utils.NewFramework(t)
 	// Ensure Kepler is not deployed (by any chance)
-	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, test.Timeout(10*time.Second))
+	f.AssertNoResourceExists("kepler", "", &v1alpha1.Kepler{}, utils.Timeout(10*time.Second))
 
 	// choose one node
 	nodes := f.GetSchedulableNodes()
