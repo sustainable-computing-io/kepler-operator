@@ -21,6 +21,8 @@ jobs:
               - '**/*.go'
               - 'go.mod'
               - 'go.sum'
+              - 'tests/go.mod'
+              - 'tests/go.sum'
   docs:
     runs-on: ubuntu-latest-8-cores
     steps:
@@ -69,6 +71,25 @@ jobs:
 
       - name: make vet
         run: make vet && git diff --exit-code
+
+  go-mod-tidy:
+    needs: check-changes
+    if: needs.check-changes.outputs.changes == 'true'
+    runs-on: ubuntu-latest-8-cores
+    steps:
+      - uses: actions/checkout@main
+
+      - uses: actions/setup-go@main
+        with:
+          go-version-file: go.mod
+
+      - name: Install all tools
+        uses: ./.github/tools-cache
+
+      - name: Check go.mod files are tidy
+        run: |
+          make mod-tidy
+          git diff --exit-code
 
   escapes_detect:
     needs: check-changes
