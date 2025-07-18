@@ -326,6 +326,7 @@ $(TOOLS):
 
 mod-tidy:
 	@go mod tidy
+	@cd tests && go mod tidy
 
 check-govuln: govulncheck mod-tidy
 	@govulncheck ./... || true
