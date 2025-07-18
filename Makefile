@@ -324,6 +324,7 @@ tools:
 $(TOOLS):
 	./hack/tools.sh $@
 
+.PHONY: mod-tidy
 mod-tidy:
 	@go mod tidy
 	@cd tests && go mod tidy

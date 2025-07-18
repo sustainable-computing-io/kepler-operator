@@ -15,23 +15,24 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-go@main
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
 
-      - uses: ./.github/compute-version
+      - name: Compute version
+        uses: ./.github/compute-version
         id: version
 
-      - name: additional tags
+      - name: Additional tags
         id: additional_tags
         shell: bash
         run: |
           echo "result=$(git rev-parse --short HEAD),v1alpha1" >> $GITHUB_OUTPUT
 
-      - name: build and publish images to external registry
+      - name: Build and Publish Images to External registry
         uses: ./.github/publish-images
         with:
           image_registry: ${{ vars.IMG_BASE }}
