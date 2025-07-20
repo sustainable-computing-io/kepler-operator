@@ -9,10 +9,10 @@ jobs:
     outputs:
       changes: ${{ steps.filter.outputs.changes }}
     steps:
-      - name: checkout source
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: filter changes
+      - name: Filter changes
         uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -23,12 +23,15 @@ jobs:
               - 'go.sum'
               - 'tests/go.mod'
               - 'tests/go.sum'
+              - 'Makefile'
   docs:
     runs-on: ubuntu-latest-8-cores
     steps:
-      - uses: actions/checkout@main
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-go@main
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
@@ -43,9 +46,11 @@ jobs:
   fmt:
     runs-on: ubuntu-latest-8-cores
     steps:
-      - uses: actions/checkout@main
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-go@main
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
@@ -60,9 +65,11 @@ jobs:
     if: needs.check-changes.outputs.changes == 'true'
     runs-on: ubuntu-latest-8-cores
     steps:
-      - uses: actions/checkout@main
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-go@main
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
@@ -77,9 +84,11 @@ jobs:
     if: needs.check-changes.outputs.changes == 'true'
     runs-on: ubuntu-latest-8-cores
     steps:
-      - uses: actions/checkout@main
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-go@main
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
@@ -96,9 +105,11 @@ jobs:
     if: needs.check-changes.outputs.changes == 'true'
     runs-on: ubuntu-latest-8-cores
     steps:
-      - uses: actions/checkout@main
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-go@main
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
@@ -118,9 +129,11 @@ jobs:
 
     runs-on: ubuntu-latest-8-cores
     steps:
-      - name: code checkout
-        uses: actions/checkout@v3
-      - uses: actions/setup-go@main
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: false
@@ -137,8 +150,11 @@ jobs:
     if: needs.check-changes.outputs.changes == 'true'
     runs-on: ubuntu-latest-8-cores
     steps:
-      - uses: actions/checkout@main
-      - uses: actions/setup-go@main
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
@@ -152,7 +168,7 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v3
@@ -190,14 +206,18 @@ jobs:
   bundle:
     runs-on: ubuntu-latest-8-cores
     steps:
-      - uses: actions/checkout@main
-      - uses: actions/setup-go@main
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+
       - name: Install all tools
         uses: ./.github/tools-cache
 
-      - name: bundle
+      - name: Generate bundle
         run: |
           make generate manifests bundle
           git diff --exit-code
@@ -205,15 +225,19 @@ jobs:
   build-images:
     runs-on: ubuntu-latest-16-cores
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@main
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
-      - uses: ./.github/compute-version
+      - name: Compute version
+        uses: ./.github/compute-version
         id: version
 
-      - name: additional image tags
+      - name: Additional image tags
         id: additional_tags
         shell: bash
         run: |
@@ -240,19 +264,20 @@ jobs:
 
     runs-on: ubuntu-latest-16-cores
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout source
+        uses: actions/checkout@v4
         with:
           go-version-file: go.mod
 
       - name: Install Go
-        uses: actions/setup-go@main
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
       - name: Install all tools
         uses: ./.github/tools-cache
 
-      - name: use kepler action for kind cluster build
+      - name: Use Kepler Action for Kind cluster
         uses: sustainable-computing-io/kepler-action@v0.0.5
         with:
           ebpfprovider: libbpf
@@ -263,7 +288,8 @@ jobs:
       - name: Ensure cluster is able to run OLM bundles
         run: make cluster-prereqs
 
-      - uses: ./.github/compute-version
+      - name: Compute version
+        uses: ./.github/compute-version
         id: version
 
       - name: Run Operator Upgrade
@@ -304,17 +330,17 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Go
-        uses: actions/setup-go@main
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
       - name: Install all tools
         uses: ./.github/tools-cache
 
-      - name: use kepler action for kind cluster build
+      - name: Use Kepler Action for Kind cluster
         uses: sustainable-computing-io/kepler-action@v0.0.5
         with:
           ebpfprovider: libbpf
@@ -325,7 +351,8 @@ jobs:
       - name: Ensure cluster is able to run OLM bundles
         run: make cluster-prereqs
 
-      - uses: ./.github/compute-version
+      - name: Compute version
+        uses: ./.github/compute-version
         id: version
 
       # NOTE: Running only PowerMonitor test

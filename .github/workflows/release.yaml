@@ -26,8 +26,8 @@ jobs:
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
 
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout source
+        uses: actions/checkout@v4
 
       - name: Login to Quay
         uses: docker/login-action@v2
