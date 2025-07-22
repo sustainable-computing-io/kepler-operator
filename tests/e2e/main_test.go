@@ -27,7 +27,7 @@ var (
 
 func TestMain(m *testing.M) {
 	openshift := flag.Bool("openshift", false, "Indicate if tests are run aginast an OpenShift cluster.")
-	flag.StringVar(&controller.KeplerDeploymentNS, "deployment-namespace", controller.KeplerDeploymentNS,
+	flag.StringVar(&controller.PowerMonitorDeploymentNS, "deployment-namespace", controller.PowerMonitorDeploymentNS,
 		"Namespace where kepler and its components are deployed.")
 	flag.StringVar(&testKeplerImage, "kepler-image", keplerImage, "Kepler image to use when running Internal tests")
 	flag.StringVar(&testKubeRbacProxyImage, "kube-rbac-proxy-image", kubeRbacProxyImage, "Kube Rbac Proxy image to use when running mode rbac tests")
