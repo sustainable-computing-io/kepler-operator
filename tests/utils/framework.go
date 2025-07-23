@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
+	"github.com/sustainable.computing.io/kepler-operator/internal/controller"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	"github.com/sustainable.computing.io/kepler-operator/tests/utils/oc"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -317,11 +318,20 @@ func (f Framework) DeletePowerMonitor(name string) {
 	f.T.Helper()
 
 	pm := v1alpha1.PowerMonitor{}
-	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &pm)
+	pmi := v1alpha1.PowerMonitorInternal{}
+
+	err := f.client.Get(context.Background(), client.ObjectKey{Name: name}, &pm)
 	if errors.IsNotFound(err) {
 		return
 	}
 	assert.NoError(f.T, err, "failed to get powermonitor :%s", name)
+
+	// Get PMI to obtain the deployment namespace in order to wait for deletion for namespace to happen
+	err = f.client.Get(context.Background(), client.ObjectKey{Name: name}, &pmi)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get power-monitor-internal :%s", name)
 
 	f.T.Logf("%s: deleting powermonitor %s", time.Now().UTC().Format(time.RFC3339), name)
 
@@ -331,12 +341,20 @@ func (f Framework) DeletePowerMonitor(name string) {
 	}
 
 	f.WaitUntil(fmt.Sprintf("powermonitor %s is deleted", name), func(ctx context.Context) (bool, error) {
+		f.T.Logf("Waiting for powermonitor %s to be deleted", name)
 		pm := v1alpha1.PowerMonitor{}
 		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &pm)
 		return errors.IsNotFound(err), nil
 	})
-}
 
+	ns := pmi.Spec.Kepler.Deployment.Namespace
+	f.WaitUntil(fmt.Sprintf("namespace %s should not exist", ns), func(ctx context.Context) (bool, error) {
+		f.T.Logf("Waiting for namespace %s to be deleted", ns)
+		namespace := corev1.Namespace{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: ns}, &namespace)
+		return errors.IsNotFound(err), nil
+	})
+}
 func (f Framework) GetPowerMonitorInternal(name string) *v1alpha1.PowerMonitorInternal {
 	pmi := v1alpha1.PowerMonitorInternal{}
 	f.AssertResourceExists(name, "", &pmi)
@@ -383,6 +401,8 @@ func (f Framework) DeletePowerMonitorInternal(name string, fns ...AssertOptionFn
 	}
 	assert.NoError(f.T, err, "failed to get power-monitor-internal :%s", name)
 
+	ns := pmi.Spec.Kepler.Deployment.Namespace
+
 	f.T.Logf("%s: deleting power-monitor-internal %s", time.Now().UTC().Format(time.RFC3339), name)
 
 	err = f.client.Delete(context.Background(), &pmi)
@@ -391,10 +411,18 @@ func (f Framework) DeletePowerMonitorInternal(name string, fns ...AssertOptionFn
 	}
 
 	f.WaitUntil(fmt.Sprintf("power-monitor-internal %s is deleted", name), func(ctx context.Context) (bool, error) {
+		f.T.Logf("Waiting for power-monitor-internal %s to be deleted", name)
 		pmi := v1alpha1.PowerMonitorInternal{}
 		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &pmi)
 		return errors.IsNotFound(err), nil
 	}, fns...)
+
+	f.WaitUntil(fmt.Sprintf("namespace %s should not exist", ns), func(ctx context.Context) (bool, error) {
+		f.T.Logf("Waiting for namespace %s to be deleted", ns)
+		namespace := corev1.Namespace{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: ns}, &namespace)
+		return errors.IsNotFound(err), nil
+	})
 }
 
 func (f Framework) WaitUntilPowerMonitorInternalCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus, fns ...AssertOptionFn) *v1alpha1.PowerMonitorInternal {
@@ -528,6 +556,92 @@ func (f Framework) WithSampleRate(sampleRate string) func(k *v1alpha1.PowerMonit
 		duration, _ := time.ParseDuration(sampleRate)
 		pm.Spec.Kepler.Config.SampleRate = &metav1.Duration{Duration: duration}
 	}
+}
+
+// CreateTestPowerMonitor creates a PowerMonitor with standard test configuration
+// for VM or non-VM environments. It handles the common pattern of creating
+// additional ConfigMaps for VM environments and applies standard security settings.
+func (f Framework) CreateTestPowerMonitor(name string, runningOnVM bool, additionalFns ...powermonitorFn) *v1alpha1.PowerMonitor {
+	configMapName := "my-custom-config"
+
+	// Combine the base configuration with any additional functions
+	var fns []powermonitorFn
+
+	if runningOnVM {
+		// For VM environments, add the additional ConfigMap
+		fns = append(fns, f.WithAdditionalConfigMaps([]string{configMapName}))
+	}
+
+	// Always add the security settings
+	fns = append(fns, f.WithPowerMonitorSecuritySet(
+		v1alpha1.SecurityModeNone,
+		[]string{},
+	))
+
+	// Add any additional functions passed by the caller
+	fns = append(fns, additionalFns...)
+
+	// Create the PowerMonitor
+	pm := f.CreatePowerMonitor(name, fns...)
+
+	// Wait for the PowerMonitor to be reconciled
+	_ = f.WaitUntilPowerMonitorCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionFalse)
+
+	// For VM environments, create and patch the additional ConfigMap
+	if runningOnVM {
+		cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, `dev:
+  fake-cpu-meter:
+    enabled: true`)
+		err := f.Patch(cfm)
+		assert.NoError(f.T, err, "failed to create additional config map for VM environment")
+	}
+
+	return pm
+}
+
+// CreateTestPowerMonitorInternal creates a PowerMonitorInternal with standard test configuration
+// for VM or non-VM environments. It handles the common pattern of creating
+// additional ConfigMaps for VM environments and applies standard configuration.
+func (f Framework) CreateTestPowerMonitorInternal(name string, testNs string, runningOnVM bool, keplerImage string, kubeRbacProxyImage string, cluster k8s.Cluster, securityMode v1alpha1.SecurityMode, allowedSANames []string, additionalFns ...powermonitorinternalFn) *v1alpha1.PowerMonitorInternal {
+	configMapName := "my-custom-config"
+
+	// Set up the builder with standard configuration
+	b := PowerMonitorInternalBuilder{}
+	var fns []powermonitorinternalFn
+
+	// Add standard configuration
+	fns = append(fns,
+		b.WithNamespace(testNs),
+		b.WithKeplerImage(keplerImage),
+		b.WithKubeRbacProxyImage(kubeRbacProxyImage),
+		b.WithCluster(cluster),
+		b.WithSecuritySet(securityMode, allowedSANames),
+	)
+
+	if runningOnVM {
+		// For VM environments, add the additional ConfigMap
+		fns = append(fns, b.WithAdditionalConfigMaps([]string{configMapName}))
+	}
+
+	// Add any additional functions passed by the caller
+	fns = append(fns, additionalFns...)
+
+	// Create the PowerMonitorInternal
+	pmi := f.CreatePowerMonitorInternal(name, fns...)
+
+	// Wait for the PowerMonitorInternal to be reconciled
+	_ = f.WaitUntilPowerMonitorInternalCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionFalse)
+
+	// For VM environments, create and patch the additional ConfigMap
+	if runningOnVM {
+		cfm := f.NewAdditionalConfigMap(configMapName, testNs, `dev:
+  fake-cpu-meter:
+    enabled: true`)
+		err := f.Patch(cfm)
+		assert.NoError(f.T, err, "failed to create additional config map for VM environment")
+	}
+
+	return pmi
 }
 
 func (f Framework) NewAdditionalConfigMap(configMapName, namespace, config string) *corev1.ConfigMap {

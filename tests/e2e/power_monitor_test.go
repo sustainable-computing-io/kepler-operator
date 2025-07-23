@@ -32,30 +32,7 @@ func TestPowerMonitor_Deletion(t *testing.T) {
 	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{})
 
 	// Create PowerMonitor
-	if runningOnVM {
-		configMapName := "my-custom-config"
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithAdditionalConfigMaps([]string{configMapName}),
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-		cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, `dev:
-  fake-cpu-meter:
-    enabled: true`)
-		err := f.Patch(cfm)
-		assert.NoError(t, err)
-	} else {
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-	}
+	f.CreateTestPowerMonitor("power-monitor", runningOnVM)
 
 	// Wait until PowerMonitor is available
 	pm := f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Available, v1alpha1.ConditionTrue)
@@ -77,30 +54,7 @@ func TestPowerMonitor_Reconciliation(t *testing.T) {
 	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{})
 
 	// Create PowerMonitor
-	if runningOnVM {
-		configMapName := "my-custom-config"
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithAdditionalConfigMaps([]string{configMapName}),
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-		cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, `dev:
-  fake-cpu-meter:
-    enabled: true`)
-		err := f.Patch(cfm)
-		assert.NoError(t, err)
-	} else {
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-	}
+	f.CreateTestPowerMonitor("power-monitor", runningOnVM)
 
 	// Verify reconciliation
 	pm := f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Reconciled, v1alpha1.ConditionTrue)
@@ -151,32 +105,7 @@ func TestPowerMonitorNodeSelector(t *testing.T) {
 	assert.NoError(t, err, "could not label node")
 
 	// Create PowerMonitor with node selector
-	if runningOnVM {
-		configMapName := "my-custom-config"
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithAdditionalConfigMaps([]string{configMapName}),
-			f.WithPowerMonitorNodeSelector(labels),
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-		cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, `dev:
-  fake-cpu-meter:
-    enabled: true`)
-		err := f.Patch(cfm)
-		assert.NoError(t, err)
-	} else {
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithPowerMonitorNodeSelector(labels),
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-	}
+	f.CreateTestPowerMonitor("power-monitor", runningOnVM, f.WithPowerMonitorNodeSelector(labels))
 
 	// Verify PowerMonitor is available
 	pm := f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Available, v1alpha1.ConditionTrue)
@@ -198,31 +127,7 @@ func TestPowerMonitorNodeSelectorUnavailableLabel(t *testing.T) {
 
 	// Create PowerMonitor with unavailable node selector
 	unavailableLabels := k8s.StringMap{"e2e-test": "true"}
-	if runningOnVM {
-		configMapName := "my-custom-config"
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithAdditionalConfigMaps([]string{configMapName}), f.WithPowerMonitorNodeSelector(unavailableLabels),
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-		cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, `dev:
-  fake-cpu-meter:
-    enabled: true`)
-		err := f.Patch(cfm)
-		assert.NoError(t, err)
-	} else {
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithPowerMonitorNodeSelector(unavailableLabels),
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-	}
+	f.CreateTestPowerMonitor("power-monitor", runningOnVM, f.WithPowerMonitorNodeSelector(unavailableLabels))
 
 	// Verify PowerMonitor is unavailable
 	pm := f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Available, v1alpha1.ConditionFalse)
@@ -250,32 +155,7 @@ func TestPowerMonitorTaint_WithToleration(t *testing.T) {
 	assert.NoError(t, err, "failed to taint node %s", node)
 
 	// Create PowerMonitor with toleration
-	if runningOnVM {
-		configMapName := "my-custom-config"
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithAdditionalConfigMaps([]string{configMapName}),
-			f.WithPowerMonitorTolerations(append(node.Spec.Taints, e2eTestTaint)),
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-		cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, `dev:
-  fake-cpu-meter:
-    enabled: true`)
-		err := f.Patch(cfm)
-		assert.NoError(t, err)
-	} else {
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithPowerMonitorTolerations(append(node.Spec.Taints, e2eTestTaint)),
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-	}
+	f.CreateTestPowerMonitor("power-monitor", runningOnVM, f.WithPowerMonitorTolerations(append(node.Spec.Taints, e2eTestTaint)))
 
 	// Verify PowerMonitor is available
 	pm := f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Available, v1alpha1.ConditionTrue)
@@ -308,32 +188,7 @@ func TestBadPowerMonitorTaint_WithToleration(t *testing.T) {
 	assert.NoError(t, err, "failed to taint node %s", node)
 
 	// Create PowerMonitor with incorrect toleration
-	if runningOnVM {
-		configMapName := "my-custom-config"
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithAdditionalConfigMaps([]string{configMapName}),
-			f.WithPowerMonitorTolerations(append(node.Spec.Taints, badTestTaint)),
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-		cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, `dev:
-  fake-cpu-meter:
-    enabled: true`)
-		err := f.Patch(cfm)
-		assert.NoError(t, err)
-	} else {
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithPowerMonitorTolerations(append(node.Spec.Taints, badTestTaint)),
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-	}
+	f.CreateTestPowerMonitor("power-monitor", runningOnVM, f.WithPowerMonitorTolerations(append(node.Spec.Taints, badTestTaint)))
 	// Verify PowerMonitor is available but with reduced nodes
 	pm := f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Available, v1alpha1.ConditionTrue)
 	f.AssertResourceExists(controller.PowerMonitorDeploymentNS, "", &corev1.Namespace{})
@@ -450,36 +305,14 @@ func TestPowerMonitor_RBAC_Reconciliation(t *testing.T) {
 	// pre-condition
 	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{})
 
-	// Create PowerMonitor with additional config map
-	var pm *v1alpha1.PowerMonitor
-	if runningOnVM {
-		configMapName := "my-custom-config"
-		pm = f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithAdditionalConfigMaps([]string{configMapName}),
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeRBAC,
-				[]string{
-					"successful-test-namespace:successful-test-curl-sa",
-				},
-			),
-		)
-		cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, `dev:
-  fake-cpu-meter:
-    enabled: true`)
-		err := f.Patch(cfm)
-		assert.NoError(t, err)
-	} else {
-		pm = f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeRBAC,
-				[]string{
-					"successful-test-namespace:successful-test-curl-sa",
-				},
-			),
-		)
-	}
+	// Create PowerMonitor with RBAC security mode
+	pm := f.CreateTestPowerMonitor("power-monitor", runningOnVM,
+		f.WithPowerMonitorSecuritySet(
+			v1alpha1.SecurityModeRBAC,
+			[]string{
+				"successful-test-namespace:successful-test-curl-sa",
+			},
+		))
 
 	tlsCertSecretName := powermonitor.SecretTLSCertName
 	var caCertSource string
@@ -613,36 +446,10 @@ func TestPowerMonitor_NewConfigFields(t *testing.T) {
 	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{})
 
 	// Create PowerMonitor with all new config fields
-	if runningOnVM {
-		configMapName := "my-custom-config"
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithAdditionalConfigMaps([]string{configMapName}),
-			f.WithMaxTerminated(250), // Custom MaxTerminated
-			f.WithStaleness("1s"),    // Custom Staleness (1 second)
-			f.WithSampleRate("10s"),  // Custom SampleRate (10 seconds)
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-		cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, `dev:
-  fake-cpu-meter:
-    enabled: true`)
-		err := f.Patch(cfm)
-		assert.NoError(t, err)
-	} else {
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithMaxTerminated(250), // Custom MaxTerminated
-			f.WithStaleness("1s"),    // Custom Staleness (1 second)
-			f.WithSampleRate("10s"),  // Custom SampleRate (10 seconds)
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-	}
+	f.CreateTestPowerMonitor("power-monitor", runningOnVM,
+		f.WithMaxTerminated(250), // Custom MaxTerminated
+		f.WithStaleness("1s"),    // Custom Staleness (1 second)
+		f.WithSampleRate("10s"))  // Custom SampleRate (10 seconds)
 
 	// Wait until PowerMonitor is available
 	pm := f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Available, v1alpha1.ConditionTrue)
@@ -688,36 +495,10 @@ func TestPowerMonitor_ZeroValueConfigFields(t *testing.T) {
 	f.AssertNoResourceExists("power-monitor", "", &v1alpha1.PowerMonitor{})
 
 	// Create PowerMonitor with zero values for new config fields
-	if runningOnVM {
-		configMapName := "my-custom-config"
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithAdditionalConfigMaps([]string{configMapName}),
-			f.WithMaxTerminated(0), // Zero MaxTerminated (disabled)
-			f.WithStaleness("0s"),  // Zero Staleness
-			f.WithSampleRate("0s"), // Zero SampleRate
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-		cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, `dev:
-  fake-cpu-meter:
-    enabled: true`)
-		err := f.Patch(cfm)
-		assert.NoError(t, err)
-	} else {
-		f.CreatePowerMonitor(
-			"power-monitor",
-			f.WithMaxTerminated(0), // Zero MaxTerminated (disabled)
-			f.WithStaleness("0s"),  // Zero Staleness
-			f.WithSampleRate("0s"), // Zero SampleRate
-			f.WithPowerMonitorSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-	}
+	f.CreateTestPowerMonitor("power-monitor", runningOnVM,
+		f.WithMaxTerminated(0), // Zero MaxTerminated (disabled)
+		f.WithStaleness("0s"),  // Zero Staleness
+		f.WithSampleRate("0s")) // Zero SampleRate
 
 	// Wait until PowerMonitor is available
 	pm := f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Available, v1alpha1.ConditionTrue)
