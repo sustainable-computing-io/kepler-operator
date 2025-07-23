@@ -584,11 +584,11 @@ func (f Framework) CreateTestPowerMonitor(name string, runningOnVM bool, additio
 	// Create the PowerMonitor
 	pm := f.CreatePowerMonitor(name, fns...)
 
-	// Wait for the PowerMonitor to be reconciled
-	_ = f.WaitUntilPowerMonitorCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionFalse)
-
 	// For VM environments, create and patch the additional ConfigMap
 	if runningOnVM {
+		// Wait for the PowerMonitor to be reconciled
+		_ = f.WaitUntilPowerMonitorCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionFalse)
+
 		cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, `dev:
   fake-cpu-meter:
     enabled: true`)
@@ -629,11 +629,11 @@ func (f Framework) CreateTestPowerMonitorInternal(name string, testNs string, ru
 	// Create the PowerMonitorInternal
 	pmi := f.CreatePowerMonitorInternal(name, fns...)
 
-	// Wait for the PowerMonitorInternal to be reconciled
-	_ = f.WaitUntilPowerMonitorInternalCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionFalse)
-
 	// For VM environments, create and patch the additional ConfigMap
 	if runningOnVM {
+		// Wait for the PowerMonitorInternal to be reconciled
+		_ = f.WaitUntilPowerMonitorInternalCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionFalse)
+
 		cfm := f.NewAdditionalConfigMap(configMapName, testNs, `dev:
   fake-cpu-meter:
     enabled: true`)
