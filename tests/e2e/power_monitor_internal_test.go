@@ -28,37 +28,7 @@ func TestPowerMonitorInternal_Reconciliation(t *testing.T) {
 	f.AssertNoResourceExists(name, "", &v1alpha1.PowerMonitorInternal{})
 
 	// Create PowerMonitorInternal
-	b := utils.PowerMonitorInternalBuilder{}
-	if runningOnVM {
-		configMapName := "my-custom-config"
-		f.CreatePowerMonitorInternal(name,
-			b.WithNamespace(testNs),
-			b.WithKeplerImage(testKeplerImage),
-			b.WithKubeRbacProxyImage(testKubeRbacProxyImage),
-			b.WithCluster(Cluster),
-			b.WithAdditionalConfigMaps([]string{configMapName}),
-			b.WithSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-		cfm := f.NewAdditionalConfigMap(configMapName, testNs, `dev:
-  fake-cpu-meter:
-    enabled: true`)
-		err := f.Patch(cfm)
-		assert.NoError(t, err)
-	} else {
-		f.CreatePowerMonitorInternal(name,
-			b.WithNamespace(testNs),
-			b.WithKeplerImage(testKeplerImage),
-			b.WithKubeRbacProxyImage(testKubeRbacProxyImage),
-			b.WithCluster(Cluster),
-			b.WithSecuritySet(
-				v1alpha1.SecurityModeNone,
-				[]string{},
-			),
-		)
-	}
+	f.CreateTestPowerMonitorInternal(name, testNs, runningOnVM, testKeplerImage, testKubeRbacProxyImage, Cluster, v1alpha1.SecurityModeNone, []string{})
 
 	// Verify namespace exists
 	f.AssertResourceExists(testNs, "", &corev1.Namespace{})
@@ -88,43 +58,10 @@ func TestPowerMonitorInternal_RBAC_Reconciliation(t *testing.T) {
 	// pre-condition
 	f.AssertNoResourceExists(name, "", &v1alpha1.PowerMonitorInternal{})
 
-	// when
-	b := utils.PowerMonitorInternalBuilder{}
-	var pmi *v1alpha1.PowerMonitorInternal
-	if runningOnVM {
-		configMapName := "my-custom-config"
-		pmi = f.CreatePowerMonitorInternal(name,
-			b.WithNamespace(testNs),
-			b.WithKeplerImage(testKeplerImage),
-			b.WithKubeRbacProxyImage(testKubeRbacProxyImage),
-			b.WithCluster(Cluster),
-			b.WithAdditionalConfigMaps([]string{configMapName}),
-			b.WithSecuritySet(
-				v1alpha1.SecurityModeRBAC,
-				[]string{
-					"successful-test-namespace:successful-test-curl-sa",
-				},
-			),
-		)
-		cfm := f.NewAdditionalConfigMap(configMapName, testNs, `dev:
-  fake-cpu-meter:
-    enabled: true`)
-		err := f.Patch(cfm)
-		assert.NoError(t, err)
-	} else {
-		pmi = f.CreatePowerMonitorInternal(name,
-			b.WithNamespace(testNs),
-			b.WithKeplerImage(testKeplerImage),
-			b.WithKubeRbacProxyImage(testKubeRbacProxyImage),
-			b.WithCluster(Cluster),
-			b.WithSecuritySet(
-				v1alpha1.SecurityModeRBAC,
-				[]string{
-					"successful-test-namespace:successful-test-curl-sa",
-				},
-			),
-		)
-	}
+	// Create PowerMonitorInternal with RBAC security mode
+	pmi := f.CreateTestPowerMonitorInternal(name, testNs, runningOnVM, testKeplerImage, testKubeRbacProxyImage, Cluster, v1alpha1.SecurityModeRBAC, []string{
+		"successful-test-namespace:successful-test-curl-sa",
+	})
 
 	tlsCertSecretName := powermonitor.SecretTLSCertName
 	var caCertSource string
