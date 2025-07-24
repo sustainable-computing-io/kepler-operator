@@ -10,7 +10,6 @@ metadata:
     operators.operatorframework.io/builder: operator-sdk-v1.39.1
     operators.operatorframework.io/internal-objects: |-
       [
-        "keplerinternals.kepler.system.sustainable.computing.io",
         "powermonitorinternals.kepler.system.sustainable.computing.io"
       ]
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -22,18 +21,6 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: KeplerInternal is the Schema for internal/unsupported API
-      displayName: KeplerInternal
-      kind: KeplerInternal
-      name: keplerinternals.kepler.system.sustainable.computing.io
-      statusDescriptors:
-      - description: conditions represent the latest available observations of the
-          kepler-exporter
-        displayName: Conditions
-        path: exporter.conditions
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:conditions
-      version: v1alpha1
     - description: PowerMonitorInternal is the Schema for internal/unsupported API
       displayName: PowerMonitorInternal
       kind: PowerMonitorInternal
@@ -58,30 +45,9 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:conditions
       version: v1alpha1
-    - description: Kepler is deprecated and will be removed in a future release. Please
-        use PowerMonitor instead.
-      displayName: Kepler
-      kind: Kepler
-      name: keplers.kepler.system.sustainable.computing.io
-      statusDescriptors:
-      - description: conditions represent the latest available observations of kepler-internal
-        displayName: Conditions
-        path: conditions
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:conditions
-      - description: conditions represent the latest available observations of the
-          kepler-exporter
-        displayName: Conditions
-        path: exporter.conditions
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:conditions
-      version: v1alpha1
   description: |-
     Kepler (Kubernetes-based Efficient Power Level Exporter) is a Prometheus exporter that
     measures energy consumption metrics at the container, pod, and node level in Kubernetes clusters.
-
-    ### Deprecation Notice
-    **Important:** The Kepler CR (Custom Resource) is deprecated and will be removed in a future release. Please use the new PowerMonitor instead.
 
     ### Prerequisites
     To view the metrics exposed by Kepler, **[User Workload Monitoring](https://docs.redhat.com/documentation/openshift_container_platform/latest/html/monitoring/configuring-user-workload-monitoring)**

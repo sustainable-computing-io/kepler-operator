@@ -30,7 +30,6 @@ import (
 
 	keplersystemv1alpha1 "github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/internal/controller"
-	"github.com/sustainable.computing.io/kepler-operator/pkg/components/exporter"
 	powermonitor "github.com/sustainable.computing.io/kepler-operator/pkg/components/power-monitor"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/version"
@@ -88,7 +87,7 @@ func main() {
 		"Namespace where power monitoring components are deployed.")
 
 	flag.CommandLine.Var(flag.Value(&additionalNamespaces), "watch-namespaces",
-		"Namespaces other than deployment-namespace where kepler-internal may be deployed.")
+		"Namespaces other than deployment-namespace where power-monitor-internal may be deployed.")
 
 	flag.BoolVar(&openshift, "openshift", false,
 		"Indicate if the operator is running on an OpenShift cluster.")
@@ -170,7 +169,7 @@ func main() {
 				controller.PowerMonitorDeploymentNS: {},
 			}
 			if openshift {
-				cacheNs[exporter.DashboardNs] = cache.Config{}
+				cacheNs[powermonitor.DashboardNs] = cache.Config{}
 				cacheNs[powermonitor.UWMNamespace] = cache.Config{}
 			}
 			for _, ns := range additionalNamespaces {
@@ -201,20 +200,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.KeplerReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "kepler")
-		os.Exit(1)
-	}
-	if err = (&controller.KeplerInternalReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "kepler-internal")
-		os.Exit(1)
-	}
 	if err = (&controller.PowerMonitorReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
@@ -257,9 +242,6 @@ func main() {
 }
 
 func setupWebhooks(mgr ctrl.Manager) error {
-	if err := (&keplersystemv1alpha1.Kepler{}).SetupWebhookWithManager(mgr); err != nil {
-		return fmt.Errorf("unable to create webhook: %v", err)
-	}
 	if err := (&keplersystemv1alpha1.PowerMonitor{}).SetupWebhookWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create webhook: %v", err)
 	}

@@ -6,26 +6,6 @@ metadata:
       [
         {
           "apiVersion": "kepler.system.sustainable.computing.io/v1alpha1",
-          "kind": "Kepler",
-          "metadata": {
-            "labels": {
-              "app.kubernetes.io/instance": "kepler",
-              "app.kubernetes.io/name": "kepler",
-              "app.kubernetes.io/part-of": "kepler-operator"
-            },
-            "name": "kepler"
-          },
-          "spec": {
-            "exporter": {
-              "deployment": {
-                "port": 9103
-              },
-              "redfish": null
-            }
-          }
-        },
-        {
-          "apiVersion": "kepler.system.sustainable.computing.io/v1alpha1",
           "kind": "PowerMonitor",
           "metadata": {
             "labels": {
@@ -52,12 +32,11 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.20.0
-    createdAt: "2025-07-18T06:13:30Z"
+    createdAt: "2025-07-29T08:08:15Z"
     description: Deploys and Manages Kepler on Kubernetes
     operators.operatorframework.io/builder: operator-sdk-v1.39.1
     operators.operatorframework.io/internal-objects: |-
       [
-        "keplerinternals.kepler.system.sustainable.computing.io",
         "powermonitorinternals.kepler.system.sustainable.computing.io"
       ]
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -69,36 +48,6 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: KeplerInternal is the Schema for internal/unsupported API
-      displayName: KeplerInternal
-      kind: KeplerInternal
-      name: keplerinternals.kepler.system.sustainable.computing.io
-      statusDescriptors:
-      - description: conditions represent the latest available observations of the
-          kepler-exporter
-        displayName: Conditions
-        path: exporter.conditions
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:conditions
-      version: v1alpha1
-    - description: Kepler is deprecated and will be removed in a future release. Please
-        use PowerMonitor instead.
-      displayName: Kepler
-      kind: Kepler
-      name: keplers.kepler.system.sustainable.computing.io
-      statusDescriptors:
-      - description: conditions represent the latest available observations of kepler-internal
-        displayName: Conditions
-        path: conditions
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:conditions
-      - description: conditions represent the latest available observations of the
-          kepler-exporter
-        displayName: Conditions
-        path: exporter.conditions
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:conditions
-      version: v1alpha1
     - description: PowerMonitorInternal is the Schema for internal/unsupported API
       displayName: PowerMonitorInternal
       kind: PowerMonitorInternal
@@ -126,9 +75,6 @@ spec:
   description: |-
     Kepler (Kubernetes-based Efficient Power Level Exporter) is a Prometheus exporter that
     measures energy consumption metrics at the container, pod, and node level in Kubernetes clusters.
-
-    ### Deprecation Notice
-    **Important:** The Kepler CR (Custom Resource) is deprecated and will be removed in a future release. Please use the new PowerMonitor instead.
 
     ### Prerequisites
     To view the metrics exposed by Kepler, **[User Workload Monitoring](https://docs.redhat.com/documentation/openshift_container_platform/latest/html/monitoring/configuring-user-workload-monitoring)**
@@ -424,34 +370,13 @@ spec:
     - v1
     containerPort: 443
     conversionCRDs:
-    - keplers.kepler.system.sustainable.computing.io
     - powermonitors.kepler.system.sustainable.computing.io
     deploymentName: kepler-operator-controller
-    generateName: ckeplerspowermonitors.kb.io
+    generateName: cpowermonitors.kb.io
     sideEffects: None
     targetPort: 9443
     type: ConversionWebhook
     webhookPath: /convert
-  - admissionReviewVersions:
-    - v1
-    containerPort: 443
-    deploymentName: kepler-operator-controller
-    failurePolicy: Fail
-    generateName: mkepler.kb.io
-    rules:
-    - apiGroups:
-      - kepler.system.sustainable.computing.io
-      apiVersions:
-      - v1alpha1
-      operations:
-      - CREATE
-      - UPDATE
-      resources:
-      - keplers
-    sideEffects: None
-    targetPort: 9443
-    type: MutatingAdmissionWebhook
-    webhookPath: /mutate-kepler-system-sustainable-computing-io-v1alpha1-kepler
   - admissionReviewVersions:
     - v1
     containerPort: 443
@@ -472,26 +397,6 @@ spec:
     targetPort: 9443
     type: MutatingAdmissionWebhook
     webhookPath: /mutate-kepler-system-sustainable-computing-io-v1alpha1-powermonitor
-  - admissionReviewVersions:
-    - v1
-    containerPort: 443
-    deploymentName: kepler-operator-controller
-    failurePolicy: Fail
-    generateName: vkepler.kb.io
-    rules:
-    - apiGroups:
-      - kepler.system.sustainable.computing.io
-      apiVersions:
-      - v1alpha1
-      operations:
-      - CREATE
-      - UPDATE
-      resources:
-      - keplers
-    sideEffects: None
-    targetPort: 9443
-    type: ValidatingAdmissionWebhook
-    webhookPath: /validate-kepler-system-sustainable-computing-io-v1alpha1-kepler
   - admissionReviewVersions:
     - v1
     containerPort: 443

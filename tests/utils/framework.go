@@ -99,179 +99,15 @@ func (f Framework) NewClient(scheme *runtime.Scheme) client.Client {
 }
 
 type (
-	internalFn             func(*v1alpha1.KeplerInternal)
 	powermonitorinternalFn func(*v1alpha1.PowerMonitorInternal)
-	keplerFn               func(*v1alpha1.Kepler)
 	powermonitorFn         func(*v1alpha1.PowerMonitor)
 )
-
-func WithExporterPort(port int32) keplerFn {
-	return func(k *v1alpha1.Kepler) {
-		k.Spec.Exporter.Deployment.Port = port
-	}
-}
-
-func (f Framework) GetKepler(name string) *v1alpha1.Kepler {
-	kepler := v1alpha1.Kepler{}
-	f.AssertResourceExists(name, "", &kepler)
-	return &kepler
-}
-
-func (f Framework) NewKepler(name string, fns ...keplerFn) v1alpha1.Kepler {
-	kepler := v1alpha1.Kepler{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: v1alpha1.GroupVersion.String(),
-			Kind:       "Kepler",
-		},
-
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Spec: v1alpha1.KeplerSpec{},
-	}
-
-	for _, fn := range fns {
-		fn(&kepler)
-	}
-	return kepler
-}
 
 func (f Framework) Patch(obj client.Object) error {
 	f.T.Logf("%s: creating/updating object %s", time.Now().UTC().Format(time.RFC3339), obj.GetName())
 	return f.client.Patch(context.TODO(), obj, client.Apply,
 		client.ForceOwnership, client.FieldOwner("e2e-test"),
 	)
-}
-
-func (f Framework) CreateKepler(name string, fns ...keplerFn) *v1alpha1.Kepler {
-	kepler := f.NewKepler(name, fns...)
-	f.T.Logf("%s: creating/updating kepler %s", time.Now().UTC().Format(time.RFC3339), name)
-	err := f.client.Patch(context.TODO(), &kepler, client.Apply,
-		client.ForceOwnership, client.FieldOwner("e2e-test"),
-	)
-	assert.NoError(f.T, err, "failed to create kepler")
-
-	f.T.Cleanup(func() {
-		f.DeleteKepler(name)
-	})
-
-	return &kepler
-}
-
-func (f Framework) DeleteKepler(name string) {
-	f.T.Helper()
-
-	k := v1alpha1.Kepler{}
-	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
-	if errors.IsNotFound(err) {
-		return
-	}
-	assert.NoError(f.T, err, "failed to get kepler :%s", name)
-
-	f.T.Logf("%s: deleting kepler %s", time.Now().UTC().Format(time.RFC3339), name)
-
-	err = f.client.Delete(context.Background(), &k)
-	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete kepler:%s :%v", name, err)
-	}
-
-	f.WaitUntil(fmt.Sprintf("kepler %s is deleted", name), func(ctx context.Context) (bool, error) {
-		k := v1alpha1.Kepler{}
-		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &k)
-		return errors.IsNotFound(err), nil
-	})
-}
-
-func (f Framework) GetKeplerInternal(name string) *v1alpha1.KeplerInternal {
-	kepler := v1alpha1.KeplerInternal{}
-	f.AssertResourceExists(name, "", &kepler)
-	return &kepler
-}
-
-func (f Framework) CreateInternal(name string, fns ...internalFn) *v1alpha1.KeplerInternal {
-	ki := v1alpha1.KeplerInternal{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: v1alpha1.GroupVersion.String(),
-			Kind:       "KeplerInternal",
-		},
-
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Spec: v1alpha1.KeplerInternalSpec{},
-	}
-
-	for _, fn := range fns {
-		fn(&ki)
-	}
-
-	f.T.Logf("%s: creating/updating kepler-internal %s", time.Now().UTC().Format(time.RFC3339), name)
-	err := f.client.Patch(context.TODO(), &ki, client.Apply,
-		client.ForceOwnership, client.FieldOwner("e2e-test"),
-	)
-	assert.NoError(f.T, err, "failed to create kepler-internal")
-
-	f.T.Cleanup(func() {
-		f.DeleteInternal(name, Timeout(5*time.Minute))
-	})
-
-	return &ki
-}
-
-func (f Framework) DeleteInternal(name string, fns ...AssertOptionFn) {
-	f.T.Helper()
-
-	k := v1alpha1.KeplerInternal{}
-	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &k)
-	if errors.IsNotFound(err) {
-		return
-	}
-	assert.NoError(f.T, err, "failed to get kepler-internal :%s", name)
-
-	f.T.Logf("%s: deleting kepler-internal %s", time.Now().UTC().Format(time.RFC3339), name)
-
-	err = f.client.Delete(context.Background(), &k)
-	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete kepler-internal:%s :%v", name, err)
-	}
-
-	f.WaitUntil(fmt.Sprintf("kepler-internal %s is deleted", name), func(ctx context.Context) (bool, error) {
-		k := v1alpha1.KeplerInternal{}
-		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &k)
-		return errors.IsNotFound(err), nil
-	}, fns...)
-}
-
-func (f Framework) WaitUntilInternalCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus, fns ...AssertOptionFn) *v1alpha1.KeplerInternal {
-	f.T.Helper()
-	k := v1alpha1.KeplerInternal{}
-	f.WaitUntil(fmt.Sprintf("kepler-internal %s is %s", name, t),
-		func(ctx context.Context) (bool, error) {
-			err := f.client.Get(ctx, client.ObjectKey{Name: name}, &k)
-			if errors.IsNotFound(err) {
-				return true, fmt.Errorf("kepler-internal %s is not found", name)
-			}
-
-			condition, _ := k8s.FindCondition(k.Status.Exporter.Conditions, t)
-			return condition.Status == s, nil
-		}, fns...)
-	return &k
-}
-
-func (f Framework) WaitUntilKeplerCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus) *v1alpha1.Kepler {
-	f.T.Helper()
-	k := v1alpha1.Kepler{}
-	f.WaitUntil(fmt.Sprintf("kepler %s is %s", name, t),
-		func(ctx context.Context) (bool, error) {
-			err := f.client.Get(ctx, client.ObjectKey{Name: name}, &k)
-			if errors.IsNotFound(err) {
-				return true, fmt.Errorf("kepler %s is not found", name)
-			}
-
-			condition, _ := k8s.FindCondition(k.Status.Exporter.Conditions, t)
-			return condition.Status == s, nil
-		})
-	return &k
 }
 
 func (f Framework) GetPowerMonitor(name string) *v1alpha1.PowerMonitor {
@@ -486,12 +322,6 @@ func (f Framework) RemoveResourceLabels(kind, name string, l []string) error {
 	return err
 }
 
-func (f Framework) WithNodeSelector(label map[string]string) func(k *v1alpha1.Kepler) {
-	return func(k *v1alpha1.Kepler) {
-		k.Spec.Exporter.Deployment.NodeSelector = label
-	}
-}
-
 func (f Framework) WithPowerMonitorNodeSelector(label map[string]string) func(k *v1alpha1.PowerMonitor) {
 	return func(pm *v1alpha1.PowerMonitor) {
 		pm.Spec.Kepler.Deployment.NodeSelector = label
@@ -507,12 +337,6 @@ func (f Framework) TaintNode(node, taintStr string) error {
 		assert.NoError(f.T, err, "could not remove taint from node")
 	})
 	return err
-}
-
-func (f Framework) WithTolerations(taints []corev1.Taint) func(k *v1alpha1.Kepler) {
-	return func(k *v1alpha1.Kepler) {
-		k.Spec.Exporter.Deployment.Tolerations = tolerateTaints(taints)
-	}
 }
 
 func (f Framework) WithPowerMonitorTolerations(taints []corev1.Taint) func(k *v1alpha1.PowerMonitor) {
