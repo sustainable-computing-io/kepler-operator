@@ -334,16 +334,12 @@ func NewPowerMonitorSCC(d components.Detail, pmi *v1alpha1.PowerMonitorInternal)
 
 		AllowPrivilegedContainer: true,
 		AllowHostDirVolumePlugin: true,
-		AllowHostIPC:             false,
-		AllowHostNetwork:         false,
 		AllowHostPID:             true,
-		AllowHostPorts:           false,
-		DefaultAddCapabilities:   []corev1.Capability{corev1.Capability("SYS_ADMIN")},
+		ReadOnlyRootFilesystem:   true,
 
 		FSGroup: secv1.FSGroupStrategyOptions{
 			Type: secv1.FSGroupStrategyRunAsAny,
 		},
-		ReadOnlyRootFilesystem: true,
 		RunAsUser: secv1.RunAsUserStrategyOptions{
 			Type: secv1.RunAsUserStrategyRunAsAny,
 		},
