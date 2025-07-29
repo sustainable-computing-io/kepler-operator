@@ -80,33 +80,33 @@ validate_cluster() {
 		ret=1
 	}
 
-	oc get crds keplers.kepler.system.sustainable.computing.io || {
-		fail "Missing Kepler CRD. Is Kepler Operator Installed?\n"
+	oc get crds powermonitors.kepler.system.sustainable.computing.io || {
+		fail "Missing PowerMonitor CRD. Is Kepler Operator Installed?\n"
 		ret=1
 	}
 
-	oc get kepler kepler >/dev/null 2>&1 || {
-		fail "Missing kepler instance. Did you forget to create kepler?"
-		info_run "oc apply -f ./config/samples/kepler.system_v1alpha1_kepler.yaml"
+	oc get powermonitor power-monitor >/dev/null 2>&1 || {
+		fail "Missing PowerMonitor instance. Did you forget to create power-monitor?"
+		info_run "oc apply -f ./config/samples/kepler.system_v1alpha1_powermonitor.yaml"
 		ret=1
 	}
 
 	return $ret
 }
 
-wait_for_kepler_to_be_available() {
-	header "waiting for kepler to be available"
-	wait_until 10 10 "kepler to be available" condition_check "True" oc get kepler kepler \
-		-o jsonpath="{.status.exporter.conditions[?(@.type=='Available')].status}" && {
-		ok "kepler is available"
+wait_for_powermonitor_to_be_available() {
+	header "waiting for power-monitor to be available"
+	wait_until 10 10 "power-monitor to be available" condition_check "True" oc get powermonitor power-monitor \
+		-o jsonpath="{.status.conditions[?(@.type=='Available')].status}" && {
+		ok "power-monitor is available"
 		return 0
 	}
-	fail "kepler not ready"
-	run oc get kepler
+	fail "power-monitor not ready"
+	run oc get powermonitor
 	line 50
-	oc get kepler kepler -o jsonpath="$(
+	oc get powermonitor power-monitor -o jsonpath="$(
 		cat <<-EOF
-			{range .status.exporter.conditions[?(@.status!="True")]}
+			{range .status.conditions[?(@.status!="True")]}
 				{" * "}{.type}{":"} {.status}
 				      {.reason}
 				      {.message}
@@ -192,7 +192,7 @@ show_restore_info() {
 }
 
 show_uwm_info() {
-	info "Kepler use prometheus deployed in $UWM_NS to store metrics. To configure Prometheus to cater to needs of the cluster such as:"
+	info "PowerMonitor use prometheus deployed in $UWM_NS to store metrics. To configure Prometheus to cater to needs of the cluster such as:"
 	cat <<-EOF
 
 		    * Increase data retention for in-depth analysis
@@ -338,7 +338,7 @@ main() {
 	}
 	ok "cluster validated"
 
-	wait_for_kepler_to_be_available
+	wait_for_powermonitor_to_be_available
 
 	enable_userworkload_monitoring
 	setup_grafana
