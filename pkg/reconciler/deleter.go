@@ -21,14 +21,6 @@ type Deleter struct {
 	WaitTimeout time.Duration
 }
 
-// TODO: replace with builtin max when moving to go 1.21
-func maxDuration(a, b time.Duration) time.Duration {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 func (r Deleter) Reconcile(ctx context.Context, c client.Client, scheme *runtime.Scheme) Result {
 	objKey := client.ObjectKeyFromObject(r.Resource)
 
@@ -41,14 +33,14 @@ func (r Deleter) Reconcile(ctx context.Context, c client.Client, scheme *runtime
 
 	dup := r.Resource.DeepCopyObject().(client.Object)
 
-	timeout := maxDuration(r.WaitTimeout, 30*time.Second)
-	err := wait.PollImmediateWithContext(ctx, 5*time.Second, timeout, func(ctx context.Context) (bool, error) {
+	timeout := max(r.WaitTimeout, 60*time.Second)
+	err := wait.PollUntilContextTimeout(ctx, 5*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
 		err := c.Get(ctx, objKey, dup)
 		// repeat until object is not found
 		return errors.IsNotFound(err), nil
 	})
 
-	if wait.Interrupted(err) {
+	if err != nil {
 		return Result{
 			Error:  r.error("timed out waiting for deletion", err),
 			Action: r.OnError,
