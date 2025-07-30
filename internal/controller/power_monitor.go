@@ -26,6 +26,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+const (
+	Finalizer = "kepler.system.sustainable.computing.io/finalizer"
+)
+
 var PowerMonitorDeploymentNS = "power-monitor"
 
 // PowerMonitorReconciler reconciles a Kepler object

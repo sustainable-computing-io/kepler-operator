@@ -21,7 +21,6 @@ var (
 	Cluster                k8s.Cluster = k8s.Kubernetes
 	testKeplerImage        string
 	testKubeRbacProxyImage string
-	skipKeplerTests        bool
 	runningOnVM            bool
 )
 
@@ -31,7 +30,6 @@ func TestMain(m *testing.M) {
 		"Namespace where kepler and its components are deployed.")
 	flag.StringVar(&testKeplerImage, "kepler-image", keplerImage, "Kepler image to use when running Internal tests")
 	flag.StringVar(&testKubeRbacProxyImage, "kube-rbac-proxy-image", kubeRbacProxyImage, "Kube Rbac Proxy image to use when running mode rbac tests")
-	flag.BoolVar(&skipKeplerTests, "skip-kepler-tests", false, "Skip Kepler tests")
 	flag.BoolVar(&runningOnVM, "running-on-vm", false, "Enable VM test environment")
 	flag.Parse()
 

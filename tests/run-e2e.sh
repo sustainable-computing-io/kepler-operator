@@ -13,7 +13,7 @@ declare -r OPERATOR="kepler-operator"
 declare -r OLM_CATALOG="kepler-operator-catalog"
 declare -r VERSION=${VERSION:-"0.0.0-e2e"}
 declare -r OPERATOR_DEPLOY_YAML="config/manager/base/manager.yaml"
-declare -r KEPLER_CR="config/samples/kepler.system_v1alpha1_kepler.yaml"
+declare -r POWERMONITOR_CR="config/samples/kepler.system_v1alpha1_powermonitor.yaml"
 declare -r OPERATOR_CSV="bundle/manifests/$OPERATOR.clusterserviceversion.yaml"
 declare -r OPERATOR_DEPLOY_NAME="kepler-operator-controller"
 declare -r OPERATOR_RELEASED_BUNDLE="quay.io/sustainable_computing_io/$OPERATOR-bundle"
@@ -121,13 +121,9 @@ cmd_upgrade() {
 		return $ret
 	}
 
-	info "Creating a new Kepler CR"
-	run kubectl apply -f "$KEPLER_CR"
-
 	info "Creating new PowerMonitor CR"
 	create_power_monitor "$replaced_version"
 
-	wait_for_kepler || return 1
 	wait_for_power_monitor || return 1
 
 	info "Running Upgrade to new bundle"
@@ -144,7 +140,6 @@ cmd_upgrade() {
 
 	wait_until 10 10 "kepler images to be up to date" check_images
 
-	wait_for_kepler || return 1
 	wait_for_power_monitor || return 1
 
 	return 0
@@ -186,17 +181,6 @@ create_power_monitor() {
           fake-cpu-meter:
             enabled: true
 EOF
-}
-
-wait_for_kepler() {
-	header "Waiting for Kepler to be ready"
-	wait_until 10 10 "kepler to be available" condition_check "Degraded" oc get kepler kepler \
-		-o jsonpath="{.status.conditions[?(@.type=='Available')].status}" || {
-		fail "Kepler is not ready"
-		return 1
-	}
-	ok "Kepler is ready"
-	return 0
 }
 
 wait_for_power_monitor() {
@@ -261,14 +245,12 @@ watch_operator_errors() {
 }
 
 # run_e2e takes an optional set of args to be passed to go test
-# TODO: Remove logging events for kepler-operator ns once we remove old Kepler CR e2e tests
 run_e2e() {
 	header "Running e2e tests"
 
 	local error_log="$LOGS_DIR/operator-errors.log"
 
 	log_events "$OPERATORS_NS" &
-	log_events "kepler-operator" &
 	log_events "power-monitor" &
 	watch_operator_errors "$error_log" &
 
@@ -499,19 +481,19 @@ ensure_deploy_img_is_always_pulled() {
 }
 
 reject_invalid() {
-	local invalid_kepler='invalid-pre-test-kepler'
+	local invalid_power_monitor='invalid-pre-test-power-monitor'
 
-	# ensure that applying an invalid kepler will be rejected by the webhook
+	# ensure that applying an invalid power-monitor will be rejected by the webhook
 	{
 		# NOTE: || true ignores pipefail so that non-zero exit code will not be reported
 		# when kubectl apply fails (as expected)
-		sed -e "s|name: kepler$|name: $invalid_kepler|g" "$KEPLER_CR" |
+		sed -e "s|name: power-monitor$|name: $invalid_power_monitor|g" "$POWERMONITOR_CR" |
 			kubectl apply -f- 2>&1 || true
 
 	} | tee /dev/stderr |
 		grep -q "BadRequest.* admission webhook .* denied the request" && return 0
 
-	kubectl delete kepler "$invalid_kepler" || true
+	kubectl delete powermonitor "$invalid_power_monitor" || true
 	return 1
 }
 
@@ -526,7 +508,7 @@ wait_for_operator() {
 	run kubectl wait -n "$OPERATORS_NS" --for=condition=Available \
 		--timeout=300s "$deployment"
 
-	# NOTE: ensure that operator is actually ready by creating an invalid kepler
+	# NOTE: ensure that operator is actually ready by creating an invalid power-monitor
 	# and wait until the operator is able to reconcile
 	info "Ensure that webhooks are installed and working"
 

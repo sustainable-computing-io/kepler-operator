@@ -355,10 +355,9 @@ jobs:
         uses: ./.github/compute-version
         id: version
 
-      # NOTE: Running only PowerMonitor test
       - name: Run e2e tests
         run: |
-          ./tests/run-e2e.sh e2e --ci -- -skip-kepler-tests -running-on-vm
+          ./tests/run-e2e.sh e2e --ci -- -running-on-vm
         env:
           VERSION: ${{ steps.version.outputs.version }}
 

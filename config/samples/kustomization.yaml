@@ -2,6 +2,5 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 ## Append samples you want in your CSV to this file as resources ##
 resources:
-- kepler.system_v1alpha1_kepler.yaml
 - kepler.system_v1alpha1_powermonitor.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
