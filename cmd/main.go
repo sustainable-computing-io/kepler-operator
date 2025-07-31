@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -71,6 +72,8 @@ func main() {
 	var enableHTTP2 bool
 	var tlsOpts []func(*tls.Config)
 	var additionalNamespaces stringList
+	var tokenRefreshInterval time.Duration
+	var tokenTTL time.Duration
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to."+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -91,6 +94,12 @@ func main() {
 
 	flag.BoolVar(&openshift, "openshift", false,
 		"Indicate if the operator is running on an OpenShift cluster.")
+
+	flag.DurationVar(&tokenRefreshInterval, "exp.reconciler.token.refresh-interval", controller.Config.TokenRefreshInterval,
+		"Interval at which the token expiry reconciler requeues for reconciliation.")
+
+	flag.DurationVar(&tokenTTL, "exp.uwm.token.ttl", controller.Config.TokenTTL,
+		"Time-to-live duration for user workload monitoring tokens.")
 
 	// NOTE: RELATED_IMAGE_KEPLER can be set as env or flag, flag takes precedence over env
 	keplerImage := os.Getenv("RELATED_IMAGE_KEPLER")
@@ -135,6 +144,10 @@ func main() {
 			fmt.Sprintf("%s:%s", powermonitor.UWMNamespace, powermonitor.UWMServiceAccountName),
 		}
 	}
+
+	controller.Config.TokenRefreshInterval = tokenRefreshInterval
+	controller.Config.TokenTTL = tokenTTL
+	powermonitor.TokenTTL = tokenTTL
 
 	// Metrics endpoint is enabled in 'config/default/kustomization.yaml'. The Metrics options configure the server.
 	// More info:
@@ -200,6 +213,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = (&controller.TokenExpiryReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "token-expiry")
+		os.Exit(1)
+	}
 	if err = (&controller.PowerMonitorReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),

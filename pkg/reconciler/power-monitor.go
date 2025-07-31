@@ -37,8 +37,10 @@ func (r PowerMonitorDeployer) Reconcile(ctx context.Context, c client.Client, s 
 	if err != nil {
 		return Result{Action: Stop, Error: fmt.Errorf("error creating configmap: %w", err)}
 	}
-	powermonitor.AnnotateDaemonSetWithConfigMapHash(r.Ds, cfm)
-
+	err = powermonitor.AnnotateWithConfigMapHash(&r.Ds.Spec.Template.ObjectMeta, cfm, powermonitor.ConfigMapHashAnnotation, powermonitor.KeplerConfigFile)
+	if err != nil {
+		return Result{Action: Stop, Error: fmt.Errorf("error annotating configmap hash to daemonset: %w", err)}
+	}
 	// Update the ConfigMap
 	return Updater{Owner: r.Pmi, Resource: cfm}.Reconcile(ctx, c, s)
 }
@@ -127,7 +129,8 @@ func (r SecretMounter) Reconcile(ctx context.Context, c client.Client, s *runtim
 		}
 
 		// Secret exists - annotate DaemonSet with its hash for auto-reload
-		powermonitor.AnnotateDaemonSetWithSecretHash(r.Ds, secret)
+		//powermonitor.AnnotateDaemonSetWithSecretHash(r.Ds, secret)
+		powermonitor.AnnotateWithSecretHash(&r.Ds.Spec.Template.ObjectMeta, secret, powermonitor.SecretTLSHashAnnotation)
 		r.Logger.Info("annotated DaemonSet with secret hash",
 			"secret", secretRef.Name, "namespace", ns)
 	}

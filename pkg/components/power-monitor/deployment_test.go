@@ -228,7 +228,8 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 			}
 			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
 			if tc.addConfigMap {
-				AnnotateDaemonSetWithConfigMapHash(ds, tc.configMap)
+				err := AnnotateWithConfigMapHash(&ds.Spec.Template.ObjectMeta, tc.configMap, ConfigMapHashAnnotation, KeplerConfigFile)
+				assert.NoError(t, err)
 			}
 
 			actualHostPID := k8s.HostPIDFromDS(ds)
@@ -1652,7 +1653,7 @@ func TestPowerMonitorUWMTokenSecret(t *testing.T) {
 	}
 }
 
-func TestAnnotateDaemonSetWithSecretHash(t *testing.T) {
+func TestAnnotateWithSecretHash(t *testing.T) {
 	tt := []struct {
 		secret     *corev1.Secret
 		annotation map[string]string
@@ -1685,7 +1686,7 @@ func TestAnnotateDaemonSetWithSecretHash(t *testing.T) {
 				},
 			}
 			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
-			AnnotateDaemonSetWithSecretHash(ds, tc.secret)
+			AnnotateWithSecretHash(&ds.Spec.Template.ObjectMeta, tc.secret, SecretTLSHashAnnotation)
 			actualAnnotation := k8s.AnnotationFromDS(ds)
 			assert.Equal(t, tc.annotation, actualAnnotation)
 		})
@@ -1788,6 +1789,137 @@ func TestMountConfigMapToDaemonSet(t *testing.T) {
 			MountConfigMapToDaemonSet(ds, tc.configMap)
 			actualAnnotation := k8s.AnnotationFromDS(ds)
 			assert.Equal(t, tc.annotation, actualAnnotation)
+		})
+	}
+}
+
+func TestAnnotateWithConfigMapHash(t *testing.T) {
+	tt := []struct {
+		cfm        *corev1.ConfigMap
+		annotation map[string]string
+		scenario   string
+	}{
+		{
+			cfm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-cfm"},
+				Data: map[string]string{
+					"ca.crt": "certdata",
+					"foo":    "bar",
+				},
+			},
+			annotation: map[string]string{
+				CABundleConfigMapAnnotation + "-" + "test-cfm": fmt.Sprintf("%x", xxhash.Sum64([]byte("ca.crtcertdatafoobar"))),
+			},
+			scenario: "ca bundle config case",
+		},
+	}
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			sm := &monv1.ServiceMonitor{}
+			err := AnnotateWithConfigMapHash(&sm.ObjectMeta, tc.cfm, CABundleConfigMapAnnotation, "")
+			assert.NoError(t, err)
+			assert.Equal(t, tc.annotation, sm.Annotations)
+		})
+	}
+}
+
+func TestAnnotateWithExpiration(t *testing.T) {
+	tt := []struct {
+		survival time.Duration
+		scenario string
+	}{
+		{
+			survival: 10 * time.Minute,
+			scenario: "ten minute expiration time",
+		},
+		{
+			survival: 1 * time.Hour,
+			scenario: "one hour expiration time",
+		},
+	}
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			secret := &corev1.Secret{}
+			AnnotateWithExpiration(&secret.ObjectMeta, SecretTokenExpirationAnnotation, tc.survival)
+
+			expirationStr, ok := secret.Annotations[SecretTokenExpirationAnnotation]
+			assert.True(t, ok)
+			expirationTime, err := time.Parse(time.RFC3339, expirationStr)
+			assert.NoError(t, err)
+			assert.WithinDuration(t, time.Now().Add(tc.survival), expirationTime, time.Second)
+		})
+	}
+}
+
+func TestGetExpirationFromAnnotation(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	expStr := now.Format(time.RFC3339)
+
+	tt := []struct {
+		meta         *metav1.ObjectMeta
+		scenario     string
+		expectNil    bool
+		expectErr    bool
+		expectedTime time.Time
+	}{
+		{
+			meta: &metav1.ObjectMeta{
+				Annotations: map[string]string{
+					SecretTokenExpirationAnnotation: expStr,
+				},
+			},
+			scenario:     "existing expiration annotation",
+			expectNil:    false,
+			expectErr:    false,
+			expectedTime: now,
+		},
+		{
+			meta:      &metav1.ObjectMeta{},
+			scenario:  "nil annotations",
+			expectNil: true,
+			expectErr: false,
+		},
+		{
+			meta: &metav1.ObjectMeta{
+				Annotations: map[string]string{},
+			},
+			scenario:  "missing expiration annotation",
+			expectNil: true,
+			expectErr: false,
+		},
+		{
+			meta: &metav1.ObjectMeta{
+				Annotations: map[string]string{
+					SecretTokenExpirationAnnotation: "not-a-time",
+				},
+			},
+			scenario:  "invalid expiration annotation",
+			expectNil: true,
+			expectErr: true,
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			expTime, err := GetExpirationFromAnnotation(tc.meta, SecretTokenExpirationAnnotation)
+			if tc.expectErr {
+				assert.Error(t, err)
+				assert.Nil(t, expTime)
+			} else {
+				assert.NoError(t, err)
+				if tc.expectNil {
+					assert.Nil(t, expTime)
+				} else {
+					assert.NotNil(t, expTime)
+					assert.Equal(t, tc.expectedTime, *expTime)
+				}
+			}
 		})
 	}
 }

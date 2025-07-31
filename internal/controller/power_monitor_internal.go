@@ -6,6 +6,7 @@ package controller
 import (
 	"context"
 	"fmt"
+
 	"slices"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 
+	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -134,6 +136,7 @@ func (r *PowerMonitorInternalReconciler) SetupWithManager(mgr ctrl.Manager) erro
 		Owns(&corev1.ServiceAccount{}, genChanged).
 		Owns(&corev1.Service{}, genChanged).
 		Owns(&appsv1.DaemonSet{}, resVerChanged).
+		Owns(&monv1.ServiceMonitor{}, genChanged).
 		Owns(&rbacv1.ClusterRoleBinding{}, genChanged).
 		Owns(&rbacv1.ClusterRole{}, genChanged).
 		// NOTE: requires resVerChanged for ConfigMap & Secret since
@@ -476,6 +479,8 @@ func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, ds *appsv1.Daemon
 		fmt.Sprintf("%s:%s", powermonitor.UWMNamespace, powermonitor.UWMServiceAccountName),
 	)
 
+	sm := powermonitor.NewPowerMonitorServiceMonitor(components.Full, pmi)
+
 	// cluster-scoped resources first
 	// update cluster role before cluster role binding
 	rs := resourceReconcilers(updateResource,
@@ -504,6 +509,7 @@ func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, ds *appsv1.Daemon
 			Pmi:        pmi,
 			Cluster:    cluster,
 			Ds:         ds,
+			Sm:         sm,
 			EnableRBAC: enableRBAC,
 			EnableUWM:  enableUWM,
 		},
@@ -516,6 +522,7 @@ func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, ds *appsv1.Daemon
 	rs = append(rs,
 		reconciler.PowerMonitorServiceMonitorReconciler{
 			Pmi:        pmi,
+			Sm:         sm,
 			EnableRBAC: enableRBAC,
 			EnableUWM:  enableUWM,
 		},
