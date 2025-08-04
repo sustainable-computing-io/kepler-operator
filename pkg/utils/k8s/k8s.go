@@ -10,7 +10,6 @@ import (
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -219,8 +218,8 @@ func VolumeFromSecret(name, secretName string) corev1.Volume {
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName:  secretName,
-				Optional:    pointer.Bool(true),
-				DefaultMode: pointer.Int32(420),
+				Optional:    ptr.To(true),
+				DefaultMode: ptr.To(int32(420)),
 			},
 		},
 	}

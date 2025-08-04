@@ -49,7 +49,7 @@ func writePodSpec(t *testing.T, ns string) string {
 }
 
 func getRandomNsName(t *testing.T) string {
-	rand.Seed(time.Now().UnixNano())
+	rand.New(rand.NewSource(time.Now().UnixNano()))
 	min := 0
 	max := 99999
 	num := rand.Intn(max-min+1) + min
