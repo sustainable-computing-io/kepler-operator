@@ -34,6 +34,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Install all tools
         uses: ./.github/tools-cache
@@ -53,6 +54,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Install all tools
         uses: ./.github/tools-cache
@@ -72,6 +74,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Install all tools
         uses: ./.github/tools-cache
@@ -91,6 +94,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Install all tools
         uses: ./.github/tools-cache
@@ -112,6 +116,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Install all tools
         uses: ./.github/tools-cache
@@ -157,6 +162,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Install all tools
         uses: ./.github/tools-cache
@@ -213,6 +219,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Install all tools
         uses: ./.github/tools-cache
@@ -232,6 +239,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Compute version
         uses: ./.github/compute-version
@@ -266,8 +274,6 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          go-version-file: go.mod
 
       - name: Install Go
         uses: actions/setup-go@v5
@@ -336,6 +342,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Install all tools
         uses: ./.github/tools-cache
