@@ -695,7 +695,7 @@ func TestPowerMonitorDashboards(t *testing.T) {
 			dashboardName:      OverviewDashboardName,
 			dashboardNamespace: DashboardNs,
 			cmKey:              fmt.Sprintf("%s.json", OverviewDashboardName),
-			scenario:           "info dashboard case",
+			scenario:           "overview dashboard case",
 		},
 		{
 			createDashboard: NewPowerMonitorNamespaceInfoDashboard,
@@ -710,21 +710,21 @@ func TestPowerMonitorDashboards(t *testing.T) {
 		},
 	}
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.scenario, func(t *testing.T) {
 			t.Parallel()
-			nodeDashboard := tc.createDashboard(components.Full)
+			dashboard := tc.createDashboard(components.Full)
 
-			actualName := nodeDashboard.Name
+			actualName := dashboard.Name
 			assert.Equal(t, tc.dashboardName, actualName)
 
-			actualNamespace := nodeDashboard.Namespace
+			actualNamespace := dashboard.Namespace
 			assert.Equal(t, tc.dashboardNamespace, actualNamespace)
 
-			actualLabels := k8s.LabelsFromConfigMap(nodeDashboard)
+			actualLabels := k8s.LabelsFromConfigMap(dashboard)
 			assert.Equal(t, tc.labels.ToMap(), actualLabels)
 
-			actualData := k8s.DataFromConfigMap(nodeDashboard)
+			actualData := k8s.DataFromConfigMap(dashboard)
+
 			assert.Contains(t, actualData, tc.cmKey)
 			assert.Equal(t, actualData[tc.cmKey], readDashboardJSON(t, tc.cmKey))
 		})
@@ -1350,6 +1350,32 @@ func TestKeplerConfig(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, defaultConfig.String(), configStr)
 	})
+
+	t.Run("With invalid MetricLevels", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel:     "info",
+						MetricLevels: []string{"invalid", "unknown"}, // Invalid metric levels
+					},
+				},
+			},
+		}
+
+		configStr, err := KeplerConfig(pmi)
+
+		defaultConfig := config.DefaultConfig()
+		defaultConfig.Host.ProcFS = ProcFSMountPath
+		defaultConfig.Host.SysFS = SysFSMountPath
+		defaultConfig.Exporter.Prometheus.MetricsLevel = v1alpha1.MetricsLevelDefault // Should fallback to default due to error
+
+		assert.NoError(t, err)
+		assert.Equal(t, defaultConfig.String(), configStr)
+	})
 }
 
 func TestPowerMonitorServiceMonitor(t *testing.T) {
@@ -1645,6 +1671,106 @@ func TestAnnotateDaemonSetWithSecretHash(t *testing.T) {
 			}
 			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
 			AnnotateDaemonSetWithSecretHash(ds, tc.secret)
+			actualAnnotation := k8s.AnnotationFromDS(ds)
+			assert.Equal(t, tc.annotation, actualAnnotation)
+		})
+	}
+}
+
+func TestPowerMonitorServiceAccount(t *testing.T) {
+	tt := []struct {
+		name      string
+		namespace string
+		labels    k8s.StringMap
+		scenario  string
+	}{
+		{
+			name:      "power-monitor",
+			namespace: "power-monitor",
+			labels: k8s.StringMap{
+				"app.kubernetes.io/component":                "exporter",
+				"operator.sustainable-computing.io/internal": "power-monitor",
+				"app.kubernetes.io/part-of":                  "power-monitor",
+				"app.kubernetes.io/managed-by":               "kepler-operator",
+			},
+			scenario: "default case",
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			pmi := v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: tc.name,
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+							Namespace: tc.namespace,
+						},
+					},
+				},
+			}
+			sa := NewPowerMonitorServiceAccount(&pmi)
+
+			assert.Equal(t, tc.name, sa.Name)
+			assert.Equal(t, tc.namespace, sa.Namespace)
+			assert.Equal(t, tc.labels.ToMap(), sa.Labels)
+			assert.Equal(t, "ServiceAccount", sa.Kind)
+			assert.Equal(t, corev1.SchemeGroupVersion.String(), sa.APIVersion)
+		})
+	}
+}
+
+func TestMountConfigMapToDaemonSet(t *testing.T) {
+	tt := []struct {
+		configMap  *corev1.ConfigMap
+		annotation map[string]string
+		scenario   string
+	}{
+		{
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor",
+				},
+				Data: map[string]string{
+					KeplerConfigFile: "test-config-content",
+				},
+			},
+			annotation: map[string]string{
+				ConfigMapHashAnnotation + "-power-monitor": fmt.Sprintf("%x", xxhash.Sum64([]byte("test-config-content"))),
+			},
+			scenario: "default case",
+		},
+		{
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "empty-config",
+				},
+				Data: map[string]string{
+					KeplerConfigFile: "",
+				},
+			},
+			annotation: map[string]string{
+				ConfigMapHashAnnotation + "-empty-config": fmt.Sprintf("%x", xxhash.Sum64([]byte(""))),
+			},
+			scenario: "empty config case",
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			pmi := v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "power-monitor",
+				},
+			}
+			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
+			MountConfigMapToDaemonSet(ds, tc.configMap)
 			actualAnnotation := k8s.AnnotationFromDS(ds)
 			assert.Equal(t, tc.annotation, actualAnnotation)
 		})
