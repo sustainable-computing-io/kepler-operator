@@ -20,7 +20,6 @@ type Runner struct {
 	Logger      logr.Logger
 }
 
-// TODO: make sure that model server container (deployment) is ready before creating kepler daemonset
 func (runner Runner) Run(ctx context.Context) (ctrl.Result, error) {
 	var err error
 
