@@ -54,8 +54,8 @@ spec:
     MUST be enabled in your cluster.
 
     ### Documentation
-    * [User Documentation](https://github.com/sustainable-computing-io/kepler-operator/blob/v1alpha1/README.md)
-    * [Developer Guide](https://github.com/sustainable-computing-io/kepler-operator/tree/v1alpha1/docs/developer)
+    * [User Documentation](https://github.com/sustainable-computing-io/kepler-operator/blob/main/README.md)
+    * [Developer Guide](https://github.com/sustainable-computing-io/kepler-operator/tree/main/docs/developer)
 
     ### Contributing
     * [Report Bugs](https://github.com/sustainable-computing-io/kepler-operator/issues/new?template=bug_report.md) - Found a bug? Let us know!

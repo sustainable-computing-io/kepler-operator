@@ -2,7 +2,7 @@ name: Push
 
 on: # yamllint disable-line rule:truthy
   push:
-    branches: [v1alpha1]
+    branches: [main]
 
 jobs:
   test-and-codecov:
@@ -30,7 +30,7 @@ jobs:
         id: additional_tags
         shell: bash
         run: |
-          echo "result=$(git rev-parse --short HEAD),v1alpha1" >> $GITHUB_OUTPUT
+          echo "result=$(git rev-parse --short HEAD),main" >> $GITHUB_OUTPUT
 
       - name: Build and Publish Images to External registry
         uses: ./.github/publish-images
