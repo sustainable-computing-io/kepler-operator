@@ -56,3 +56,9 @@ func (PowerMonitorInternalBuilder) WithSecuritySet(mode v1alpha1.SecurityMode, a
 		pmi.Spec.Kepler.Deployment.Security.AllowedSANames = allowedSANames
 	}
 }
+
+func (PowerMonitorInternalBuilder) WithSecrets(secrets []v1alpha1.SecretRef) func(pmi *v1alpha1.PowerMonitorInternal) {
+	return func(pmi *v1alpha1.PowerMonitorInternal) {
+		pmi.Spec.Kepler.Deployment.Secrets = secrets
+	}
+}

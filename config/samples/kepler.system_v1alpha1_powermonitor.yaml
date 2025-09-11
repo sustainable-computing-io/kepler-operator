@@ -13,3 +13,16 @@ spec:
     deployment:
       security:
         mode: none
+      # secrets:
+      #   - name: my-tls-secret
+      #     mountPath: /etc/kepler/secrets/tls
+      #     readOnly: true
+      #   - name: my-config-secret
+      #     mountPath: /opt/secrets/config
+      #     readOnly: true
+      #
+      # CAUTION: Avoid mounting to critical paths like:
+      # - /etc/kepler (reserved for Kepler config)
+      # - /sys, /proc, /dev (system directories)
+      # - /usr, /bin, /sbin, /lib (system binaries)
+      # - / (root filesystem)

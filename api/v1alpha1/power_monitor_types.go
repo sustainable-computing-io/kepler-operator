@@ -46,6 +46,11 @@ type PowerMonitorKeplerDeploymentSpec struct {
 
 	// If set, defines the security mode and allowed SANames
 	Security PowerMonitorKeplerDeploymentSecuritySpec `json:"security,omitempty"`
+
+	// Secrets to be mounted in the power monitor containers
+	// +optional
+	// +listType=atomic
+	Secrets []SecretRef `json:"secrets,omitempty"`
 }
 
 type PowerMonitorKeplerConfigSpec struct {
@@ -97,6 +102,40 @@ type ConfigMapRef struct {
 	// Name of the ConfigMap
 	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
+}
+
+// SecretRef defines a reference to a Secret to be mounted
+//
+// Mount Path Cautions:
+// Exercise caution when setting mount paths for secrets. Avoid mounting secrets to critical system paths
+// that may interfere with Kepler's operation or container security:
+// - /etc/kepler - Reserved for Kepler configuration files
+// - /sys, /proc, /dev - System directories that should remain read-only
+// - /usr, /bin, /sbin, /lib - System binaries and libraries
+// - / - Root filesystem
+//
+// Best practices:
+// - Use subdirectories like /etc/kepler/secrets/ or /opt/secrets/
+// - Ensure mount paths don't conflict with existing volume mounts
+// - Test mount paths in development environments before production deployment
+// - Monitor Kepler pod logs for mount-related errors
+type SecretRef struct {
+	// Name of the secret in the same namespace as the Kepler deployment
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+
+	// MountPath where the secret should be mounted in the container
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	MountPath string `json:"mountPath"`
+
+	// ReadOnly specifies whether the secret should be mounted read-only
+	// +optional
+	// +kubebuilder:default=true
+	ReadOnly *bool `json:"readOnly,omitempty"`
 }
 
 type PowerMonitorKeplerSpec struct {
@@ -189,6 +228,9 @@ const (
 	DaemonSetRolloutInProgress  ConditionReason = "DaemonSetRolloutInProgress"
 	DaemonSetReady              ConditionReason = "DaemonSetReady"
 	DaemonSetOutOfSync          ConditionReason = "DaemonSetOutOfSync"
+
+	// SecretNotFound indicates one or more referenced secrets are missing
+	SecretNotFound ConditionReason = "SecretNotFound"
 )
 
 // These are valid condition statuses.

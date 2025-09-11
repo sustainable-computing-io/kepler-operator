@@ -105,6 +105,10 @@ type (
 
 func (f Framework) Patch(obj client.Object) error {
 	f.T.Logf("%s: creating/updating object %s", time.Now().UTC().Format(time.RFC3339), obj.GetName())
+
+	// Clear managedFields to avoid patch conflicts when updating objects retrieved from cluster
+	obj.SetManagedFields(nil)
+
 	return f.client.Patch(context.TODO(), obj, client.Apply,
 		client.ForceOwnership, client.FieldOwner("e2e-test"),
 	)
@@ -113,6 +117,13 @@ func (f Framework) Patch(obj client.Object) error {
 func (f Framework) GetPowerMonitor(name string) *v1alpha1.PowerMonitor {
 	pm := v1alpha1.PowerMonitor{}
 	f.AssertResourceExists(name, "", &pm)
+
+	// Get does not set the type meta information, setting this manually here
+	// to help with functions like Patch() that require the type meta
+	pm.TypeMeta = metav1.TypeMeta{
+		APIVersion: v1alpha1.GroupVersion.String(),
+		Kind:       "PowerMonitor",
+	}
 	return &pm
 }
 
@@ -144,6 +155,7 @@ func (f Framework) CreatePowerMonitor(name string, fns ...powermonitorFn) *v1alp
 	assert.NoError(f.T, err, "failed to create powermonitor")
 
 	f.T.Cleanup(func() {
+		f.T.Logf("cleanup: deleting powermonitor %s", name)
 		f.DeletePowerMonitor(name)
 	})
 
@@ -191,9 +203,18 @@ func (f Framework) DeletePowerMonitor(name string) {
 		return errors.IsNotFound(err), nil
 	})
 }
+
 func (f Framework) GetPowerMonitorInternal(name string) *v1alpha1.PowerMonitorInternal {
+	f.T.Helper()
 	pmi := v1alpha1.PowerMonitorInternal{}
 	f.AssertResourceExists(name, "", &pmi)
+
+	// Get does not set the type meta information, setting this manually here
+	// to help with functions like Patch() that require the type meta
+	pmi.TypeMeta = metav1.TypeMeta{
+		APIVersion: v1alpha1.GroupVersion.String(),
+		Kind:       "PowerMonitorInternal",
+	}
 	return &pmi
 }
 
@@ -221,7 +242,8 @@ func (f Framework) CreatePowerMonitorInternal(name string, fns ...powermonitorin
 	assert.NoError(f.T, err, "failed to create power-monitor-internal")
 
 	f.T.Cleanup(func() {
-		f.DeletePowerMonitorInternal(name, Timeout(5*time.Minute))
+		f.T.Logf("cleanup: deleting powermonitorinternal %s", name)
+		f.DeletePowerMonitorInternal(name, Timeout(3*time.Minute))
 	})
 
 	return &pmi
@@ -277,7 +299,7 @@ func (f Framework) WaitUntilPowerMonitorInternalCondition(name string, t v1alpha
 	return &pmi
 }
 
-func (f Framework) WaitUntilPowerMonitorCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus) *v1alpha1.PowerMonitor {
+func (f Framework) WaitUntilPowerMonitorCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus, fns ...AssertOptionFn) *v1alpha1.PowerMonitor {
 	f.T.Helper()
 	pm := v1alpha1.PowerMonitor{}
 	f.WaitUntil(fmt.Sprintf("powermonitor %s is %s", name, t),
@@ -289,8 +311,29 @@ func (f Framework) WaitUntilPowerMonitorCondition(name string, t v1alpha1.Condit
 
 			condition, _ := k8s.FindCondition(pm.Status.Conditions, t)
 			return condition.Status == s, nil
-		})
+		}, fns...)
 	return &pm
+}
+
+// WaitForResource waits for a resource to exist and returns true if it exists, false if timeout
+func (f Framework) WaitForResource(name, namespace string, obj client.Object, fns ...AssertOptionFn) bool {
+	f.T.Helper()
+	var exists bool
+	f.WaitUntil(fmt.Sprintf("resource %s in namespace %s to exist", name, namespace),
+		func(ctx context.Context) (bool, error) {
+			key := client.ObjectKey{Name: name, Namespace: namespace}
+			err := f.client.Get(ctx, key, obj)
+			if errors.IsNotFound(err) {
+				exists = false
+				return true, nil // Stop waiting, resource doesn't exist
+			}
+			if err != nil {
+				return false, err // Continue waiting on other errors
+			}
+			exists = true
+			return true, nil // Stop waiting, resource exists
+		}, fns...)
+	return exists
 }
 
 func (f Framework) AddResourceLabels(kind, name string, l map[string]string) error {
@@ -359,6 +402,12 @@ func (f Framework) WithAdditionalConfigMaps(configMapNames []string) func(k *v1a
 			configMapRefs = append(configMapRefs, v1alpha1.ConfigMapRef{Name: name})
 		}
 		pm.Spec.Kepler.Config.AdditionalConfigMaps = configMapRefs
+	}
+}
+
+func (f Framework) WithPowerMonitorSecrets(secrets []v1alpha1.SecretRef) func(k *v1alpha1.PowerMonitor) {
+	return func(pm *v1alpha1.PowerMonitor) {
+		pm.Spec.Kepler.Deployment.Secrets = secrets
 	}
 }
 
@@ -456,6 +505,7 @@ func (f Framework) CreateTestPowerMonitorInternal(name string, testNs string, ru
 	// For VM environments, create and patch the additional ConfigMap
 	if runningOnVM {
 		// Wait for the PowerMonitorInternal to be reconciled
+		f.WaitForNamespace(pmi.Spec.Kepler.Deployment.Namespace)
 		_ = f.WaitUntilPowerMonitorInternalCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionFalse)
 
 		cfm := f.NewAdditionalConfigMap(configMapName, testNs, `dev:
@@ -524,7 +574,8 @@ func (f Framework) DeployOpenshiftCerts(serviceName, serviceNamespace, clusterIs
 	f.CreateCAIssuer(pmIssuerName, caCertSecretName, serviceNamespace)
 
 	tlsCert := f.CreateTLSCertificate(tlsCertName, tlsCertSecretName, serviceNamespace, pmIssuerName, []string{
-		fmt.Sprintf("%s.%s.svc", serviceName, serviceNamespace)})
+		fmt.Sprintf("%s.%s.svc", serviceName, serviceNamespace),
+	})
 	f.WaitUntil("tls certificate and secret are deployed", func(ctx context.Context) (bool, error) {
 		err := f.client.Get(ctx, client.ObjectKeyFromObject(tlsCert), tlsCert)
 		if err != nil {
@@ -537,7 +588,6 @@ func (f Framework) DeployOpenshiftCerts(serviceName, serviceNamespace, clusterIs
 		}
 		return false, err
 	}, Timeout(5*time.Minute))
-
 }
 
 func (f Framework) InstallCertManager() {
@@ -1069,6 +1119,76 @@ func (f Framework) DeleteSA(name, ns string, fns ...AssertOptionFn) {
 	f.WaitUntil(fmt.Sprintf("service account %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
 		serviceAccount := corev1.ServiceAccount{}
 		err := f.client.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &serviceAccount)
+		return errors.IsNotFound(err), nil
+	}, fns...)
+}
+
+// WaitForNamespace waits for a namespace to be created and available
+func (f Framework) WaitForNamespace(name string, fns ...AssertOptionFn) {
+	f.T.Helper()
+	f.WaitUntil(fmt.Sprintf("namespace %s is created", name), func(ctx context.Context) (bool, error) {
+		ns := corev1.Namespace{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &ns)
+		return err == nil, nil
+	}, fns...)
+}
+
+// ContainerWithName finds a container by name in the given list of containers
+// Returns the container if found, or an error if not found
+func (f Framework) ContainerWithName(containers []corev1.Container, name string) (*corev1.Container, error) {
+	f.T.Helper()
+	for i, container := range containers {
+		if container.Name == name {
+			return &containers[i], nil
+		}
+	}
+	return nil, fmt.Errorf("container with name %q not found", name)
+}
+
+func (f Framework) CreateTestSecret(name, ns string, data map[string]string) *corev1.Secret {
+	secret := corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			Labels: map[string]string{
+				"app.kubernetes.io/component": "test",
+				"app.kubernetes.io/part-of":   "e2e-test-secrets",
+			},
+		},
+		Type:       corev1.SecretTypeOpaque,
+		StringData: data,
+	}
+	err := f.client.Patch(context.TODO(), &secret, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
+	assert.NoError(f.T, err, "failed to create test secret")
+	f.T.Cleanup(func() {
+		f.DeleteTestSecret(name, ns, Timeout(5*time.Minute))
+	})
+	return &secret
+}
+
+func (f Framework) DeleteTestSecret(name, ns string, fns ...AssertOptionFn) {
+	f.T.Helper()
+	secret := corev1.Secret{}
+	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &secret)
+	if errors.IsNotFound(err) {
+		return
+	}
+	assert.NoError(f.T, err, "failed to get test secret:%s", name)
+
+	f.T.Logf("%s: deleting test secret %s", time.Now().UTC().Format(time.RFC3339), name)
+
+	err = f.client.Delete(context.Background(), &secret)
+	if err != nil && !errors.IsNotFound(err) {
+		f.T.Errorf("failed to delete test secret:%s :%v", name, err)
+	}
+
+	f.WaitUntil(fmt.Sprintf("test secret %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
+		secret := corev1.Secret{}
+		err := f.client.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &secret)
 		return errors.IsNotFound(err), nil
 	}, fns...)
 }

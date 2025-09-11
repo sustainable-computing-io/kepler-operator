@@ -94,13 +94,18 @@ func NewPowerMonitorDaemonSet(detail components.Detail, pmi *v1alpha1.PowerMonit
 	nodeSelector := deployment.NodeSelector
 	tolerations := deployment.Tolerations
 
-	pmContainer := newPowerMonitorContainer(pmi)
+	pmContainer := newKeplerContainer(pmi)
 	pmContainers := []corev1.Container{pmContainer}
 
 	volumes := []corev1.Volume{
 		k8s.VolumeFromHost("sysfs", "/sys"),
 		k8s.VolumeFromHost("procfs", "/proc"),
 		k8s.VolumeFromConfigMap("cfm", pmi.Name),
+	}
+
+	// Add user-defined secrets as volumes
+	for _, secretRef := range deployment.Secrets {
+		volumes = append(volumes, k8s.VolumeFromSecret(secretRef.Name, secretRef.Name))
 	}
 
 	if pmi.Spec.Kepler.Deployment.Security.Mode == v1alpha1.SecurityModeRBAC {
@@ -626,7 +631,7 @@ func podSelector(pmi *v1alpha1.PowerMonitorInternal) k8s.StringMap {
 	})
 }
 
-func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Container {
+func newKeplerContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Container {
 	deployment := pmi.Spec.Kepler.Deployment
 	configMapPath := filepath.Join(KeplerConfigMapPath, KeplerConfigFile)
 	webListenAddress := fmt.Sprintf("0.0.0.0:%d", PowerMonitorDSPort)
@@ -634,6 +639,8 @@ func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Contain
 	if pmi.Spec.Kepler.Deployment.Security.Mode == v1alpha1.SecurityModeRBAC {
 		webListenAddress = fmt.Sprintf("127.0.0.1:%d", PowerMonitorDSPort)
 	}
+
+	volumeMounts := buildVolumeMounts(deployment)
 
 	return corev1.Container{
 		Name:            pmi.DaemonsetName(),
@@ -655,12 +662,31 @@ func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Contain
 			ContainerPort: int32(PowerMonitorDSPort),
 			Name:          PowerMonitorServicePortName,
 		}},
-		VolumeMounts: []corev1.VolumeMount{
-			{Name: "sysfs", MountPath: SysFSMountPath, ReadOnly: true},
-			{Name: "procfs", MountPath: ProcFSMountPath, ReadOnly: true},
-			{Name: "cfm", MountPath: KeplerConfigMapPath},
-		},
+		VolumeMounts: volumeMounts,
 	}
+}
+
+func buildVolumeMounts(deployment v1alpha1.PowerMonitorInternalKeplerDeploymentSpec) []corev1.VolumeMount {
+	volumeMounts := []corev1.VolumeMount{
+		{Name: "sysfs", MountPath: SysFSMountPath, ReadOnly: true},
+		{Name: "procfs", MountPath: ProcFSMountPath, ReadOnly: true},
+		{Name: "cfm", MountPath: KeplerConfigMapPath},
+	}
+
+	// Add user-defined secret mounts
+	for _, secretRef := range deployment.Secrets {
+		readOnly := true
+		if secretRef.ReadOnly != nil {
+			readOnly = *secretRef.ReadOnly
+		}
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      secretRef.Name,
+			MountPath: secretRef.MountPath,
+			ReadOnly:  readOnly,
+		})
+	}
+
+	return volumeMounts
 }
 
 func newKubeRBACProxyContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Container {

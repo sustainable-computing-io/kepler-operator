@@ -7,9 +7,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
-
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,6 +22,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/utils/ptr"
 )
 
 func TestPowerMonitor_Deletion(t *testing.T) {
@@ -220,7 +220,8 @@ func TestPowerMonitor_ReconciliationWithAdditionalConfigMap(t *testing.T) {
 
 	// Verify reconcillation fails without config map
 	pm = f.WaitUntilPowerMonitorCondition("power-monitor", v1alpha1.Reconciled, v1alpha1.ConditionFalse)
-	reconciled, _ := k8s.FindCondition(pm.Status.Conditions, v1alpha1.Reconciled)
+	reconciled, err := k8s.FindCondition(pm.Status.Conditions, v1alpha1.Reconciled)
+	assert.NoError(t, err, "unable to get reconciled condition")
 	assert.Contains(t, reconciled.Message, fmt.Sprintf("configMap %s not found in %s namespace", configMapName, controller.PowerMonitorDeploymentNS))
 
 	// Create config map
@@ -235,7 +236,7 @@ dev:
     enabled: true`
 	}
 	cfm := f.NewAdditionalConfigMap(configMapName, controller.PowerMonitorDeploymentNS, conf)
-	err := f.Patch(cfm)
+	err = f.Patch(cfm)
 	assert.NoError(t, err)
 
 	// Verify reconcillation succeeds
@@ -531,4 +532,158 @@ func TestPowerMonitor_ZeroValueConfigFields(t *testing.T) {
 	assert.Contains(t, configData, "maxTerminated: 0", "Config should contain zero MaxTerminated value")
 	assert.Contains(t, configData, "staleness: 0s", "Config should contain zero Staleness value")
 	assert.Contains(t, configData, "interval: 0s", "Config should contain zero SampleRate value")
+}
+
+func TestPowerMonitor_Secrets_Lifecycle_CRUD(t *testing.T) {
+	f := utils.NewFramework(t)
+	name := "power-monitor"
+
+	testNs := controller.PowerMonitorDeploymentNS
+	secretName := "lifecycle-test-secret"
+
+	// Pre-condition: Verify PowerMonitor doesn't exist
+	f.AssertNoResourceExists(name, "", &v1alpha1.PowerMonitor{})
+
+	// Step 1: Create PowerMonitor without any secrets initially
+	pm := f.CreateTestPowerMonitor(name, runningOnVM)
+
+	// Wait for PowerMonitor to be reconciled successfully (no secrets = no issues)
+	pm = f.WaitUntilPowerMonitorCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionTrue)
+	pm = f.WaitUntilPowerMonitorCondition(name, v1alpha1.Available, v1alpha1.ConditionTrue)
+
+	// Step 2: Update PowerMonitor to add a secret reference (secret doesn't exist yet)
+	secretRef := v1alpha1.SecretRef{
+		Name:      secretName,
+		MountPath: "/etc/kepler/lifecycle-config",
+		ReadOnly:  ptr.To(true),
+	}
+
+	// Update the PM to include the secret reference using DeepCopy to avoid managedFields issues
+	pm = f.GetPowerMonitor(name)
+	{
+		patchPm := pm.DeepCopy()
+		patchPm.Spec.Kepler.Deployment.Secrets = []v1alpha1.SecretRef{secretRef}
+		err := f.Patch(patchPm)
+		assert.NoError(t, err, "Should be able to update PM with secret reference")
+	}
+
+	// Step 3: Wait for PowerMonitor to reach degraded state due to missing secret
+	pm = f.WaitUntilPowerMonitorCondition(name, v1alpha1.Available, v1alpha1.ConditionDegraded, utils.Timeout(2*time.Minute))
+
+	// Assert that the degraded condition is specifically due to missing secret
+	availableCondition, err := k8s.FindCondition(pm.Status.Conditions, v1alpha1.Available)
+	assert.NoError(t, err, "Should find Available condition")
+	assert.Equal(t, v1alpha1.SecretNotFound, availableCondition.Reason, "PowerMonitor should be degraded due to missing secret")
+	assert.Contains(t, availableCondition.Message, secretName, "Error message should mention the missing secret")
+	assert.Contains(t, availableCondition.Message, testNs, "Error message should mention the namespace")
+	t.Logf("PowerMonitor correctly degraded due to missing secret: %s", availableCondition.Message)
+
+	// Step 4: Create the missing secret
+	f.CreateTestSecret(secretName, testNs, map[string]string{
+		"redfish.yaml": "database: lifecycle-test\\nmode: testing",
+		"app.conf":     "lifecycle=enabled\\ntesting=true",
+	})
+
+	// Wait for PowerMonitor to recover and become available
+	pm = f.WaitUntilPowerMonitorCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionTrue)
+	pm = f.WaitUntilPowerMonitorCondition(name, v1alpha1.Available, v1alpha1.ConditionTrue)
+
+	// Verify the secret is now properly mounted in the underlying DaemonSet
+	ds := appsv1.DaemonSet{}
+	f.AssertResourceExists(pm.Name, testNs, &ds)
+
+	// Verify secret volume exists
+	secretVolumes := 0
+	for _, vol := range ds.Spec.Template.Spec.Volumes {
+		if vol.Secret != nil && vol.Secret.SecretName == secretName {
+			secretVolumes++
+			assert.Equal(t, secretName, vol.Name, "Volume name should match secret name")
+		}
+	}
+	assert.Equal(t, 1, secretVolumes, "Should have exactly 1 secret volume")
+
+	// Verify secret volume mount in container
+	containers := ds.Spec.Template.Spec.Containers
+	keplerCntr, err := f.ContainerWithName(containers, pm.Name)
+	assert.NoError(t, err, "Should find the kepler container")
+
+	secretMounts := 0
+	for _, mount := range keplerCntr.VolumeMounts {
+		if mount.Name == secretName {
+			secretMounts++
+			assert.Equal(t, "/etc/kepler/lifecycle-config", mount.MountPath, "Mount path should match specification")
+			assert.True(t, mount.ReadOnly, "Secret should be mounted read-only")
+		}
+	}
+	assert.Equal(t, 1, secretMounts, "Should have exactly 1 secret mount")
+
+	// Assert that the Available condition is no longer showing SecretNotFound
+	recoveredCondition, err := k8s.FindCondition(pm.Status.Conditions, v1alpha1.Available)
+	assert.NoError(t, err, "Should find Available condition")
+	assert.NotEqual(t, v1alpha1.SecretNotFound, recoveredCondition.Reason,
+		"Available condition should no longer have SecretNotFound reason after secret creation")
+	assert.Equal(t, v1alpha1.ConditionTrue, recoveredCondition.Status, "PowerMonitor should be available")
+	t.Logf("PowerMonitor successfully recovered: status=%s, reason=%s", recoveredCondition.Status, recoveredCondition.Reason)
+
+	// Step 5: Delete the secret to trigger degradation again
+	f.DeleteTestSecret(secretName, testNs)
+
+	// Wait for PowerMonitor to become degraded again due to missing secret
+	pm = f.WaitUntilPowerMonitorCondition(name, v1alpha1.Available, v1alpha1.ConditionDegraded, utils.Timeout(2*time.Minute))
+
+	// Assert that the degraded condition is again due to missing secret
+	degradedAgainCondition, err := k8s.FindCondition(pm.Status.Conditions, v1alpha1.Available)
+	assert.NoError(t, err, "Should find Available condition")
+	assert.Equal(t, v1alpha1.SecretNotFound, degradedAgainCondition.Reason, "PowerMonitor should be degraded again due to missing secret")
+	assert.Contains(t, degradedAgainCondition.Message, secretName, "Error message should mention the missing secret")
+	t.Logf("PowerMonitor correctly degraded again after secret deletion: %s", degradedAgainCondition.Message)
+
+	// Step 6: Remove the secret reference from PM spec using DeepCopy
+	pm = f.GetPowerMonitor(name)
+	{
+		t.Logf("Remove the secret reference from PM")
+		removePatchPm := pm.DeepCopy()
+		removePatchPm.Spec.Kepler.Deployment.Secrets = []v1alpha1.SecretRef{} // Empty slice to remove secrets
+		err = f.Patch(removePatchPm)
+		assert.NoError(t, err, "Should be able to update PM to remove secret reference")
+	}
+
+	// Wait for PowerMonitor to become available again (no secret requirements)
+	pm = f.WaitUntilPowerMonitorCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionTrue)
+	pm = f.WaitUntilPowerMonitorCondition(name, v1alpha1.Available, v1alpha1.ConditionTrue)
+
+	// Assert that the Available condition is healthy again
+	finalCondition, err := k8s.FindCondition(pm.Status.Conditions, v1alpha1.Available)
+	assert.NoError(t, err, "Should find Available condition")
+	assert.NotEqual(t, v1alpha1.SecretNotFound, finalCondition.Reason,
+		"Available condition should no longer have SecretNotFound reason after removing secret reference")
+	assert.Equal(t, v1alpha1.ConditionTrue, finalCondition.Status, "PowerMonitor should be available")
+	t.Logf("PowerMonitor final recovery after removing secret reference: status=%s, reason=%s", finalCondition.Status, finalCondition.Reason)
+
+	// Verify that the secret volume is no longer present in the DaemonSet
+	finalDs := appsv1.DaemonSet{}
+	f.AssertResourceExists(pm.Name, testNs, &finalDs)
+
+	secretVolumesAfterRemoval := 0
+	for _, vol := range finalDs.Spec.Template.Spec.Volumes {
+		if vol.Secret != nil && vol.Secret.SecretName == secretName {
+			secretVolumesAfterRemoval++
+		}
+	}
+	assert.Equal(t, 0, secretVolumesAfterRemoval, "Should have no secret volumes after removing secret reference")
+
+	// Verify that the secret volume mount is no longer present in the container
+	finalContainers := finalDs.Spec.Template.Spec.Containers
+	finalKeplerCntr, err := f.ContainerWithName(finalContainers, pm.Name)
+	assert.NoError(t, err, "Should find the kepler container")
+
+	secretMountsAfterRemoval := 0
+	for _, mount := range finalKeplerCntr.VolumeMounts {
+		if mount.Name == secretName {
+			secretMountsAfterRemoval++
+		}
+	}
+	assert.Equal(t, 0, secretMountsAfterRemoval, "Should have no secret mounts after removing secret reference")
+
+	t.Logf("Lifecycle test completed successfully: PM went through all expected state transitions")
 }

@@ -153,6 +153,47 @@ spec:
                           kubernetes.io/os: linux
                         description: Defines which Nodes the Pod is scheduled on
                         type: object
+                      secrets:
+                        description: Secrets to be mounted in the power monitor containers
+                        items:
+                          description: |-
+                            SecretRef defines a reference to a Secret to be mounted
+
+                            Mount Path Cautions:
+                            Exercise caution when setting mount paths for secrets. Avoid mounting secrets to critical system paths
+                            that may interfere with Kepler's operation or container security:
+                            - /etc/kepler - Reserved for Kepler configuration files
+                            - /sys, /proc, /dev - System directories that should remain read-only
+                            - /usr, /bin, /sbin, /lib - System binaries and libraries
+                            - / - Root filesystem
+
+                            Best practices:
+                            - Use subdirectories like /etc/kepler/secrets/ or /opt/secrets/
+                            - Ensure mount paths don't conflict with existing volume mounts
+                            - Test mount paths in development environments before production deployment
+                            - Monitor Kepler pod logs for mount-related errors
+                          properties:
+                            mountPath:
+                              description: MountPath where the secret should be mounted
+                                in the container
+                              minLength: 1
+                              type: string
+                            name:
+                              description: Name of the secret in the same namespace
+                                as the Kepler deployment
+                              minLength: 1
+                              type: string
+                            readOnly:
+                              default: true
+                              description: ReadOnly specifies whether the secret should
+                                be mounted read-only
+                              type: boolean
+                          required:
+                          - mountPath
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
                       security:
                         description: If set, defines the security mode and allowed
                           SANames
