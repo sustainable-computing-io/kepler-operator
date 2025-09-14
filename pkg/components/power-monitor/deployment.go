@@ -655,21 +655,6 @@ func newPowerMonitorContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Contain
 			ContainerPort: int32(PowerMonitorDSPort),
 			Name:          PowerMonitorServicePortName,
 		}},
-		LivenessProbe: &corev1.Probe{
-			ProbeHandler: corev1.ProbeHandler{
-				Exec: &corev1.ExecAction{
-					Command: []string{
-						"curl", "-f", "-s",
-						fmt.Sprintf("http://%s/metrics", webListenAddress),
-					},
-				},
-			},
-			FailureThreshold:    5,
-			InitialDelaySeconds: 10,
-			PeriodSeconds:       60,
-			SuccessThreshold:    1,
-			TimeoutSeconds:      10,
-		},
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "sysfs", MountPath: SysFSMountPath, ReadOnly: true},
 			{Name: "procfs", MountPath: ProcFSMountPath, ReadOnly: true},
