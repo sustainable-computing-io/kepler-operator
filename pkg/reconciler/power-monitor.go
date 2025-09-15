@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-logr/logr"
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	powermonitor "github.com/sustainable.computing.io/kepler-operator/pkg/components/power-monitor"
@@ -18,7 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// PowerMonitorDeployer deploys the PowerMonitor DaemonSet and ConfigMap for the given PowerMonitorInternal
+// PowerMonitorDeployer deploys the PowerMonitor ConfigMap for the given PowerMonitorInterna
+// land annotates the DaemonSet so that it is reloaded if the ConfigMap changes
 type PowerMonitorDeployer struct {
 	Pmi *v1alpha1.PowerMonitorInternal
 	Ds  *appsv1.DaemonSet
@@ -76,4 +78,71 @@ func (r PowerMonitorDeployer) readAdditionalConfigs(ctx context.Context, c clien
 		}
 	}
 	return additionalConfigs, nil
+}
+
+// SecretNotFoundError represents an error when one or more referenced secrets are missing
+type SecretNotFoundError struct {
+	MissingSecrets []string
+	Namespace      string
+}
+
+func (e *SecretNotFoundError) Error() string {
+	if len(e.MissingSecrets) == 1 {
+		return fmt.Sprintf("secret %s not found in %s namespace", e.MissingSecrets[0], e.Namespace)
+	}
+	return fmt.Sprintf("secrets %v not found in %s namespace", e.MissingSecrets, e.Namespace)
+}
+
+// SecretMounter validates that all referenced secrets exist and annotates the DaemonSet
+// with secret hashes to trigger pod restarts when secrets change
+type SecretMounter struct {
+	Pmi    *v1alpha1.PowerMonitorInternal
+	Ds     *appsv1.DaemonSet
+	Logger logr.Logger
+}
+
+// Reconcile implements the SecretMounter interface
+func (r SecretMounter) Reconcile(ctx context.Context, c client.Client, s *runtime.Scheme) Result {
+	secretRefs := r.Pmi.Spec.Kepler.Deployment.Secrets
+	if len(secretRefs) == 0 {
+		return Result{Action: Continue}
+	}
+
+	ns := r.Pmi.Namespace()
+	var missingSecrets []string
+
+	// Validate all referenced secrets exist and annotate DaemonSet for found secrets
+	for _, secretRef := range secretRefs {
+		secret := &corev1.Secret{}
+		if err := c.Get(ctx, types.NamespacedName{Namespace: ns, Name: secretRef.Name}, secret); err != nil {
+			if errors.IsNotFound(err) {
+				missingSecrets = append(missingSecrets, secretRef.Name)
+				r.Logger.Info("skipping hash annotation for missing secret",
+					"secret", secretRef.Name, "namespace", ns)
+				// Continue processing remaining secrets to collect all missing ones for status reporting
+				continue
+			}
+			// For other errors (not NotFound), we should still stop reconciliation
+			return Result{Action: Stop, Error: fmt.Errorf("failed to get secret %s: %w", secretRef.Name, err)}
+		}
+
+		// Secret exists - annotate DaemonSet with its hash for auto-reload
+		powermonitor.AnnotateDaemonSetWithSecretHash(r.Ds, secret)
+		r.Logger.Info("annotated DaemonSet with secret hash",
+			"secret", secretRef.Name, "namespace", ns)
+	}
+
+	// If some secrets are missing, continue reconciliation but return an error
+	// that can be detected by the controller to set degraded status
+	if len(missingSecrets) > 0 {
+		return Result{
+			Action: Continue,
+			Error: &SecretNotFoundError{
+				MissingSecrets: missingSecrets,
+				Namespace:      ns,
+			},
+		}
+	}
+
+	return Result{Action: Continue}
 }

@@ -184,6 +184,13 @@ PowerMonitorInternalSpec defines the desired state of PowerMonitorInternalSpec
         </td>
         <td>false</td>
       </tr><tr>
+        <td><b><a href="#powermonitorinternalspeckeplerdeploymentsecretsindex">secrets</a></b></td>
+        <td>[]object</td>
+        <td>
+          Secrets to be mounted in the power monitor containers<br/>
+        </td>
+        <td>false</td>
+      </tr><tr>
         <td><b><a href="#powermonitorinternalspeckeplerdeploymentsecurity">security</a></b></td>
         <td>object</td>
         <td>
@@ -197,6 +204,63 @@ PowerMonitorInternalSpec defines the desired state of PowerMonitorInternalSpec
           If specified, define Pod's tolerations<br/>
           <br/>
             <i>Default</i>: [map[effect: key: operator:Exists value:]]<br/>
+        </td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### PowerMonitorInternal.spec.kepler.deployment.secrets[index]
+<sup><sup>[↩ Parent](#powermonitorinternalspeckeplerdeployment)</sup></sup>
+
+
+
+SecretRef defines a reference to a Secret to be mounted
+
+Mount Path Cautions:
+Exercise caution when setting mount paths for secrets. Avoid mounting secrets to critical system paths
+that may interfere with Kepler's operation or container security:
+- /etc/kepler - Reserved for Kepler configuration files
+- /sys, /proc, /dev - System directories that should remain read-only
+- /usr, /bin, /sbin, /lib - System binaries and libraries
+- / - Root filesystem
+
+Best practices:
+- Use subdirectories like /etc/kepler/secrets/ or /opt/secrets/
+- Ensure mount paths don't conflict with existing volume mounts
+- Test mount paths in development environments before production deployment
+- Monitor Kepler pod logs for mount-related errors
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b>mountPath</b></td>
+        <td>string</td>
+        <td>
+          MountPath where the secret should be mounted in the container<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>name</b></td>
+        <td>string</td>
+        <td>
+          Name of the secret in the same namespace as the Kepler deployment<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>readOnly</b></td>
+        <td>boolean</td>
+        <td>
+          ReadOnly specifies whether the secret should be mounted read-only<br/>
+          <br/>
+            <i>Default</i>: true<br/>
         </td>
         <td>false</td>
       </tr></tbody>
@@ -919,6 +983,13 @@ ConfigMapRef defines a reference to a ConfigMap
         </td>
         <td>false</td>
       </tr><tr>
+        <td><b><a href="#powermonitorspeckeplerdeploymentsecretsindex">secrets</a></b></td>
+        <td>[]object</td>
+        <td>
+          Secrets to be mounted in the power monitor containers<br/>
+        </td>
+        <td>false</td>
+      </tr><tr>
         <td><b><a href="#powermonitorspeckeplerdeploymentsecurity">security</a></b></td>
         <td>object</td>
         <td>
@@ -932,6 +1003,63 @@ ConfigMapRef defines a reference to a ConfigMap
           If specified, define Pod's tolerations<br/>
           <br/>
             <i>Default</i>: [map[effect: key: operator:Exists value:]]<br/>
+        </td>
+        <td>false</td>
+      </tr></tbody>
+</table>
+
+
+### PowerMonitor.spec.kepler.deployment.secrets[index]
+<sup><sup>[↩ Parent](#powermonitorspeckeplerdeployment)</sup></sup>
+
+
+
+SecretRef defines a reference to a Secret to be mounted
+
+Mount Path Cautions:
+Exercise caution when setting mount paths for secrets. Avoid mounting secrets to critical system paths
+that may interfere with Kepler's operation or container security:
+- /etc/kepler - Reserved for Kepler configuration files
+- /sys, /proc, /dev - System directories that should remain read-only
+- /usr, /bin, /sbin, /lib - System binaries and libraries
+- / - Root filesystem
+
+Best practices:
+- Use subdirectories like /etc/kepler/secrets/ or /opt/secrets/
+- Ensure mount paths don't conflict with existing volume mounts
+- Test mount paths in development environments before production deployment
+- Monitor Kepler pod logs for mount-related errors
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody><tr>
+        <td><b>mountPath</b></td>
+        <td>string</td>
+        <td>
+          MountPath where the secret should be mounted in the container<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>name</b></td>
+        <td>string</td>
+        <td>
+          Name of the secret in the same namespace as the Kepler deployment<br/>
+        </td>
+        <td>true</td>
+      </tr><tr>
+        <td><b>readOnly</b></td>
+        <td>boolean</td>
+        <td>
+          ReadOnly specifies whether the secret should be mounted read-only<br/>
+          <br/>
+            <i>Default</i>: true<br/>
         </td>
         <td>false</td>
       </tr></tbody>

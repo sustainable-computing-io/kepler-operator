@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	powermonitor "github.com/sustainable.computing.io/kepler-operator/pkg/components/power-monitor"
@@ -549,6 +550,217 @@ exporter:
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedConfigs, configs)
+			}
+		})
+	}
+}
+
+func TestSecretMounter_Reconcile(t *testing.T) {
+	scheme := testScheme()
+
+	tests := []struct {
+		name           string
+		pmi            *v1alpha1.PowerMonitorInternal
+		setupClient    func() client.Client
+		expectedAction Action
+		expectedError  bool
+		errorType      string
+		errorContains  string
+	}{
+		{
+			name: "no secrets referenced - should continue",
+			pmi: &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-pmi",
+					Namespace: "test-ns",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+							PowerMonitorKeplerDeploymentSpec: v1alpha1.PowerMonitorKeplerDeploymentSpec{
+								Secrets: []v1alpha1.SecretRef{}, // No secrets
+							},
+							Namespace: "test-ns",
+						},
+					},
+				},
+			},
+			setupClient: func() client.Client {
+				return fake.NewClientBuilder().WithScheme(scheme).Build()
+			},
+			expectedAction: Continue,
+			expectedError:  false,
+		},
+		{
+			name: "all secrets exist - should continue",
+			pmi: &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-pmi",
+					Namespace: "test-ns",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+							PowerMonitorKeplerDeploymentSpec: v1alpha1.PowerMonitorKeplerDeploymentSpec{
+								Secrets: []v1alpha1.SecretRef{
+									{Name: "secret-1"},
+									{Name: "secret-2"},
+								},
+							},
+							Namespace: "test-ns",
+						},
+					},
+				},
+			},
+			setupClient: func() client.Client {
+				secret1 := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "secret-1", Namespace: "test-ns"},
+					Data:       map[string][]byte{"key": []byte("value")},
+				}
+				secret2 := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "secret-2", Namespace: "test-ns"},
+					Data:       map[string][]byte{"key": []byte("value")},
+				}
+				return fake.NewClientBuilder().WithScheme(scheme).WithObjects(secret1, secret2).Build()
+			},
+			expectedAction: Continue,
+			expectedError:  false,
+		},
+		{
+			name: "one secret missing - should continue with SecretNotFoundError",
+			pmi: &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-pmi",
+					Namespace: "test-ns",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+							PowerMonitorKeplerDeploymentSpec: v1alpha1.PowerMonitorKeplerDeploymentSpec{
+								Secrets: []v1alpha1.SecretRef{
+									{Name: "secret-1"},
+									{Name: "missing-secret"},
+								},
+							},
+							Namespace: "test-ns",
+						},
+					},
+				},
+			},
+			setupClient: func() client.Client {
+				secret1 := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "secret-1", Namespace: "test-ns"},
+					Data:       map[string][]byte{"key": []byte("value")},
+				}
+				return fake.NewClientBuilder().WithScheme(scheme).WithObjects(secret1).Build()
+			},
+			expectedAction: Continue,
+			expectedError:  true,
+			errorType:      "SecretNotFoundError",
+			errorContains:  "missing-secret not found in test-ns namespace",
+		},
+		{
+			name: "multiple secrets missing - should continue with SecretNotFoundError",
+			pmi: &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-pmi",
+					Namespace: "test-ns",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+							PowerMonitorKeplerDeploymentSpec: v1alpha1.PowerMonitorKeplerDeploymentSpec{
+								Secrets: []v1alpha1.SecretRef{
+									{Name: "missing-secret-1"},
+									{Name: "missing-secret-2"},
+								},
+							},
+							Namespace: "test-ns",
+						},
+					},
+				},
+			},
+			setupClient: func() client.Client {
+				return fake.NewClientBuilder().WithScheme(scheme).Build()
+			},
+			expectedAction: Continue,
+			expectedError:  true,
+			errorType:      "SecretNotFoundError",
+			errorContains:  "test-ns namespace",
+		},
+		{
+			name: "client error (not NotFound) - should stop",
+			pmi: &v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-pmi",
+					Namespace: "test-ns",
+				},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+							PowerMonitorKeplerDeploymentSpec: v1alpha1.PowerMonitorKeplerDeploymentSpec{
+								Secrets: []v1alpha1.SecretRef{
+									{Name: "failing-secret"},
+								},
+							},
+							Namespace: "test-ns",
+						},
+					},
+				},
+			},
+			setupClient: func() client.Client {
+				mockClient := &testMockClient{
+					Client:    fake.NewClientBuilder().WithScheme(scheme).Build(),
+					getErrors: map[string]error{},
+				}
+				mockClient.getErrors["/, Kind=/test-ns/failing-secret"] = errors.NewInternalError(fmt.Errorf("internal server error"))
+				return mockClient
+			},
+			expectedAction: Stop,
+			expectedError:  true,
+			errorContains:  "failed to get secret failing-secret",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := tt.setupClient()
+
+			// Create a mock DaemonSet for SecretMounter
+			ds := &appsv1.DaemonSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ds",
+					Namespace: "test-ns",
+				},
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Annotations: make(map[string]string),
+						},
+					},
+				},
+			}
+
+			mounter := SecretMounter{
+				Pmi:    tt.pmi,
+				Ds:     ds,
+				Logger: logr.Discard(), // Use discard logger for tests
+			}
+
+			result := mounter.Reconcile(context.Background(), client, scheme)
+
+			assert.Equal(t, tt.expectedAction, result.Action)
+			if tt.expectedError {
+				assert.Error(t, result.Error)
+				if tt.errorContains != "" {
+					assert.Contains(t, result.Error.Error(), tt.errorContains)
+				}
+				if tt.errorType == "SecretNotFoundError" {
+					_, ok := result.Error.(*SecretNotFoundError)
+					assert.True(t, ok, "Error should be of type SecretNotFoundError")
+				}
+			} else {
+				assert.NoError(t, result.Error)
 			}
 		})
 	}

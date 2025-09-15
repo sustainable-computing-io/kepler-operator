@@ -44,7 +44,10 @@ type PowerMonitorInternalReconciler struct {
 	logger logr.Logger
 }
 
-const configMapField = ".spec.kepler.config.additionalConfigMaps.name"
+const (
+	configMapField         = ".spec.kepler.config.additionalConfigMaps.name"
+	deploymentSecretsField = ".spec.kepler.deployment.secrets.name"
+)
 
 // common to all components deployed by operator
 //+kubebuilder:rbac:groups=core,resources=namespaces,verbs=list;watch;create;update;patch;delete
@@ -61,16 +64,16 @@ const configMapField = ".spec.kepler.config.additionalConfigMaps.name"
 // RBAC required by Kepler exporter
 //+kubebuilder:rbac:groups=core,resources=nodes/metrics;nodes/proxy;nodes/stats,verbs=get;list;watch
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *PowerMonitorInternalReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// Set up indexer for PowerMonitorInternal based on referenced ConfigMaps
-	err := mgr.GetFieldIndexer().IndexField(context.Background(),
+// indexAdditonalConfigmaps sets up indexer for PowerMonitorInternal based on referenced ConfigMaps
+func indexAdditonalConfigmaps(mgr ctrl.Manager, logger logr.Logger) error {
+	return mgr.GetFieldIndexer().IndexField(context.Background(),
 		&v1alpha1.PowerMonitorInternal{},
 		configMapField,
+
 		func(obj client.Object) []string {
 			pmi, ok := obj.(*v1alpha1.PowerMonitorInternal)
 			if !ok {
-				r.logger.Info("failed to cast object to PowerMonitorInternal", "object", obj.GetName())
+				logger.Info("failed to cast object to PowerMonitorInternal", "object", obj.GetName())
 				return nil
 			}
 			var keys []string
@@ -79,28 +82,64 @@ func (r *PowerMonitorInternalReconciler) SetupWithManager(mgr ctrl.Manager) erro
 			}
 			return keys
 		})
-	if err != nil {
+}
+
+// indexDeploymentSecrets sets up indexer for PowerMonitorInternal based on referenced Secrets
+func indexDeploymentSecrets(mgr ctrl.Manager, logger logr.Logger) error {
+	return mgr.GetFieldIndexer().IndexField(context.Background(),
+		&v1alpha1.PowerMonitorInternal{},
+		deploymentSecretsField,
+
+		func(obj client.Object) []string {
+			pmi, ok := obj.(*v1alpha1.PowerMonitorInternal)
+			if !ok {
+				logger.Info("failed to cast object to PowerMonitorInternal", "object", obj.GetName())
+				return nil
+			}
+			var keys []string
+			for _, sec := range pmi.Spec.Kepler.Deployment.Secrets {
+				keys = append(keys, sec.Name)
+			}
+			return keys
+		})
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *PowerMonitorInternalReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if err := indexAdditonalConfigmaps(mgr, r.logger); err != nil {
+		r.logger.Error(err, "failed to set up index for PowerMonitorInternal additionalConfigMaps")
 		return err
 	}
+
+	if err := indexDeploymentSecrets(mgr, r.logger); err != nil {
+		r.logger.Error(err, "failed to set up index for PowerMonitorInternal additionalConfigMaps")
+		return err
+	}
+
 	// We only want to trigger a reconciliation when the generation
 	// of a child changes. Until we need to update our the status for our own objects,
 	// we can save CPU cycles by avoiding reconciliations triggered by
 	// child status changes.
 
 	genChanged := builder.WithPredicates(predicate.GenerationChangedPredicate{})
+	resVerChanged := builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})
 
 	// watch for ConfigMap change events
 	configMapHandler := handler.EnqueueRequestsFromMapFunc(r.mapConfigMapToRequests)
+	secretHandler := handler.EnqueueRequestsFromMapFunc(r.mapDeploymentSecretsToRequests)
 
 	c := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.PowerMonitorInternal{}).
 		Owns(&corev1.ConfigMap{}, genChanged).
 		Owns(&corev1.ServiceAccount{}, genChanged).
 		Owns(&corev1.Service{}, genChanged).
-		Owns(&appsv1.DaemonSet{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Owns(&appsv1.DaemonSet{}, resVerChanged).
 		Owns(&rbacv1.ClusterRoleBinding{}, genChanged).
 		Owns(&rbacv1.ClusterRole{}, genChanged).
-		Watches(&corev1.ConfigMap{}, configMapHandler, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}))
+		// NOTE: requires resVerChanged for ConfigMap & Secret since
+		// they don't have metadata.generation
+		Watches(&corev1.ConfigMap{}, configMapHandler, resVerChanged).
+		Watches(&corev1.Secret{}, secretHandler, resVerChanged)
 
 	if Config.Cluster == k8s.OpenShift {
 		c = c.Owns(&secv1.SecurityContextConstraints{}, genChanged)
@@ -149,6 +188,31 @@ func (r *PowerMonitorInternalReconciler) mapConfigMapToRequests(ctx context.Cont
 	}
 
 	requests := []reconcile.Request{}
+	for _, pmi := range pmis.Items {
+		requests = append(requests, reconcile.Request{
+			NamespacedName: types.NamespacedName{Name: pmi.Name},
+		})
+	}
+	return requests
+}
+
+// mapDeploymentSecretsToRequests returns the reconcile requests for power-monitor-internal objects for which an associated ConfigMap has changed
+func (r *PowerMonitorInternalReconciler) mapDeploymentSecretsToRequests(ctx context.Context, object client.Object) []reconcile.Request {
+	secret, ok := object.(*corev1.Secret)
+	if !ok {
+		r.logger.Info("failed to cast object to Secret", "object", object.GetName())
+		return nil
+	}
+
+	pmis := &v1alpha1.PowerMonitorInternalList{}
+	err := r.Client.List(ctx, pmis, client.MatchingFields{deploymentSecretsField: secret.Name})
+	if err != nil {
+		r.logger.Error(err, "failed to list objects using index", "indexKey", secret.Name)
+		return nil
+	}
+
+	requests := []reconcile.Request{}
+	r.logger.V(6).Info("pmis found for secret ", "secret", secret.Name, "pmis", len(pmis.Items))
 	for _, pmi := range pmis.Items {
 		requests = append(requests, reconcile.Request{
 			NamespacedName: types.NamespacedName{Name: pmi.Name},
@@ -325,7 +389,10 @@ func (r PowerMonitorInternalReconciler) getPowerMonitorInternal(ctx context.Cont
 }
 
 func (r PowerMonitorInternalReconciler) runPowerMonitorReconcilers(ctx context.Context, pmi *v1alpha1.PowerMonitorInternal) (ctrl.Result, error) {
-	reconcilers := r.reconcilersForPowerMonitor(pmi)
+	reconcilers, err := r.reconcilersForPowerMonitor(pmi)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	r.logger.V(6).Info("reconcilers ...", "count", len(reconcilers))
 
 	return reconciler.Runner{
@@ -387,7 +454,7 @@ func securityPowerMonitorReconcilers(pmi *v1alpha1.PowerMonitorInternal, cluster
 	return rs
 }
 
-func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Cluster) []reconciler.Reconciler {
+func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, ds *appsv1.DaemonSet, cluster k8s.Cluster) ([]reconciler.Reconciler, error) {
 	if cleanup := !pmi.DeletionTimestamp.IsZero(); cleanup {
 		rs := resourceReconcilers(
 			deleteResource,
@@ -397,7 +464,7 @@ func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Clust
 			powermonitor.NewPowerMonitorClusterRole(components.Metadata, pmi),
 		)
 		rs = append(rs, resourceReconcilers(deleteResource, openshiftPowerMonitorNamespacedResources(pmi, cluster)...)...)
-		return rs
+		return rs, nil
 	}
 
 	updateResource := newUpdaterWithOwner(pmi)
@@ -408,7 +475,6 @@ func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Clust
 		pmi.Spec.Kepler.Deployment.Security.AllowedSANames,
 		fmt.Sprintf("%s:%s", powermonitor.UWMNamespace, powermonitor.UWMServiceAccountName),
 	)
-	ds := powermonitor.NewPowerMonitorDaemonSet(components.Full, pmi)
 
 	// cluster-scoped resources first
 	// update cluster role before cluster role binding
@@ -456,10 +522,10 @@ func powerMonitorExporters(pmi *v1alpha1.PowerMonitorInternal, cluster k8s.Clust
 	)
 
 	rs = append(rs, resourceReconcilers(updateResource, openshiftPowerMonitorNamespacedResources(pmi, cluster)...)...)
-	return rs
+	return rs, nil
 }
 
-func (r PowerMonitorInternalReconciler) reconcilersForPowerMonitor(pmi *v1alpha1.PowerMonitorInternal) []reconciler.Reconciler {
+func (r PowerMonitorInternalReconciler) reconcilersForPowerMonitor(pmi *v1alpha1.PowerMonitorInternal) ([]reconciler.Reconciler, error) {
 	rs := []reconciler.Reconciler{}
 
 	cleanup := !pmi.DeletionTimestamp.IsZero()
@@ -473,8 +539,27 @@ func (r PowerMonitorInternalReconciler) reconcilersForPowerMonitor(pmi *v1alpha1
 		})
 	}
 
+	// Create DaemonSet early so it can be used by SecretMounter
+	var ds *appsv1.DaemonSet
+	if !cleanup {
+		ds = powermonitor.NewPowerMonitorDaemonSet(components.Full, pmi)
+	}
+
+	// Mount secrets (validate and annotate DaemonSet) before deploying
+	if !cleanup {
+		rs = append(rs, reconciler.SecretMounter{
+			Pmi:    pmi,
+			Ds:     ds,
+			Logger: r.logger,
+		})
+	}
+
 	// update with image to be used (initial setup for testing then fix to be top level)
-	rs = append(rs, powerMonitorExporters(pmi, Config.Cluster)...)
+	exporterReconcilers, err := powerMonitorExporters(pmi, ds, Config.Cluster)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create power monitor exporters: %w", err)
+	}
+	rs = append(rs, exporterReconcilers...)
 
 	if cleanup {
 		rs = append(rs, reconciler.Deleter{
@@ -491,7 +576,7 @@ func (r PowerMonitorInternalReconciler) reconcilersForPowerMonitor(pmi *v1alpha1
 		Finalizer: Finalizer,
 		Logger:    r.logger,
 	})
-	return rs
+	return rs, nil
 }
 
 func (r PowerMonitorInternalReconciler) updatePowerMonitorStatus(ctx context.Context, req ctrl.Request, recErr error) error {
@@ -635,7 +720,14 @@ func (r PowerMonitorInternalReconciler) updatePowerMonitorAvailableStatus(ctx co
 	} else {
 		// failure to reconcile is a Degraded condition
 		available.Status = v1alpha1.ConditionDegraded
-		available.Reason = v1alpha1.ReconcileError
+
+		// Check if the error is specifically a SecretNotFoundError
+		if secretErr, ok := recErr.(*reconciler.SecretNotFoundError); ok {
+			available.Reason = v1alpha1.SecretNotFound
+			available.Message = secretErr.Error()
+		} else {
+			available.Reason = v1alpha1.ReconcileError
+		}
 	}
 
 	updated := updatePowerMonitorCondition(pmi.Status.Conditions, available, time)

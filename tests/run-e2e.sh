@@ -32,7 +32,7 @@ declare LOGS_DIR="tmp/e2e"
 declare POWERMONITOR_RELEASED_CR="tmp/power-monitor-released.yaml"
 declare OPERATORS_NS="operators"
 declare POWERMONITOR_NS="power-monitor"
-declare TEST_TIMEOUT="15m"
+declare TEST_TIMEOUT="20m"
 # declare -a PORT_FORWARDED_PIDS=()
 
 cleanup() {

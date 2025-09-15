@@ -60,7 +60,8 @@ func TestPowerMonitorNodeSelection(t *testing.T) {
 					Kepler: tc.spec,
 				},
 			}
-			actual := k8s.NodeSelectorFromDS(NewPowerMonitorDaemonSet(components.Full, &pmi))
+			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
+			actual := k8s.NodeSelectorFromDS(ds)
 			assert.Equal(t, actual, tc.selector)
 		})
 	}
@@ -101,7 +102,8 @@ func TestPowerMonitorTolerations(t *testing.T) {
 					Kepler: tc.spec,
 				},
 			}
-			actual := k8s.TolerationsFromDS(NewPowerMonitorDaemonSet(components.Full, &pmi))
+			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
+			actual := k8s.TolerationsFromDS(ds)
 			assert.Equal(t, actual, tc.tolerations)
 		})
 	}
