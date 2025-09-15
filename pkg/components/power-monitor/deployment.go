@@ -798,7 +798,8 @@ func KeplerConfig(pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...strin
 		cfg.Monitor.MaxTerminated = 500
 	}
 
-	if err := cfg.Validate(config.SkipHostValidation); err != nil {
+	// Skip validation of paths and files that only exist in the target Kepler pods, not in the operator container.
+	if err := cfg.Validate(config.SkipHostValidation, config.SkipExperimentalValidation); err != nil {
 		return config.DefaultConfig().String(), err
 	}
 	return cfg.String(), nil
