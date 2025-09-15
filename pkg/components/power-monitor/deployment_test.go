@@ -1366,6 +1366,31 @@ func TestKeplerConfig(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, defaultConfig.String(), configStr)
 	})
+
+	t.Run("With config validation error", func(t *testing.T) {
+		pmi := &v1alpha1.PowerMonitorInternal{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "power-monitor-internal",
+			},
+			Spec: v1alpha1.PowerMonitorInternalSpec{
+				Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+					Config: v1alpha1.PowerMonitorInternalKeplerConfigSpec{
+						LogLevel: "info",
+					},
+				},
+			},
+		}
+
+		invalidConfig := `log:
+  format: invalid_format` // Invalid log format causes validation error
+
+		configStr, err := KeplerConfig(pmi, invalidConfig)
+
+		expectedConfig := config.DefaultConfig().String()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid log format")
+		assert.Equal(t, expectedConfig, configStr)
+	})
 }
 
 func TestPowerMonitorServiceMonitor(t *testing.T) {
