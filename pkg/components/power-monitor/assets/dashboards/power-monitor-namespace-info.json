@@ -329,9 +329,7 @@
   "refresh": "",
   "schemaVersion": 36,
   "style": "dark",
-  "tags": [
-    "power-monitor-mixin"
-  ],
+  "tags": ["power-monitor-mixin"],
   "templating": {
     "list": [
       {
@@ -353,11 +351,7 @@
       },
       {
         "allValue": ".*",
-        "current": {
-          "selected": true,
-          "text": "All",
-          "value": "$__all"
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
@@ -365,10 +359,8 @@
         "definition": "label_values(kepler_pod_cpu_watts{job=\"power-monitor\"}, pod_namespace)",
         "description": "Namespace to choose",
         "hide": 0,
-        "includeAll": true,
-        "defaultValue": "$__all",
+        "includeAll": false,
         "label": "Namespace",
-        "multi": true,
         "name": "namespace",
         "options": [],
         "query": "label_values(kepler_pod_cpu_watts{job=\"power-monitor\"}, pod_namespace)",
@@ -383,11 +375,7 @@
       },
       {
         "allValue": ".*",
-        "current": {
-          "selected": true,
-          "text": "All",
-          "value": "$__all"
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
@@ -395,10 +383,8 @@
         "definition": "label_values(kepler_pod_cpu_watts{job=\"power-monitor\",pod_namespace=~\"$namespace\"}, pod_name)",
         "description": "Pod to choose",
         "hide": 0,
-        "includeAll": true,
-        "defaultValue": "$__all",
+        "includeAll": false,
         "label": "Pod",
-        "multi": true,
         "name": "pod",
         "options": [],
         "query": "label_values(kepler_pod_cpu_watts{job=\"power-monitor\",pod_namespace=~\"$namespace\"}, pod_name)",
