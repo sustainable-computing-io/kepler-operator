@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	keplerImage        = `quay.io/sustainable_computing_io/kepler:v0.11.0`
+	keplerImage        = `quay.io/sustainable_computing_io/kepler:v0.11.2`
 	kubeRbacProxyImage = `quay.io/brancz/kube-rbac-proxy:v0.19.0`
 )
 
