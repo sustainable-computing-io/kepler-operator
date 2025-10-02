@@ -309,6 +309,7 @@ CRDOC ?= $(LOCALBIN)/crdoc
 TOOLS = controller-gen \
 		crdoc \
 		govulncheck \
+		helm \
 		jq \
 		kubectl \
 		kustomize \

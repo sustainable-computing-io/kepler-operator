@@ -20,6 +20,7 @@ declare -r OC_VERSION=${OC_VERSION:-4.18.1}
 declare -r KUBECTL_VERSION=${KUBECTL_VERSION:-v1.28.4}
 declare -r SHFMT_VERSION=${SHFMT_VERSION:-v3.7.0}
 declare -r JQ_VERSION=${JQ_VERSION:-1.7}
+declare -r HELM_VERSION=${HELM_VERSION:-v3.18.1}
 
 # install
 declare -r KUSTOMIZE_INSTALL_SCRIPT="https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
@@ -27,6 +28,7 @@ declare -r OPERATOR_SDK_INSTALL="https://github.com/operator-framework/operator-
 declare -r YQ_INSTALL="https://github.com/mikefarah/yq/releases/download/$YQ_VERSION/yq_${GOOS}_${GOARCH}"
 declare -r OC_URL="https://mirror.openshift.com/pub/openshift-v4/clients/ocp/$OC_VERSION"
 declare -r JQ_INSTALL_URL="https://github.com/jqlang/jq/releases/download/jq-$JQ_VERSION"
+declare -r HELM_INSTALL_URL="https://get.helm.sh"
 
 source "$PROJECT_ROOT/hack/utils.bash"
 
@@ -223,6 +225,33 @@ install_jq() {
 	}
 	chmod +x "$LOCAL_BIN/jq"
 	ok "jq was installed successfully"
+}
+
+version_helm() {
+	helm version
+}
+
+install_helm() {
+	local version_regex="Version:\"$HELM_VERSION\""
+	validate_version helm version "$version_regex" && return 0
+
+	info "installing helm version: $HELM_VERSION"
+	local helm_tar="helm-${HELM_VERSION}-${GOOS}-${GOARCH}.tar.gz"
+	local install_url="$HELM_INSTALL_URL/$helm_tar"
+
+	local helm_tmp="$LOCAL_BIN/tmp-helm"
+	mkdir -p "$helm_tmp"
+
+	curl -sSL "$install_url" | tar -xzf - -C "$helm_tmp" || {
+		fail "failed to install helm"
+		return 1
+	}
+
+	mv "$helm_tmp/$GOOS-$GOARCH/helm" "$LOCAL_BIN/"
+	chmod +x "$LOCAL_BIN/helm"
+	rm -rf "$helm_tmp"
+
+	ok "helm was installed successfully"
 }
 
 install_all() {
