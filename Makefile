@@ -42,7 +42,7 @@ ifeq ($(VERSION),)
 $(error VERSION cannot be empty)
 endif
 
-KEPLER_VERSION ?=v0.11.0
+KEPLER_VERSION ?=v0.11.2
 KUBE_RBAC_PROXY_VERSION ?=v0.19.0
 
 # IMG_BASE and KEPLER_IMG_BASE are set to distinguish between Operator-specific images and Kepler-Specific images.
