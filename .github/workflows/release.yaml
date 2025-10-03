@@ -11,7 +11,6 @@ on: # yamllint disable-line rule:truthy
         description: Version to be replaced in bundle, e.g. 0.7.3
         default:
         required: true
-
 jobs:
   build:
     name: Upload Release Asset
@@ -19,72 +18,53 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Get current date
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
-
       - name: Checkout source
         uses: actions/checkout@v4
-
       - name: Login to Quay
         uses: docker/login-action@v2
         with:
           registry: quay.io/sustainable_computing_io
           username: ${{ secrets.BOT_NAME }}
           password: ${{ secrets.BOT_TOKEN }}
-
       - name: Update the VERSION
         run: |
           echo "$VERSION" > VERSION
         env:
           VERSION: ${{ github.event.inputs.tag }}
-
       - name: Install all tools
         uses: ./.github/tools-cache
-
       - name: Build Operator
         run: |
           make operator-build
         env:
           IMG_BASE: ${{ vars.IMG_BASE }}
-
       - name: Build Bundle
         run: |
           make bundle bundle-build
         env:
           IMG_BASE: ${{ vars.IMG_BASE }}
           VERSION_REPLACED: ${{ github.event.inputs.version-replace }}
-
       - name: Git set user
         run: |
           git config  user.name "$USERNAME"
           git config  user.email "$USERNAME-[bot]@users.noreply.github.com"
         env:
           USERNAME: ${{ github.actor }}
-
-      - name: Tag the release
-        run: |
-          git tag -a "v${{ github.event.inputs.tag }}" -m "v${{ github.event.inputs.tag }}"
-          git show --stat
-
       - name: Output the version
         run: |
           cat VERSION
-
       - name: Push Images
         run: |
           make operator-push  bundle-push
         env:
           IMG_BASE: ${{ vars.IMG_BASE }}
-
-      - name: Push Release tag
-        run: |
-          git push --tags
-
       - name: Create Pull Request
+        id: create_pr
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -107,7 +87,15 @@ jobs:
             vprashar2929
             KaiyiLiu1234
           draft: false
-
+      - name: Tag the release
+        run: |
+          TAG_SHA="${{ steps.create_pr.outputs.pull-request-head-sha }}"
+          git fetch origin chore-version-${{ github.event.inputs.tag }}
+          git tag -a "v${{ github.event.inputs.tag }}" "$TAG_SHA" -m "v${{ github.event.inputs.tag }}"
+          git show --stat "v${{ github.event.inputs.tag }}"
+      - name: Push Release tag
+        run: |
+          git push --tags
       - name: Create Release
         uses: softprops/action-gh-release@v2
         env:
