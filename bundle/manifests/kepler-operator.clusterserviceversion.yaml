@@ -225,6 +225,8 @@ spec:
               - args:
                 - --openshift
                 - --deployment-namespace=power-monitor
+                - --exp.reconciler.token.refresh-interval=24h
+                - --exp.uwm.token.ttl=168h
                 - --leader-elect
                 - --kepler.image=$(RELATED_IMAGE_KEPLER)
                 - --kube-rbac-proxy.image=$(RELATED_IMAGE_KUBE_RBAC_PROXY)

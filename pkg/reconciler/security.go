@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
 	powermonitor "github.com/sustainable.computing.io/kepler-operator/pkg/components/power-monitor"
@@ -23,9 +24,10 @@ import (
 )
 
 var (
-	openshiftTimeout = 60 * time.Second
-	k8sTimeout       = 6 * time.Second
-	retryDelay       = 3 * time.Second
+	openshiftTimeout         = 60 * time.Second
+	k8sTimeout               = 6 * time.Second
+	retryDelay               = 3 * time.Second
+	uwmTokenExpirationBuffer = 1 * time.Minute
 )
 
 // KubeRBACProxyConfigReconciler reconciles configuration for allowed SAs
@@ -128,6 +130,47 @@ func (r UWMSecretTokenReconciler) Reconcile(ctx context.Context, c client.Client
 			Error:  err,
 		}
 	}
+	var promUWMSecretToken *corev1.Secret
+	if err := retryWithTimeout(ctx, timeout, retryDelay, func() error {
+		var err error
+		promUWMSecretToken, err = getSecret(
+			ctx,
+			c,
+			powermonitor.SecretUWMTokenName,
+			r.Pmi.Spec.Kepler.Deployment.Namespace,
+		)
+		if err != nil {
+			return fmt.Errorf(
+				"error occurred while getting %q secret %w",
+				powermonitor.SecretUWMTokenName,
+				err,
+			)
+		}
+		return nil
+	}); err != nil {
+		return Result{
+			Action: Stop,
+			Error:  err,
+		}
+	}
+	if promUWMSecretToken != nil {
+		expirationTime, err := powermonitor.GetExpirationFromAnnotation(&promUWMSecretToken.ObjectMeta, powermonitor.SecretTokenExpirationAnnotation)
+		if err != nil {
+			return Result{
+				Action: Stop,
+				Error: fmt.Errorf(
+					"error occurred while retrieving expiration date from %q: %w",
+					promUWMSecretToken.Name,
+					err,
+				),
+			}
+		}
+		expired := time.Now().After(expirationTime.Add(-(uwmTokenExpirationBuffer)))
+		if !expired {
+			return Result{}
+		}
+
+	}
 	audiences := []string{
 		fmt.Sprintf("%s.%s.svc", r.Pmi.Name, r.Pmi.Namespace()),
 	}
@@ -136,7 +179,7 @@ func (r UWMSecretTokenReconciler) Reconcile(ctx context.Context, c client.Client
 		c,
 		promAccount,
 		audiences,
-		365*24*time.Hour,
+		powermonitor.TokenTTL,
 	)
 	if err != nil {
 		return Result{
@@ -149,6 +192,7 @@ func (r UWMSecretTokenReconciler) Reconcile(ctx context.Context, c client.Client
 		}
 	}
 	tokenSecret := powermonitor.NewPowerMonitorUWMTokenSecret(components.Full, r.Pmi, token)
+	powermonitor.AnnotateWithExpiration(&tokenSecret.ObjectMeta, powermonitor.SecretTokenExpirationAnnotation, powermonitor.TokenTTL)
 	return Updater{Owner: r.Pmi, Resource: tokenSecret}.Reconcile(ctx, c, s)
 }
 
@@ -157,6 +201,7 @@ type KubeRBACProxyObjectsChecker struct {
 	Pmi        *v1alpha1.PowerMonitorInternal
 	Cluster    k8s.Cluster
 	Ds         *appsv1.DaemonSet
+	Sm         *monv1.ServiceMonitor
 	EnableRBAC bool
 	EnableUWM  bool
 }
@@ -201,7 +246,7 @@ func (r KubeRBACProxyObjectsChecker) Reconcile(ctx context.Context, c client.Cli
 			Error:  err,
 		}
 	}
-	powermonitor.AnnotateDaemonSetWithSecretHash(r.Ds, proxyConfig)
+	powermonitor.AnnotateWithSecretHash(&r.Ds.Spec.Template.ObjectMeta, proxyConfig, powermonitor.SecretTLSHashAnnotation)
 	// check power monitor tls secret
 	var pmTLS *corev1.Secret
 	if err := retryWithTimeout(ctx, timeout, retryDelay, func() error {
@@ -233,12 +278,14 @@ func (r KubeRBACProxyObjectsChecker) Reconcile(ctx context.Context, c client.Cli
 			Error:  err,
 		}
 	}
-	powermonitor.AnnotateDaemonSetWithSecretHash(r.Ds, pmTLS)
+	powermonitor.AnnotateWithSecretHash(&r.Ds.Spec.Template.ObjectMeta, pmTLS, powermonitor.SecretTLSHashAnnotation)
 
 	if r.EnableUWM {
 		// check ca bundle
+		var caBundle *corev1.ConfigMap
 		if err := retryWithTimeout(ctx, timeout, retryDelay, func() error {
-			caBundle, err := getConfigMap(
+			var err error
+			caBundle, err = getConfigMap(
 				ctx,
 				c,
 				powermonitor.PowerMonitorCertsCABundleName,
@@ -264,10 +311,23 @@ func (r KubeRBACProxyObjectsChecker) Reconcile(ctx context.Context, c client.Cli
 				Error:  err,
 			}
 		}
-
+		// insert ca bundle annotation to ServiceMonitor
+		err := powermonitor.AnnotateWithConfigMapHash(&r.Sm.ObjectMeta, caBundle, powermonitor.CABundleConfigMapAnnotation, "")
+		if err != nil {
+			return Result{
+				Action: Stop,
+				Error: fmt.Errorf(
+					"error occurred while annotating %q configmap hash to service monitor %w",
+					powermonitor.PowerMonitorCertsCABundleName,
+					err,
+				),
+			}
+		}
 		// check uwm token secret
+		var promUWMSecretToken *corev1.Secret
 		if err := retryWithTimeout(ctx, timeout, retryDelay, func() error {
-			promUWMSecretToken, err := getSecret(
+			var err error
+			promUWMSecretToken, err = getSecret(
 				ctx,
 				c,
 				powermonitor.SecretUWMTokenName,
@@ -295,6 +355,7 @@ func (r KubeRBACProxyObjectsChecker) Reconcile(ctx context.Context, c client.Cli
 				Error:  err,
 			}
 		}
+		powermonitor.AnnotateWithSecretHash(&r.Sm.ObjectMeta, promUWMSecretToken, powermonitor.SecretTokenHashAnnotation)
 	}
 	return Result{}
 }
@@ -322,19 +383,19 @@ func retryWithTimeout(ctx context.Context, timeout, retryDelay time.Duration, op
 }
 
 func getSecret(ctx context.Context, c client.Client, secretName, ns string) (*corev1.Secret, error) {
-	proxyConfig := corev1.Secret{}
-	if err := c.Get(ctx, types.NamespacedName{Name: secretName, Namespace: ns}, &proxyConfig); err != nil {
+	s := corev1.Secret{}
+	if err := c.Get(ctx, types.NamespacedName{Name: secretName, Namespace: ns}, &s); err != nil {
 		return nil, client.IgnoreNotFound(err)
 	}
-	return &proxyConfig, nil
+	return &s, nil
 }
 
 func getConfigMap(ctx context.Context, c client.Client, cmName, ns string) (*corev1.ConfigMap, error) {
-	caBundle := corev1.ConfigMap{}
-	if err := c.Get(ctx, types.NamespacedName{Name: cmName, Namespace: ns}, &caBundle); err != nil {
+	cm := corev1.ConfigMap{}
+	if err := c.Get(ctx, types.NamespacedName{Name: cmName, Namespace: ns}, &cm); err != nil {
 		return nil, client.IgnoreNotFound(err)
 	}
-	return &caBundle, nil
+	return &cm, nil
 }
 
 func getServiceAccount(ctx context.Context, c client.Client, saName, ns string) (*corev1.ServiceAccount, error) {

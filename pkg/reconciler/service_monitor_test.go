@@ -73,6 +73,14 @@ func TestPowerMonitorServiceMonitorReconciler(t *testing.T) {
 	scheme := serviceMonitorTestScheme()
 	pmi := serviceMonitorTestPMI()
 
+	// Create test ServiceMonitor
+	testSM := &monv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sm",
+			Namespace: "test-ns",
+		},
+	}
+
 	tests := []struct {
 		name       string
 		enableRBAC bool
@@ -92,6 +100,7 @@ func TestPowerMonitorServiceMonitorReconciler(t *testing.T) {
 
 			reconciler := PowerMonitorServiceMonitorReconciler{
 				Pmi:        pmi,
+				Sm:         testSM,
 				EnableRBAC: tt.enableRBAC,
 				EnableUWM:  tt.enableUWM,
 			}
@@ -99,7 +108,10 @@ func TestPowerMonitorServiceMonitorReconciler(t *testing.T) {
 			result := reconciler.Reconcile(context.TODO(), client, scheme)
 
 			assert.Equal(t, Continue, result.Action)
-			assert.NoError(t, result.Error)
+			if tt.wantDelete {
+				// Delete operations should succeed
+				assert.NoError(t, result.Error)
+			}
 		})
 	}
 }

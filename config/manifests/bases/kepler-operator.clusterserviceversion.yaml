@@ -98,6 +98,8 @@ spec:
                 - --health-probe-bind-address=:8081
                 - --metrics-bind-address=127.0.0.1:8080
                 - --leader-elect
+                - --exp.reconciler.token.refresh-interval=24h
+                - --exp.uwm.token.ttl=168h
                 command:
                 - /manager
                 image: quay.io/sustainable_computing_io/kepler-operator:latest

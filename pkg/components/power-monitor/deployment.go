@@ -48,21 +48,23 @@ const (
 	ConfigMapHashAnnotation = "powermonitor.sustainable.computing.io/config-map-hash"
 
 	// Secure Endpoint
-	KubeRBACProxyContainerName    = "kube-rbac-proxy"
-	SecurePort                    = 8443
-	SecurePortName                = "https"
-	KubeRBACProxyConfigMountPath  = "/etc/kube-rbac-proxy"
-	PowerMonitorTLSMountPath      = "/etc/tls/private"
-	SecretTokenHashAnnotation     = "powermonitor.sustainable.computing.io/secret-token-hash"
-	SecretTLSHashAnnotation       = "powermonitor.sustainable.computing.io/secret-tls-hash"
-	ConfigMapCAHashAnnotation     = "powermonitor.sustainable.computing.io/configmap-ca-hash"
-	SecretTLSCertName             = "power-monitor-tls"
-	SecretKubeRBACProxyConfigName = "power-monitor-kube-rbac-proxy-config"
-	SecretUWMTokenName            = "prometheus-user-workload-token"
-	PowerMonitorCertsCABundleName = "power-monitor-serving-certs-ca-bundle"
-	ServiceAccountTokenKey        = "token"
-	UWMServiceAccountName         = "prometheus-user-workload"
-	UWMNamespace                  = "openshift-user-workload-monitoring"
+	KubeRBACProxyContainerName      = "kube-rbac-proxy"
+	SecurePort                      = 8443
+	SecurePortName                  = "https"
+	KubeRBACProxyConfigMountPath    = "/etc/kube-rbac-proxy"
+	PowerMonitorTLSMountPath        = "/etc/tls/private"
+	SecretTokenHashAnnotation       = "powermonitor.sustainable.computing.io/secret-token-hash"
+	SecretTLSHashAnnotation         = "powermonitor.sustainable.computing.io/secret-tls-hash"
+	ConfigMapCAHashAnnotation       = "powermonitor.sustainable.computing.io/configmap-ca-hash"
+	SecretTLSCertName               = "power-monitor-tls"
+	SecretKubeRBACProxyConfigName   = "power-monitor-kube-rbac-proxy-config"
+	SecretUWMTokenName              = "prometheus-user-workload-token"
+	PowerMonitorCertsCABundleName   = "power-monitor-serving-certs-ca-bundle"
+	ServiceAccountTokenKey          = "token"
+	UWMServiceAccountName           = "prometheus-user-workload"
+	UWMNamespace                    = "openshift-user-workload-monitoring"
+	SecretTokenExpirationAnnotation = "powermonitor.sustainable.computing.io/secret-token-expiration"
+	CABundleConfigMapAnnotation     = "powermonitor.sustainable.computing.io/configmap-ca-bundle"
 )
 
 var (
@@ -74,6 +76,8 @@ var (
 
 	//go:embed assets/dashboards/power-monitor-namespace-info.json
 	namespaceInfoDashboardJson string
+
+	TokenTTL = 168 * time.Hour
 )
 
 func NewPowerMonitorDaemonSet(detail components.Detail, pmi *v1alpha1.PowerMonitorInternal) *appsv1.DaemonSet {
@@ -546,22 +550,58 @@ func NewPowerMonitorUWMTokenSecret(d components.Detail, pmi *v1alpha1.PowerMonit
 	}
 }
 
-// AnnotateDaemonSetWithConfigMapHash sets annotations on the DaemonSet's pod template to trigger a rollout when the ConfigMap changes
-func AnnotateDaemonSetWithConfigMapHash(ds *appsv1.DaemonSet, cfm *corev1.ConfigMap) {
-	if ds.Spec.Template.Annotations == nil {
-		ds.Spec.Template.Annotations = make(map[string]string)
-	}
-
-	hash := xxhash.Sum64([]byte(cfm.Data[KeplerConfigFile]))
-
-	ds.Spec.Template.Annotations[ConfigMapHashAnnotation+"-"+cfm.Name] = fmt.Sprintf("%x", hash)
+// AnnotateWithSecretHash annotates the given ObjectMeta with a hash of the Secret to trigger rollouts on changes.
+// The annotation key is formed as 'prefix-secretName'.
+func AnnotateWithSecretHash(meta *metav1.ObjectMeta, s *corev1.Secret, prefix string) {
+	hash := computeSecretHash(s)
+	setAnnotation(meta, prefix+"-"+s.Name, hash)
 }
 
-// AnnotateDaemonSetWithSecretHash sets annotations on the DaemonSet's pod template to trigger a rollout when the Secret changes
-func AnnotateDaemonSetWithSecretHash(ds *appsv1.DaemonSet, s *corev1.Secret) {
-	if ds.Spec.Template.Annotations == nil {
-		ds.Spec.Template.Annotations = make(map[string]string)
+// AnnotateWithConfigMapHash annotates the given ObjectMeta with a hash of the ConfigMap to trigger rollouts on changes.
+// If 'file' is non-empty, only that file is hashed; otherwise, the full ConfigMap data is hashed.
+// The annotation key is formed as 'prefix-configMapName'.
+func AnnotateWithConfigMapHash(meta *metav1.ObjectMeta, cm *corev1.ConfigMap, prefix, file string) error {
+	hash, err := computeConfigMapHash(cm, file)
+	if err != nil {
+		return err
 	}
+	setAnnotation(meta, prefix+"-"+cm.Name, hash)
+	return nil
+}
+
+// AnnotateWithExpiration annotates the given ObjectMeta with an expiration timestamp based on the current time plus the duration.
+func AnnotateWithExpiration(meta *metav1.ObjectMeta, key string, survivalTime time.Duration) {
+	expirationStr := time.Now().UTC().Add(survivalTime).Format(time.RFC3339)
+	setAnnotation(meta, key, expirationStr)
+}
+
+// GetExpirationDateFromSecret returns the expiration date from the secret's annotation, or nil if not present or invalid.
+func GetExpirationFromAnnotation(meta *metav1.ObjectMeta, key string) (*time.Time, error) {
+	if meta.Annotations == nil {
+		return nil, nil
+	}
+	expirationStr, ok := meta.Annotations[key]
+	if !ok {
+		return nil, nil
+	}
+	expirationTime, err := time.Parse(time.RFC3339, expirationStr)
+	if err != nil {
+		return nil, err
+	}
+	return &expirationTime, nil
+}
+
+// setAnnotation sets a key-value pair in the annotations map of the given ObjectMeta.
+// It initializes the map if nil.
+func setAnnotation(meta *metav1.ObjectMeta, key, value string) {
+	if meta.Annotations == nil {
+		meta.Annotations = make(map[string]string)
+	}
+	meta.Annotations[key] = value
+}
+
+// computeSecretHash computes a deterministic hash of the Secret's data by sorting keys and concatenating key-value pairs.
+func computeSecretHash(s *corev1.Secret) string {
 	var data []byte
 	keys := make([]string, 0, len(s.Data))
 	for k := range s.Data {
@@ -572,9 +612,33 @@ func AnnotateDaemonSetWithSecretHash(ds *appsv1.DaemonSet, s *corev1.Secret) {
 		data = append(data, []byte(k)...)
 		data = append(data, s.Data[k]...)
 	}
-	hash := xxhash.Sum64([]byte(data))
+	hash := xxhash.Sum64(data)
+	return fmt.Sprintf("%x", hash)
+}
 
-	ds.Spec.Template.Annotations[SecretTLSHashAnnotation+"-"+s.Name] = fmt.Sprintf("%x", hash)
+// computeConfigMapHash computes a deterministic hash of the ConfigMap's data.
+// If 'file' is specified (non-empty), it hashes only that file's content; otherwise, it hashes the entire data map by sorting keys and concatenating key-value pairs.
+func computeConfigMapHash(cm *corev1.ConfigMap, file string) (string, error) {
+	if file != "" {
+		if value, ok := cm.Data[file]; ok {
+			hash := xxhash.Sum64([]byte(value))
+			return fmt.Sprintf("%x", hash), nil
+		}
+		return "", fmt.Errorf("configmap %s missing file %q", cm.Name, file)
+	}
+
+	var data []byte
+	keys := make([]string, 0, len(cm.Data))
+	for k := range cm.Data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		data = append(data, []byte(k)...)
+		data = append(data, []byte(cm.Data[k])...)
+	}
+	hash := xxhash.Sum64(data)
+	return fmt.Sprintf("%x", hash), nil
 }
 
 func openshiftDashboardConfigMap(d components.Detail, dashboardName, dashboardJSONName, dashboardJSONPath string) *corev1.ConfigMap {

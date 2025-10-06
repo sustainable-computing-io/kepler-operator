@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
@@ -470,6 +471,12 @@ func TestKubeRBACProxyObjectsChecker(t *testing.T) {
 			Namespace: "test-ns",
 		},
 	}
+	testSM := &monv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sm",
+			Namespace: "test-ns",
+		},
+	}
 
 	// Test secrets that the checker looks for
 	testSecrets := []*corev1.Secret{
@@ -611,6 +618,7 @@ func TestKubeRBACProxyObjectsChecker(t *testing.T) {
 				Pmi:        pmi,
 				Cluster:    tt.cluster,
 				Ds:         testDS,
+				Sm:         testSM,
 				EnableRBAC: tt.enableRBAC,
 				EnableUWM:  tt.enableUWM,
 			}

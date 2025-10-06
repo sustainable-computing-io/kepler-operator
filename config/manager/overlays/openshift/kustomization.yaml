@@ -15,3 +15,9 @@ patches:
       - op: add
         path: /spec/template/spec/containers/0/args/1
         value: --deployment-namespace=power-monitor
+      - op: add
+        path: /spec/template/spec/containers/0/args/2
+        value: --exp.reconciler.token.refresh-interval=24h
+      - op: add
+        path: /spec/template/spec/containers/0/args/3
+        value: --exp.uwm.token.ttl=168h
