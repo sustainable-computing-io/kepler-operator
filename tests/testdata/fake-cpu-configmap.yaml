@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: power-monitor-config
+data:
+  config.yaml: |
+    dev:
+      fake-cpu-meter:
+        enabled: true

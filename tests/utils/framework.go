@@ -593,7 +593,7 @@ func (f Framework) DeployOpenshiftCerts(serviceName, serviceNamespace, clusterIs
 func (f Framework) InstallCertManager() {
 	f.T.Helper()
 
-	_, err := oc.Literal().From("kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.2/cert-manager.yaml").Run()
+	_, err := oc.Literal().From("kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml").Run()
 	assert.NoError(f.T, err, "failed to install cert-manager")
 
 	f.WaitUntil("cert-manager pods are running", func(ctx context.Context) (bool, error) {
@@ -612,7 +612,7 @@ func (f Framework) InstallCertManager() {
 	}, Timeout(5*time.Minute))
 
 	f.T.Cleanup(func() {
-		_, err := oc.Literal().From("kubectl delete -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.2/cert-manager.yaml").Run()
+		_, err := oc.Literal().From("kubectl delete -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml").Run()
 		assert.NoError(f.T, err, "failed to uninstall cert-manager")
 	})
 }

@@ -29,7 +29,7 @@ repos:
     rev: v1.37.0
     hooks:
       - id: yamllint
-        exclude: ^(bundle|config|hack/crd)
+        exclude: ^(bundle|config|hack/crd|manifests/helm)
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.44.0
@@ -61,7 +61,7 @@ repos:
     hooks:
       - id: commitlint
         stages: [commit-msg]
-        additional_dependencies: ['@commitlint/config-conventional'] # yamllint disable-line rule:quoted-strings
+        additional_dependencies: ["@commitlint/config-conventional"] # yamllint disable-line rule:quoted-strings
 
   - repo: https://github.com/fsfe/reuse-tool
     rev: v5.0.2

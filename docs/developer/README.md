@@ -62,3 +62,8 @@
 * Kube Builder Book: <https://book.kubebuilder.io/>
 * Operator SDK Getting Started: <https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/>
 * Kubernetes Programming Book: <https://www.oreilly.com/library/view/programming-kubernetes/9781492047094/>
+
+# Developer Guides
+
+* [Helm Chart Maintenance](helm-chart-maintenance.md) - How to update and maintain the Helm chart
+* [Pre-commit Hooks](pre-commit-hooks.md) - Setting up and using pre-commit hooks

@@ -49,7 +49,7 @@ Deploy the operator and its dependencies:
 ```sh
 make tools
 kubectl create -f https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.76.0/bundle.yaml
-kubectl create -f https://github.com/jetstack/cert-manager/releases/download/v1.15.3/cert-manager.yaml
+kubectl create -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
 make deploy
 kubectl apply -k config/samples/
 ```

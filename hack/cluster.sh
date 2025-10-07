@@ -7,7 +7,7 @@ declare -r VERSION=${VERSION:-v0.0.3}
 declare -r CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-kind}
 declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-true}
 declare -r KIND_WORKER_NODES=${KIND_WORKER_NODES:-2}
-declare -r CERTMANAGER_VERSION=${CERT_MANAGER_VERSION:-1.15.0}
+declare -r CERTMANAGER_VERSION=${CERT_MANAGER_VERSION:-1.18.2}
 declare -r OLM_VERSION=${OLM_VERSION:-v0.28.0}
 
 # constants
@@ -16,7 +16,7 @@ declare -r PROJECT_ROOT
 declare -r TMP_DIR="$PROJECT_ROOT/tmp"
 declare -r DEV_CLUSTER_DIR="$TMP_DIR/local-dev-cluster"
 declare -r BIN_DIR="$TMP_DIR/bin"
-declare -r CERTMANAGER_URL="https://github.com/jetstack/cert-manager/releases/download/v$CERTMANAGER_VERSION/cert-manager.yaml"
+declare -r CERTMANAGER_URL="https://github.com/cert-manager/cert-manager/releases/download/v$CERTMANAGER_VERSION/cert-manager.yaml"
 
 source "$PROJECT_ROOT/hack/utils.bash"
 

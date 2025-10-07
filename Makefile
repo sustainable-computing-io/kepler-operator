@@ -295,6 +295,51 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 	$(KUSTOMIZE) build config/default/k8s | \
 		kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
+##@ Helm Deployment
+
+HELM_CHART_DIR := manifests/helm/kepler-operator
+HELM_RELEASE_NAME ?= kepler-operator
+HELM_NAMESPACE ?= kepler-operator
+HELM_TIMEOUT ?= 2m
+
+.PHONY: helm-template
+helm-template: helm manifests ## Generate manifests from Helm chart
+	$(HELM) template $(HELM_RELEASE_NAME) $(HELM_CHART_DIR) \
+		--namespace $(HELM_NAMESPACE) \
+		--set operator.image=$(OPERATOR_IMG) \
+		--set kepler.image=$(KEPLER_IMG) \
+		--set kube-rbac-proxy.image=$(KUBE_RBAC_PROXY_IMG)
+
+.PHONY: helm-install
+helm-install: helm manifests helm-sync-crds ## Install operator via Helm
+	$(HELM) upgrade --install $(HELM_RELEASE_NAME) $(HELM_CHART_DIR) \
+		--namespace $(HELM_NAMESPACE) \
+		--create-namespace \
+		--set operator.image=$(OPERATOR_IMG) \
+		--set kepler.image=$(KEPLER_IMG) \
+		--set kube-rbac-proxy.image=$(KUBE_RBAC_PROXY_IMG) \
+		--timeout $(HELM_TIMEOUT) \
+		--wait
+
+.PHONY: helm-uninstall
+helm-uninstall: helm ## Uninstall operator via Helm
+	$(HELM) uninstall $(HELM_RELEASE_NAME) --namespace $(HELM_NAMESPACE)
+
+.PHONY: helm-package
+helm-package: helm manifests helm-sync-crds ## Package the Helm chart
+	$(HELM) package $(HELM_CHART_DIR) --destination tmp/
+
+.PHONY: helm-sync-crds
+helm-sync-crds: ## Sync CRDs from config/crd/bases to Helm chart
+	@mkdir -p $(HELM_CHART_DIR)/crds
+	cp config/crd/bases/*.yaml $(HELM_CHART_DIR)/crds/
+	@echo "✅ CRDs synced to Helm chart"
+
+.PHONY: helm-validate
+helm-validate: kustomize helm yq ## Validate Helm chart (syntax, templates, CRD sync, resources)
+	@echo "Validating Helm chart against kustomize..."
+	./hack/helm/validate.sh
+
 ##@ Build Dependencies
 
 ## Location where binaries are installed
@@ -304,6 +349,7 @@ LOCALBIN ?= $(shell pwd)/tmp/bin
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 CRDOC ?= $(LOCALBIN)/crdoc
+HELM ?= $(LOCALBIN)/helm
 
 # NOTE: please keep this list sorted so that it can be easily searched
 TOOLS = controller-gen \
