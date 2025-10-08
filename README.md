@@ -54,6 +54,23 @@ make deploy
 kubectl apply -k config/samples/
 ```
 
+### 📦 Using Helm Chart
+
+Install the Kepler Operator using Helm:
+
+```sh
+# Install cert-manager (if not already installed)
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
+
+# Install Kepler Operator from OCI registry
+helm install kepler-operator \
+  oci://quay.io/sustainable_computing_io/charts/kepler-operator \
+  --namespace kepler-operator \
+  --create-namespace
+```
+
+For detailed Helm installation options and configuration, see [Kepler Operator Helm Chart](manifests/helm/kepler-operator/README.md).
+
 ### 📦 Using Pre-published Image
 
 You can use the pre-built image from quay.io:
