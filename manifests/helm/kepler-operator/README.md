@@ -20,13 +20,30 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 
 ### Install Kepler Operator
 
-**From source repository:**
+**From OCI registry (recommended for users):**
+
+```bash
+# Install latest version
+helm install kepler-operator \
+  oci://quay.io/sustainable_computing_io/charts/kepler-operator \
+  --namespace kepler-operator \
+  --create-namespace
+
+# Install specific version
+helm install kepler-operator \
+  oci://quay.io/sustainable_computing_io/charts/kepler-operator \
+  --version 0.21.0 \
+  --namespace kepler-operator \
+  --create-namespace
+```
+
+**From source repository (for developers):**
 
 ```bash
 make helm-install
 ```
 
-**Using Helm directly:**
+**Using Helm directly (local development):**
 
 ```bash
 helm install kepler-operator ./manifests/helm/kepler-operator \
@@ -34,7 +51,7 @@ helm install kepler-operator ./manifests/helm/kepler-operator \
   --create-namespace
 ```
 
-**From packaged chart:**
+**From packaged chart file:**
 
 ```bash
 helm install kepler-operator kepler-operator-0.21.0.tgz \
@@ -43,6 +60,20 @@ helm install kepler-operator kepler-operator-0.21.0.tgz \
 ```
 
 ### Install with custom values
+
+**From OCI registry with custom values:**
+
+```bash
+helm install kepler-operator \
+  oci://quay.io/sustainable_computing_io/charts/kepler-operator \
+  --namespace kepler-operator \
+  --create-namespace \
+  --set operator.image=quay.io/sustainable_computing_io/kepler-operator:v0.21.0 \
+  --set kepler.image=quay.io/sustainable_computing_io/kepler:v0.11.0 \
+  --set metrics.serviceMonitor.enabled=true
+```
+
+**From local source with custom values:**
 
 ```bash
 helm install kepler-operator ./manifests/helm/kepler-operator \
@@ -53,10 +84,23 @@ helm install kepler-operator ./manifests/helm/kepler-operator \
   --set metrics.serviceMonitor.enabled=true
 ```
 
-Or create a custom `values.yaml` and install:
+**Using custom values file:**
 
 ```bash
-helm install kepler-operator ./manifests/helm/kepler-operator \
+# Create custom-values.yaml
+cat > custom-values.yaml <<EOF
+operator:
+  image: quay.io/sustainable_computing_io/kepler-operator:v0.21.0
+kepler:
+  image: quay.io/sustainable_computing_io/kepler:v0.11.0
+metrics:
+  serviceMonitor:
+    enabled: true
+EOF
+
+# Install with custom values
+helm install kepler-operator \
+  oci://quay.io/sustainable_computing_io/charts/kepler-operator \
   --namespace kepler-operator \
   --create-namespace \
   --values custom-values.yaml
@@ -100,13 +144,28 @@ spec:
 
 ## Upgrading
 
+**From OCI registry:**
+
+```bash
+# Upgrade to latest version
+helm upgrade kepler-operator \
+  oci://quay.io/sustainable_computing_io/charts/kepler-operator \
+  --namespace kepler-operator
+
+# Upgrade to specific version
+helm upgrade kepler-operator \
+  oci://quay.io/sustainable_computing_io/charts/kepler-operator \
+  --version 0.22.0 \
+  --namespace kepler-operator
+```
+
 **From source repository:**
 
 ```bash
 make helm-install  # Uses helm upgrade --install
 ```
 
-**Using Helm directly:**
+**Using Helm directly (local development):**
 
 ```bash
 helm upgrade kepler-operator ./manifests/helm/kepler-operator \

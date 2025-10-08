@@ -413,6 +413,112 @@ When releasing a new version:
 
 ---
 
+## 🚀 Manual Build and Publish
+
+For manual chart publishing (outside of automated release workflow):
+
+### Prerequisites
+
+- Helm >=3.0.0
+- Access to Quay.io registry (`BOT_NAME` and `BOT_TOKEN`)
+- Chart version updated in `Chart.yaml`
+
+### Build and Publish Process
+
+**1. Update Chart Version**:
+
+```bash
+VERSION=0.22.0
+
+# Update Chart.yaml with the release version
+sed -i "s/^version:.*/version: $VERSION/" manifests/helm/kepler-operator/Chart.yaml
+sed -i "s/^appVersion:.*/appVersion: \"v$VERSION\"/" manifests/helm/kepler-operator/Chart.yaml
+
+# Verify changes
+cat manifests/helm/kepler-operator/Chart.yaml
+```
+
+**2. Validate Chart**:
+
+```bash
+make helm-validate
+```
+
+**3. Package Chart**:
+
+```bash
+# Create output directory
+mkdir -p helm-releases
+
+# Package the chart
+helm package manifests/helm/kepler-operator -d helm-releases
+
+# Optional: Rename with -helm- identifier for clarity
+mv helm-releases/kepler-operator-${VERSION}.tgz \
+   helm-releases/kepler-operator-helm-${VERSION}.tgz
+```
+
+**4. Login to OCI Registry**:
+
+```bash
+# Login to Quay.io
+helm registry login quay.io/sustainable_computing_io \
+  --username "$BOT_NAME" \
+  --password "$BOT_TOKEN"
+```
+
+**5. Push to OCI Registry**:
+
+```bash
+# Push to Quay.io OCI registry
+helm push helm-releases/kepler-operator-helm-${VERSION}.tgz \
+  oci://quay.io/sustainable_computing_io/charts
+```
+
+**6. Verify Publication**:
+
+```bash
+# Pull the chart to verify it's available
+helm pull oci://quay.io/sustainable_computing_io/charts/kepler-operator \
+  --version ${VERSION} \
+  -d /tmp
+
+# Inspect the downloaded chart
+tar -tzf /tmp/kepler-operator-${VERSION}.tgz | head -20
+```
+
+### Install from OCI Registry
+
+Users can install the published chart directly from the OCI registry:
+
+```bash
+# Install latest version
+helm install kepler-operator \
+  oci://quay.io/sustainable_computing_io/charts/kepler-operator \
+  --namespace kepler-operator \
+  --create-namespace
+
+# Install specific version
+helm install kepler-operator \
+  oci://quay.io/sustainable_computing_io/charts/kepler-operator \
+  --version 0.22.0 \
+  --namespace kepler-operator \
+  --create-namespace
+```
+
+### Automated Release
+
+The GitHub release workflow (`.github/workflows/release.yaml`) automatically:
+
+1. Updates Chart.yaml version
+2. Packages the chart
+3. Attaches chart to GitHub release
+4. Pushes to OCI registry at `oci://quay.io/sustainable_computing_io/charts`
+
+To trigger automated release, use the workflow dispatch with the desired version tag.
+
+---
+
 ## 📚 Additional Resources
 
 - **Helm Best Practices**: <https://helm.sh/docs/chart_best_practices/>
