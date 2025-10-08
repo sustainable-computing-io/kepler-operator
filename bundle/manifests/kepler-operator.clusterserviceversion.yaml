@@ -31,8 +31,8 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     categories: Monitoring
-    containerImage: quay.io/sustainable_computing_io/kepler-operator:0.22.0
-    createdAt: "2025-10-06T06:10:24Z"
+    containerImage: quay.io/sustainable_computing_io/kepler-operator:0.22.1
+    createdAt: "2025-10-08T08:47:50Z"
     description: Deploys and Manages Kepler on Kubernetes
     operators.operatorframework.io/builder: operator-sdk-v1.39.1
     operators.operatorframework.io/internal-objects: |-
@@ -42,7 +42,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     repository: https://github.com/sustainable-computing-io/kepler-operator
     support: https://github.com/sustainable-computing-io/kepler-operator/issues
-  name: kepler-operator.v0.22.0
+  name: kepler-operator.v0.22.1
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -238,7 +238,7 @@ spec:
                   value: quay.io/sustainable_computing_io/kepler:v0.11.2
                 - name: RELATED_IMAGE_KUBE_RBAC_PROXY
                   value: quay.io/brancz/kube-rbac-proxy:v0.19.0
-                image: quay.io/sustainable_computing_io/kepler-operator:0.22.0
+                image: quay.io/sustainable_computing_io/kepler-operator:0.22.1
                 imagePullPolicy: IfNotPresent
                 livenessProbe:
                   httpGet:
@@ -349,8 +349,8 @@ spec:
     name: kepler
   - image: quay.io/brancz/kube-rbac-proxy:v0.19.0
     name: kube-rbac-proxy
-  replaces: kepler-operator.v0.21.0
-  version: 0.22.0
+  replaces: kepler-operator.v0.22.0
+  version: 0.22.1
   webhookdefinitions:
   - admissionReviewVersions:
     - v1
