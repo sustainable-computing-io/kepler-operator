@@ -59,7 +59,7 @@ kubectl apply -k config/samples/
 You can use the pre-built image from quay.io:
 
 ```sh
-make deploy OPERATOR_IMG=quay.io/sustainable_computing_io/kepler-operator:v1alpha1
+make deploy OPERATOR_IMG=quay.io/sustainable_computing_io/kepler-operator:main
 kubectl apply -k config/samples/
 ```
 
@@ -100,7 +100,7 @@ To completely remove the operator and all related resources:
 
 ## 📚 Developer Documentation
 
-[Developer documentation](https://github.com/sustainable-computing-io/kepler-operator/tree/v1alpha1/docs/developer) is available for those who want to contribute to the codebase or understand its internals.
+[Developer documentation](https://github.com/sustainable-computing-io/kepler-operator/tree/main/docs/developer) is available for those who want to contribute to the codebase or understand its internals.
 
 ## 🤝 Contributing
 
