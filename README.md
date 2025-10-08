@@ -59,7 +59,7 @@ kubectl apply -k config/samples/
 You can use the pre-built image from quay.io:
 
 ```sh
-make deploy OPERATOR_IMG=quay.io/sustainable_computing_io/kepler-operator:main
+make deploy OPERATOR_IMG=quay.io/sustainable_computing_io/kepler-operator:latest
 kubectl apply -k config/samples/
 ```
 

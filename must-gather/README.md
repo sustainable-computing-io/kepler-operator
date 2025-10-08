@@ -54,7 +54,7 @@ To use a specific must-gather image:
 
 ```sh
 oc adm must-gather \
-  --image=quay.io/sustainable_computing_io/kepler-operator:v1alpha1 \
+  --image=quay.io/sustainable_computing_io/kepler-operator:latest \
   -- /usr/bin/gather --operator <operator-name> --ns <namespace>
 ```
 
@@ -62,7 +62,7 @@ oc adm must-gather \
 
 ```sh
 oc adm must-gather \
-  --image=quay.io/sustainable_computing_io/kepler-operator:v1alpha1 \
+  --image=quay.io/sustainable_computing_io/kepler-operator:latest \
   -- /usr/bin/gather --operator kepler-operator --ns openshift-operators
 ```
 

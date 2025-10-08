@@ -22,5 +22,5 @@ maintainers:
     email: vimalkum@redhat.com
   - name: Kaiyi Liu
     email: kaliu@redhat.com
-icon: https://raw.githubusercontent.com/sustainable-computing-io/kepler-operator/v1alpha1/docs/logo/kepler-icon.svg
+icon: https://raw.githubusercontent.com/sustainable-computing-io/kepler-operator/main/docs/logo/kepler-icon.svg
 kubeVersion: ">=1.24.0"
