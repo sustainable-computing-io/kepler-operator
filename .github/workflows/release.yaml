@@ -63,11 +63,11 @@ jobs:
       - name: Package Helm Chart
         shell: bash
         run: |
-          mkdir -p helm-releases
+          mkdir -p ./tmp/helm-releases
           VERSION=${{ github.event.inputs.tag }}
-          helm package manifests/helm/kepler-operator -d helm-releases
+          helm package manifests/helm/kepler-operator -d ./tmp/helm-releases
           # Rename the helm chart to include 'helm' identifier
-          mv helm-releases/kepler-operator-${VERSION}.tgz helm-releases/kepler-operator-helm-${VERSION}.tgz
+          mv ./tmp/helm-releases/kepler-operator-${VERSION}.tgz ./tmp/helm-releases/kepler-operator-helm-${VERSION}.tgz
       - name: Git set user
         run: |
           git config  user.name "$USERNAME"
@@ -82,6 +82,11 @@ jobs:
           make operator-push  bundle-push
         env:
           IMG_BASE: ${{ vars.IMG_BASE }}
+      - name: Push Helm Chart to OCI registry
+        shell: bash
+        run: |
+          VERSION=${{ github.event.inputs.tag }}
+          helm push ./tmp/helm-releases/kepler-operator-helm-${VERSION}.tgz oci://quay.io/sustainable_computing_io/charts
       - name: Create Pull Request
         id: create_pr
         uses: peter-evans/create-pull-request@v7
@@ -125,10 +130,3 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: false
-          files: |
-            helm-releases/*.tgz
-      - name: Push Helm Chart to OCI registry
-        shell: bash
-        run: |
-          VERSION=${{ github.event.inputs.tag }}
-          helm push helm-releases/kepler-operator-helm-${VERSION}.tgz oci://quay.io/sustainable_computing_io/charts

@@ -249,7 +249,7 @@ jobs:
         id: additional_tags
         shell: bash
         run: |
-          echo "result=$(git rev-parse --short HEAD),main" >> $GITHUB_OUTPUT
+          echo "result=$(git rev-parse --short HEAD),latest" >> $GITHUB_OUTPUT
 
       - name: Install all tools
         uses: ./.github/tools-cache
