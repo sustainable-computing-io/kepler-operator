@@ -386,3 +386,62 @@ jobs:
         with:
           name: cluster-state
           path: cluster-state
+
+  helm-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install all tools
+        uses: ./.github/tools-cache
+
+      - name: Run Helm validation
+        run: hack/helm/validate.sh
+
+  helm-e2e:
+    needs: [bundle, helm-validate]
+    env:
+      KIND_VERSION: 0.27.0
+      KIND_WORKER_NODES: 2
+    name: helm-e2e
+    runs-on: ubuntu-latest-16-cores
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install all tools
+        uses: ./.github/tools-cache
+
+      - name: Setup cluster with prerequisites
+        run: make cluster-up
+        env:
+          PROMETHEUS_ENABLE: "true"
+
+      - name: Compute version
+        uses: ./.github/compute-version
+        id: version
+
+      - name: Run Helm E2E tests
+        uses: ./.github/helm-e2e
+        with:
+          version: ${{ steps.version.outputs.version }}
+
+      - name: Archive cluster state
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-cluster-state
+          path: cluster-state

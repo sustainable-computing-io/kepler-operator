@@ -1,0 +1,40 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named {{ .Release.Name }}.
+
+The Kepler Operator has been deployed in namespace: {{ include "kepler-operator.namespace" . }}
+
+To check the operator status:
+
+  kubectl get pods -n {{ include "kepler-operator.namespace" . }} -l app.kubernetes.io/name={{ include "kepler-operator.name" . }}
+
+Next Steps:
+
+1. Verify the operator is running:
+
+   kubectl get deployment -n {{ include "kepler-operator.namespace" . }}
+
+2. Check the CRDs are installed:
+
+   kubectl get crds | grep powermonitor
+
+3. Create a PowerMonitor custom resource to deploy Kepler:
+
+   kubectl apply -f https://raw.githubusercontent.com/sustainable-computing-io/kepler-operator/v1alpha1/config/samples/kepler.system_v1alpha1_powermonitor.yaml
+
+4. Verify Kepler DaemonSet is created:
+
+   kubectl get daemonset -n {{ include "kepler-operator.deploymentNamespace" . }}
+
+{{- if .Values.webhooks.enabled }}
+{{- if .Values.webhooks.certManager.enabled }}
+
+Note: This installation requires cert-manager to be installed for webhook certificates.
+If you haven't installed cert-manager yet, install it with:
+
+  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
+{{- end }}
+{{- end }}
+
+For more information on using the Kepler Operator, visit:
+https://github.com/sustainable-computing-io/kepler-operator

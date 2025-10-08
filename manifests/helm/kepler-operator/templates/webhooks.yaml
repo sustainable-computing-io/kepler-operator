@@ -1,0 +1,70 @@
+{{- if .Values.webhooks.enabled }}
+# Mutating Webhook Configuration
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "kepler-operator.fullname" . }}-mutating-webhook-configuration
+  labels:
+    {{- include "kepler-operator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webhook
+  {{- if .Values.webhooks.certManager.enabled }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ include "kepler-operator.namespace" . }}/{{ include "kepler-operator.fullname" . }}-serving-cert
+  {{- end }}
+webhooks:
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: {{ include "kepler-operator.fullname" . }}-webhook-service
+        namespace: {{ include "kepler-operator.namespace" . }}
+        path: /mutate-kepler-system-sustainable-computing-io-v1alpha1-powermonitor
+    failurePolicy: Fail
+    name: mpowermonitor.kb.io
+    rules:
+      - apiGroups:
+          - kepler.system.sustainable.computing.io
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - powermonitors
+    sideEffects: None
+---
+# Validating Webhook Configuration
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ include "kepler-operator.fullname" . }}-validating-webhook-configuration
+  labels:
+    {{- include "kepler-operator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webhook
+  {{- if .Values.webhooks.certManager.enabled }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ include "kepler-operator.namespace" . }}/{{ include "kepler-operator.fullname" . }}-serving-cert
+  {{- end }}
+webhooks:
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: {{ include "kepler-operator.fullname" . }}-webhook-service
+        namespace: {{ include "kepler-operator.namespace" . }}
+        path: /validate-kepler-system-sustainable-computing-io-v1alpha1-powermonitor
+    failurePolicy: Fail
+    name: vpowermonitor.kb.io
+    rules:
+      - apiGroups:
+          - kepler.system.sustainable.computing.io
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+          - DELETE
+        resources:
+          - powermonitors
+    sideEffects: None
+{{- end }}

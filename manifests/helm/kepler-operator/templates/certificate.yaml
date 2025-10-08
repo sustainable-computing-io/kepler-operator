@@ -1,0 +1,31 @@
+{{- if .Values.webhooks.certManager.enabled }}
+# Self-signed Issuer
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "kepler-operator.fullname" . }}-selfsigned-issuer
+  namespace: {{ include "kepler-operator.namespace" . }}
+  labels:
+    {{- include "kepler-operator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: certificate
+spec:
+  selfSigned: {}
+---
+# Webhook TLS Certificate
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "kepler-operator.fullname" . }}-serving-cert
+  namespace: {{ include "kepler-operator.namespace" . }}
+  labels:
+    {{- include "kepler-operator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: certificate
+spec:
+  dnsNames:
+    - {{ include "kepler-operator.fullname" . }}-webhook-service.{{ include "kepler-operator.namespace" . }}.svc
+    - {{ include "kepler-operator.fullname" . }}-webhook-service.{{ include "kepler-operator.namespace" . }}.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: {{ include "kepler-operator.fullname" . }}-selfsigned-issuer
+  secretName: webhook-server-cert
+{{- end }}

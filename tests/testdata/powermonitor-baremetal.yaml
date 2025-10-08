@@ -1,0 +1,12 @@
+---
+apiVersion: kepler.system.sustainable.computing.io/v1alpha1
+kind: PowerMonitor
+metadata:
+  name: power-monitor
+spec:
+  kepler:
+    deployment:
+      nodeSelector:
+        kubernetes.io/os: linux
+    config:
+      logLevel: info

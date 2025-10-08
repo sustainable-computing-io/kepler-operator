@@ -1,0 +1,16 @@
+{{- if .Values.metrics.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "kepler-operator.fullname" . }}-metrics-monitor
+  namespace: {{ include "kepler-operator.namespace" . }}
+  labels:
+    {{- include "kepler-operator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: metrics
+spec:
+  endpoints:
+    - port: metrics
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+{{- end }}

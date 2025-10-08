@@ -1,0 +1,26 @@
+apiVersion: v2
+name: kepler-operator
+description: A Helm chart for deploying the Kepler Operator on Kubernetes
+type: application
+version: 0.21.0
+appVersion: 0.21.0
+keywords:
+  - kepler
+  - power
+  - energy
+  - monitoring
+  - sustainability
+home: https://sustainable-computing.io/
+sources:
+  - https://github.com/sustainable-computing-io/kepler-operator
+maintainers:
+  - name: Sunil Thaha
+    email: sthaha@redhat.com
+  - name: Vibhu Prashar
+    email: vprashar@redhat.com
+  - name: Vimal Kumar
+    email: vimalkum@redhat.com
+  - name: Kaiyi Liu
+    email: kaliu@redhat.com
+icon: https://raw.githubusercontent.com/sustainable-computing-io/kepler-operator/v1alpha1/docs/logo/kepler-icon.svg
+kubeVersion: ">=1.24.0"

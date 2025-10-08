@@ -1,0 +1,62 @@
+# Default values for kepler-operator.
+
+# Operator
+operator:
+  image: quay.io/sustainable_computing_io/kepler-operator:0.21.0
+  pullPolicy: IfNotPresent
+  # Namespace where power monitoring components will be deployed
+  # Defaults to "power-monitor" if not specified
+  deploymentNamespace: ""
+
+# Managed Images (images that the operator will deploy)
+kepler:
+  image: quay.io/sustainable_computing_io/kepler:v0.11.0
+
+kube-rbac-proxy:
+  image: quay.io/brancz/kube-rbac-proxy:v0.19.0
+
+# Deployment
+replicaCount: 1
+namespace: kepler-operator
+nameOverride: ""
+fullnameOverride: ""
+
+# RBAC
+serviceAccount:
+  create: true
+  name: kepler-operator-controller-manager
+  annotations: {}
+
+# Webhooks & cert-manager
+webhooks:
+  enabled: true
+  certManager:
+    enabled: true # Requires cert-manager to be pre-installed
+
+# Monitoring
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false # Set true if Prometheus Operator is available
+
+# Resources
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+# Tolerations, nodeSelector, affinity
+tolerations: []
+nodeSelector: {}
+affinity: {}
+
+# Security Context
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
