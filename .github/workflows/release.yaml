@@ -38,6 +38,10 @@ jobs:
           VERSION: ${{ github.event.inputs.tag }}
       - name: Install all tools
         uses: ./.github/tools-cache
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: latest
       - name: Build Operator
         run: |
           make operator-build
@@ -49,6 +53,21 @@ jobs:
         env:
           IMG_BASE: ${{ vars.IMG_BASE }}
           VERSION_REPLACED: ${{ github.event.inputs.version-replace }}
+      - name: Update Helm Chart Version
+        shell: bash
+        run: |
+          VERSION=${{ github.event.inputs.tag }}
+          # Update Chart.yaml with the release version
+          sed -i "s/^version:.*/version: $VERSION/" manifests/helm/kepler-operator/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"v$VERSION\"/" manifests/helm/kepler-operator/Chart.yaml
+      - name: Package Helm Chart
+        shell: bash
+        run: |
+          mkdir -p helm-releases
+          VERSION=${{ github.event.inputs.tag }}
+          helm package manifests/helm/kepler-operator -d helm-releases
+          # Rename the helm chart to include 'helm' identifier
+          mv helm-releases/kepler-operator-${VERSION}.tgz helm-releases/kepler-operator-helm-${VERSION}.tgz
       - name: Git set user
         run: |
           git config  user.name "$USERNAME"
@@ -106,3 +125,10 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: false
+          files: |
+            helm-releases/*.tgz
+      - name: Push Helm Chart to OCI registry
+        shell: bash
+        run: |
+          VERSION=${{ github.event.inputs.tag }}
+          helm push helm-releases/kepler-operator-helm-${VERSION}.tgz oci://quay.io/sustainable_computing_io/charts
