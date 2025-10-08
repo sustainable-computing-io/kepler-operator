@@ -1,37 +1,30 @@
 name: Push
-
 on: # yamllint disable-line rule:truthy
   push:
     branches: [main]
-
 jobs:
   test-and-codecov:
     uses: ./.github/workflows/test-and-codecov.yaml
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
   publish:
     name: Publish operator container images
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: false
-
       - name: Compute version
         uses: ./.github/compute-version
         id: version
-
       - name: Additional tags
         id: additional_tags
         shell: bash
         run: |
-          echo "result=$(git rev-parse --short HEAD),main" >> $GITHUB_OUTPUT
-
+          echo "result=$(git rev-parse --short HEAD),latest" >> $GITHUB_OUTPUT
       - name: Build and Publish Images to External registry
         uses: ./.github/publish-images
         with:

@@ -448,14 +448,14 @@ make helm-validate
 
 ```bash
 # Create output directory
-mkdir -p helm-releases
+mkdir -p ./tmp/helm-releases
 
 # Package the chart
-helm package manifests/helm/kepler-operator -d helm-releases
+helm package manifests/helm/kepler-operator -d ./tmp/helm-releases
 
 # Optional: Rename with -helm- identifier for clarity
-mv helm-releases/kepler-operator-${VERSION}.tgz \
-   helm-releases/kepler-operator-helm-${VERSION}.tgz
+mv ./tmp/helm-releases/kepler-operator-${VERSION}.tgz \
+   ./tmp/helm-releases/kepler-operator-helm-${VERSION}.tgz
 ```
 
 **4. Login to OCI Registry**:
@@ -471,7 +471,7 @@ helm registry login quay.io/sustainable_computing_io \
 
 ```bash
 # Push to Quay.io OCI registry
-helm push helm-releases/kepler-operator-helm-${VERSION}.tgz \
+helm push ./tmp/helm-releases/kepler-operator-helm-${VERSION}.tgz \
   oci://quay.io/sustainable_computing_io/charts
 ```
 
