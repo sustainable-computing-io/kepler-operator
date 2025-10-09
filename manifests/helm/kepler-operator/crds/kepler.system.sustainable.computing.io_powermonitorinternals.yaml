@@ -94,7 +94,7 @@ spec:
                         default: info
                         type: string
                       maxTerminated:
-                        default: 500
+                        default: 0
                         description: |-
                           MaxTerminated controls terminated workload tracking behavior
                           Negative values: track unlimited terminated workloads (no capacity limit)
