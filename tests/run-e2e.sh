@@ -163,7 +163,8 @@ create_power_monitor() {
 		"$POWERMONITOR_RELEASED_CR"
 
 	info "Setting the Security mode as none for tests"
-	yq eval -i '.spec.kepler.deployment.security.mode = "none"' "$POWERMONITOR_RELEASED_CR"
+	yq eval -i '.spec.kepler.deployment.security.mode = "none"' \
+		"$POWERMONITOR_RELEASED_CR"
 
 	cat "$POWERMONITOR_RELEASED_CR"
 

@@ -10,9 +10,7 @@ spec:
   kepler:
     config:
       logLevel: info
-    deployment:
-      security:
-        mode: none
+    # deployment:
       # secrets:
       #   - name: my-tls-secret
       #     mountPath: /etc/kepler/secrets/tls
