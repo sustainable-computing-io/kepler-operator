@@ -144,7 +144,7 @@ coverage: test ## Run tests and generate coverage report.
 
 .PHONY: docs
 docs: crdoc manifests ## Generate docs.
-	$(CRDOC) --resources config/crd/bases --output docs/api.md
+	$(CRDOC) --resources config/crd/bases --output docs/user/reference/api.md
 
 ##@ Development env
 CLUSTER_PROVIDER ?= kind

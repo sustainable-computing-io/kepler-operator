@@ -221,6 +221,10 @@ If your configuration changes aren't taking effect:
 3. Check the operator logs:
 
    ```bash
+   # For Kubernetes (Helm installation)
+   kubectl logs -n kepler-operator deployment/kepler-operator-controller-manager
+
+   # For OpenShift (OperatorHub installation)
    kubectl logs -n openshift-operators deployment/kepler-operator-controller-manager
    ```
 
@@ -256,7 +260,7 @@ If the DaemonSet doesn't roll out after updating the ConfigMap:
 
 ## 📚 Related Resources
 
-- [PowerMonitor API Reference](../api.md#powermonitor)
+- [PowerMonitor API Reference](reference/api.md#powermonitor)
 - [Kepler Configuration Reference](https://sustainable-computing.io/kepler/usage/configuration/)
 - [Kepler Documentation](https://sustainable-computing.io/)
 

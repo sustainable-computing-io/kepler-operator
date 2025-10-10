@@ -1,3 +1,3 @@
 # Enabling Dashboard for Kepler on OpenShift
 
-See [user-guides](/docs/user-guides/grafana-deployment.md) for more information.
+See [Grafana Deployment Overview](/docs/developer/grafana-deployment-overview.md) for more information.
