@@ -4,3 +4,5 @@ MD013: false
 # MD046 - Code block style
 MD046:
   style: consistent
+MD024:
+  siblings_only: true
