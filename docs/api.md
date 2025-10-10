@@ -413,7 +413,7 @@ Zero: disable terminated workload tracking completely
 Positive values: track top N terminated workloads by energy consumption<br/>
           <br/>
             <i>Format</i>: int32<br/>
-            <i>Default</i>: 500<br/>
+            <i>Default</i>: 0<br/>
         </td>
         <td>false</td>
       </tr><tr>
@@ -893,7 +893,7 @@ Zero: disable terminated workload tracking completely
 Positive values: track top N terminated workloads by energy consumption<br/>
           <br/>
             <i>Format</i>: int32<br/>
-            <i>Default</i>: 500<br/>
+            <i>Default</i>: 0<br/>
         </td>
         <td>false</td>
       </tr><tr>

@@ -93,7 +93,7 @@ type PowerMonitorKeplerConfigSpec struct {
 	// Zero: disable terminated workload tracking completely
 	// Positive values: track top N terminated workloads by energy consumption
 	// +optional
-	// +kubebuilder:default=500
+	// +kubebuilder:default=0
 	MaxTerminated *int32 `json:"maxTerminated,omitempty"`
 }
 
