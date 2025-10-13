@@ -9,124 +9,123 @@ Kepler Operator is a Kubernetes operator that automates the deployment and manag
 
 ## 🔍 What is Kepler?
 
-[Kepler](https://github.com/sustainable-computing-io/kepler) (Kubernetes-based Efficient Power Level Exporter) is a Prometheus
-exporter. It uses eBPF to probe CPU performance counters and Linux kernel
-tracepoints.
-
-These data and stats from cgroup and sysfs can then be fed into ML models to
-estimate energy consumption by Pods.
+[Kepler](https://github.com/sustainable-computing-io/kepler) (Kubernetes-based Efficient Power Level Exporter) is a Prometheus exporter
+that measures energy consumption metrics at the container, pod, and node level in
+Kubernetes clusters.
 
 Check out the project on GitHub ➡️ [Kepler](https://github.com/sustainable-computing-io/kepler)
 
 ## 🚀 Getting Started
 
-You'll need a Kubernetes or OpenShift cluster. For local testing, use [KIND](https://sigs.k8s.io/kind). Otherwise, connect to a remote cluster.
+### For Users
 
-**Note:** The operator uses the current kubeconfig context (check with `kubectl cluster-info`).
+#### Quick Start (Kubernetes with Helm)
 
-### 💻 Using Kind Cluster
-
-To quickly set up a local environment with Kind:
+Get Kepler up and running in minutes. For comprehensive installation instructions, prerequisites, configuration options, and troubleshooting, see the **[Kubernetes Installation Guide](docs/user/installation/kubernetes.md)**.
 
 ```sh
-make cluster-up
-```
-
-### 🛠️ Local Development
-
-To run the operator locally outside the cluster:
-
-```sh
-make tools
-make run
-kubectl apply -k config/samples/
-```
-
-### On Vanilla Kubernetes
-
-Deploy the operator and its dependencies:
-
-```sh
-make tools
-kubectl create -f https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.76.0/bundle.yaml
-kubectl create -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
-make deploy
-kubectl apply -k config/samples/
-```
-
-### 📦 Using Helm Chart
-
-Install the Kepler Operator using Helm:
-
-```sh
-# Install cert-manager (if not already installed)
+# 1. Install cert-manager (required for operator webhooks)
+# For the latest version, see: https://cert-manager.io/docs/installation/
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
 
-# Install Kepler Operator from OCI registry
+# Wait for cert-manager to be ready
+kubectl wait --for=condition=available --timeout=120s deployment -n cert-manager --all
+
+# 2. Install monitoring stack (Prometheus + Grafana)
+# Skip if you already have Prometheus installed
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace \
+  --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false
+
+# Wait for monitoring stack to be ready
+kubectl wait --for=condition=ready --timeout=180s pod -n monitoring --all
+
+# 3. Install Kepler Operator
 helm install kepler-operator \
   oci://quay.io/sustainable_computing_io/charts/kepler-operator \
   --namespace kepler-operator \
   --create-namespace
+
+# Wait for operator to be ready
+kubectl wait --for=condition=available --timeout=120s deployment -n kepler-operator --all
+
+# 4. Deploy Kepler
+# Note: PowerMonitor must be named "power-monitor" (enforced by operator)
+kubectl apply -f https://raw.githubusercontent.com/sustainable-computing-io/kepler-operator/main/config/samples/kepler.system_v1alpha1_powermonitor.yaml
+
+# Wait for Kepler pods to be running
+kubectl wait --for=condition=ready --timeout=120s pod -n power-monitor --all
+
+# 5. Verify installation
+kubectl get pods -n power-monitor
 ```
 
-For detailed Helm installation options and configuration, see [Kepler Operator Helm Chart](manifests/helm/kepler-operator/README.md).
+**Next Steps:**
 
-### 📦 Using Pre-published Image
+To ensure Kepler is working correctly, follow these validation guides:
 
-You can use the pre-built image from quay.io:
+- **[Validate Prometheus Integration](docs/user/guides/validating-prometheus-integration.md)** - Verify metrics are being collected (recommended)
+- **[Setup Grafana Dashboards](docs/user/guides/grafana-dashboard.md)** - Visualize power consumption metrics
+- [Configuration Options](docs/user/guides/power-monitor.md) - Customize Kepler deployment
+
+**Need Help?**
+
+- [Kubernetes Installation Guide](docs/user/installation/kubernetes.md) - Detailed prerequisites, configuration options, and installation steps
+- [Validate Prometheus Integration](docs/user/guides/validating-prometheus-integration.md) - If Kepler is running but metrics aren't appearing
+- [Troubleshooting Guide](docs/user/guides/troubleshooting.md) - Common issues and solutions
+
+#### Quick Start (OpenShift)
+
+Install from OperatorHub via the OpenShift Web Console. See the [OpenShift Installation Guide](docs/user/installation/openshift.md) for details.
+
+#### User Documentation
+
+For detailed installation, configuration, and usage instructions, see the [User Guides](docs/user/README.md):
+
+- **Installation**:
+  - [Kubernetes Installation (Helm)](docs/user/installation/kubernetes.md)
+  - [Monitoring Stack Installation](docs/user/installation/monitoring-stack-kubernetes.md)
+  - [OpenShift Installation (OperatorHub)](docs/user/installation/openshift.md)
+- **Usage**:
+  - [Creating PowerMonitor Resources](docs/user/guides/power-monitor.md)
+  - [Configuring PowerMonitor](docs/user/guides/power-monitor.md)
+  - [Setting up Grafana Dashboards](docs/user/guides/grafana-dashboard.md)
+  - [Validating Prometheus Integration](docs/user/guides/validating-prometheus-integration.md)
+  - [Upgrading](docs/user/guides/upgrading.md)
+- **Reference**:
+  - [API Reference](docs/user/reference/api.md)
+  - [Troubleshooting](docs/user/guides/troubleshooting.md)
+  - [Uninstallation](docs/user/reference/uninstallation.md)
+
+### For Developers
+
+#### Quick Start
 
 ```sh
-make deploy OPERATOR_IMG=quay.io/sustainable_computing_io/kepler-operator:latest
+# Setup local Kind cluster with prerequisites
+make cluster-up
+
+# Run operator locally
+make run
+
+# In another terminal, create a PowerMonitor
 kubectl apply -k config/samples/
 ```
 
-Alternatively, build and use your own image:
+#### Developer Documentation
 
-```sh
-make operator-build operator-push IMG_BASE=<your-registry>
-make deploy IMG_BASE=<your-registry>/kepler-operator:<tag>
-kubectl apply -k config/samples/
-```
-
-### On OpenShift
-
-Deploy the operator on OpenShift:
-
-```sh
-make tools
-make operator-build operator-push \
-     bundle bundle-build bundle-push \
-     IMG_BASE=<your-registry> VERSION=0.0.0-dev
-./tmp/bin/operator-sdk run bundle <your-registry>/kepler-operator-bundle:0.0.0-dev \
-  --install-mode AllNamespaces --namespace openshift-operators --skip-tls
-```
-
-## 🗑️ Uninstallation
-
-To list the installed resources before deletion:
-
-```sh
-./hack/uninstall-operator.sh
-```
-
-To completely remove the operator and all related resources:
-
-```sh
-./hack/uninstall-operator.sh --delete
-```
-
-## 📚 Developer Documentation
-
-[Developer documentation](https://github.com/sustainable-computing-io/kepler-operator/tree/main/docs/developer) is available for those who want to contribute to the codebase or understand its internals.
+For contribution guidelines, architecture details, and development workflows, see the [Developer Documentation](docs/developer/README.md)
 
 ## 🤝 Contributing
 
 You can contribute by:
 
-* Reporting [issues](https://github.com/sustainable-computing-io/kepler-operator/issues)
-* Fixing issues by opening [Pull Requests](https://github.com/sustainable-computing-io/kepler-operator/pulls)
-* Improving documentation
-* Sharing your success stories with Kepler
+- Reporting [issues](https://github.com/sustainable-computing-io/kepler-operator/issues)
+- Fixing issues by opening [Pull Requests](https://github.com/sustainable-computing-io/kepler-operator/pulls)
+- Improving documentation
+- Sharing your success stories with Kepler
 
 ## 📝 License
 

@@ -41,7 +41,7 @@ The following hooks are configured in `.pre-commit-config.yaml`:
 ### 1. [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks)
 
 - `trailing-whitespace`: Removes trailing whitespace from lines.
-- `end-of-file-fixer`: Ensures files end with a newline. (Excludes `docs/api.md`)
+- `end-of-file-fixer`: Ensures files end with a newline. (Excludes `docs/user/reference/api.md`)
 - `check-added-large-files`: Prevents committing large files.
 - `check-merge-conflict`: Detects merge conflict markers.
 
@@ -51,7 +51,7 @@ The following hooks are configured in `.pre-commit-config.yaml`:
 
 ### 3. [markdownlint](https://github.com/igorshubovych/markdownlint-cli)
 
-- `markdownlint`: Lints Markdown files (excludes `docs/api.md`).
+- `markdownlint`: Lints Markdown files (excludes `docs/user/reference/api.md`).
 
 ### 4. [codespell](https://github.com/codespell-project/codespell)
 
