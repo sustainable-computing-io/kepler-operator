@@ -34,7 +34,7 @@ Choose your platform to begin:
 Once installed, learn how to use Kepler Operator:
 
 - **[Creating PowerMonitor Resources](guides/power-monitor.md)** - Deploy and configure Kepler on your cluster
-- **[Configuration Options](configuring-kepler.md)** - Deep dive into PowerMonitor configuration
+- **[Custom ConfigMaps](guides/custom-configmaps.md)** - Advanced Kepler configuration with custom ConfigMaps
 - **[Validating Prometheus Integration](guides/validating-prometheus-integration.md)** - Verify Prometheus is scraping Kepler metrics
 - **[Setting up Grafana Dashboards](guides/grafana-dashboard.md)** - Visualize energy metrics
 - **[Upgrading](guides/upgrading.md)** - Upgrade the operator (Helm and OLM)

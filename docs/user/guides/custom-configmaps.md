@@ -260,7 +260,8 @@ If the DaemonSet doesn't roll out after updating the ConfigMap:
 
 ## 📚 Related Resources
 
-- [PowerMonitor API Reference](reference/api.md#powermonitor)
+- [PowerMonitor Guide](./power-monitor.md) - Complete PowerMonitor configuration guide
+- [PowerMonitor API Reference](../reference/api.md#powermonitor)
 - [Kepler Configuration Reference](https://sustainable-computing.io/kepler/usage/configuration/)
 - [Kepler Documentation](https://sustainable-computing.io/)
 

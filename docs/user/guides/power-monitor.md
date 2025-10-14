@@ -265,6 +265,8 @@ spec:
 
 The ConfigMap must exist in the same namespace as PowerMonitor components.
 
+For detailed examples and best practices on using custom ConfigMaps, see the [Custom ConfigMaps Guide](./custom-configmaps.md).
+
 ## Common Use Cases
 
 **Note**: All examples below use the required name `power-monitor`. You cannot create multiple PowerMonitor resources with different names.
@@ -468,6 +470,7 @@ For more troubleshooting guidance, see the [Troubleshooting Guide](./troubleshoo
 
 ## Next Steps
 
+- **[Custom ConfigMaps Guide](./custom-configmaps.md)** - Advanced Kepler configuration with custom ConfigMaps
 - **[Grafana Dashboards](./grafana-dashboard.md)** - Visualize Kepler metrics
 - **[Troubleshooting Guide](./troubleshooting.md)** - Diagnose common issues
 - **[API Reference](../reference/api.md)** - Complete PowerMonitor API specification

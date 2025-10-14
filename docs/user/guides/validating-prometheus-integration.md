@@ -501,7 +501,7 @@ helm upgrade prometheus prometheus-community/kube-prometheus-stack \
 Once you've validated that Prometheus is scraping Kepler metrics:
 
 - **[Set up Grafana Dashboards](./grafana-dashboard.md)** to visualize the metrics
-- **[Configure PowerMonitor](../configuring-kepler.md)** to adjust metric levels and collection settings
+- **[Custom ConfigMaps](./custom-configmaps.md)** to adjust metric levels and collection settings
 - **[Set up Alerts](https://prometheus.io/docs/alerting/latest/overview/)** for abnormal power consumption
 
 ---
