@@ -12,7 +12,7 @@ spec:
       clientConfig:
         service:
           name: kepler-operator-webhook-service
-          namespace: kepler-operator-system
+          namespace: kepler-operator
           path: /convert
       conversionReviewVersions:
       - v1
