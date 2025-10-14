@@ -1,0 +1,47 @@
+# Complete PowerMonitor configuration with Redfish BMC monitoring enabled
+#
+# IMPORTANT: This is an EXPERIMENTAL feature with no stability guarantees
+#
+# Setup Instructions:
+# 1. Apply this PowerMonitor: kubectl apply -f hack/examples/redfish-powermonitor.yaml
+#    - PowerMonitor conditions: Reconciled=False, Available=False (expected - ConfigMap and Secret don't exist yet)
+#    - Operator creates the power-monitor namespace
+# 2. Wait for namespace creation: kubectl wait --for=jsonpath='{.status.phase}'=Active namespace/power-monitor --timeout=60s
+# 3. Create the ConfigMap: kubectl apply -f hack/examples/redfish-configmap.yaml
+# 4. Create the Secret: kubectl apply -f hack/examples/redfish-secret.yaml
+#    - This triggers reconciliation
+#    - PowerMonitor conditions transition: Reconciled=True, Available=True
+#    - Kepler is redeployed with Redfish enabled
+
+apiVersion: kepler.system.sustainable.computing.io/v1alpha1
+kind: PowerMonitor
+metadata:
+  name: power-monitor
+spec:
+  kepler:
+    deployment:
+      # Deploy to all Linux nodes
+      nodeSelector:
+        kubernetes.io/os: linux
+
+      # Tolerate all taints to run on all nodes
+      tolerations:
+        - operator: Exists
+
+      # Mount the Secret containing BMC credentials (will be created after namespace exists)
+      secrets:
+        - name: redfish-secret
+          mountPath: /etc/kepler/secrets/redfish
+          readOnly: true
+
+    config:
+      # Standard Kepler configuration
+      logLevel: info
+      sampleRate: 5s
+      metricLevels:
+        - node
+        - pod
+
+      # Reference the ConfigMap that enables Redfish (will be created after namespace exists)
+      additionalConfigMaps:
+        - name: enable-redfish

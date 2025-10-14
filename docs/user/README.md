@@ -39,6 +39,12 @@ Once installed, learn how to use Kepler Operator:
 - **[Setting up Grafana Dashboards](guides/grafana-dashboard.md)** - Visualize energy metrics
 - **[Upgrading](guides/upgrading.md)** - Upgrade the operator (Helm and OLM)
 
+### Experimental Features
+
+⚠️ These features are experimental and may change in future versions:
+
+- **[Redfish BMC Power Monitoring](guides/experimental/redfish.md)** - Platform-level power consumption via Baseboard Management Controllers
+
 ## Troubleshooting and Support
 
 - **[Troubleshooting Guide](guides/troubleshooting.md)** - Common issues and platform-specific solutions

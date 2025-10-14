@@ -148,6 +148,42 @@ data:
         enabled: true
 ```
 
+### 🔬 Example 5: Enabling Experimental Redfish BMC Monitoring
+
+⚠️ **EXPERIMENTAL FEATURE** - See [Redfish Monitoring Guide](./experimental/redfish.md)
+
+Enable platform-level power monitoring via Redfish BMC API:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: enable-redfish
+  namespace: power-monitor
+data:
+  config.yaml: |
+    experimental:
+      platform:
+        redfish:
+          enabled: true
+          configFile: /etc/kepler/secrets/redfish/redfish.yaml
+          httpTimeout: 5s
+```
+
+**Important Notes:**
+
+- This feature is **experimental** and may change in future versions
+- Requires a **Secret** containing BMC credentials (not shown here)
+- The `configFile` must point to a mounted Secret path
+- See the complete [Redfish Monitoring Guide](./experimental/redfish.md) for full setup instructions
+
+**When to use:**
+
+- You need platform-level power consumption (PSU, cooling, storage)
+- Running on servers with Redfish-enabled BMCs
+- Want to complement CPU-only RAPL monitoring
+- Need power data when running Kepler in VMs
+
 ## 🗂️ Using Multiple ConfigMaps
 
 You can reference multiple ConfigMaps to organize your configuration. The operator merges them in the order specified:
@@ -162,6 +198,7 @@ spec:
         - name: kepler-prometheus-config
         - name: kepler-dev-config
         - name: kepler-pprof-config
+        - name: enable-redfish
 ```
 
 **📌 Note:** If there are conflicting settings across multiple ConfigMaps, the later ConfigMap in the list takes precedence.
