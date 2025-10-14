@@ -164,8 +164,8 @@ EOF
 
 Now that the operator is installed:
 
-1. **[Create a PowerMonitor resource](../guides/power-monitor.md)** to deploy Kepler
-2. **[Configure PowerMonitor](../guides/power-monitor.md)** for your cluster
+1. **[Create a PowerMonitor resource](../reference/power-monitor.md)** to deploy Kepler
+2. **[Configure PowerMonitor](../reference/power-monitor.md)** for your cluster
 3. **[Set up Grafana dashboards](../guides/grafana-dashboard.md)** to visualize energy metrics
 
 ## Troubleshooting

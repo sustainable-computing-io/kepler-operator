@@ -215,7 +215,7 @@ kubectl get servicemonitor -A | grep power-monitor
 Now that your monitoring stack is ready:
 
 1. **[Install Kepler Operator](./kubernetes.md)** with ServiceMonitor enabled
-2. **[Create a PowerMonitor](../guides/power-monitor.md)** to deploy Kepler
+2. **[Create a PowerMonitor](../reference/power-monitor.md)** to deploy Kepler
 3. **[Import Grafana dashboards](../guides/grafana-dashboard.md)** to visualize metrics
 
 ## Troubleshooting

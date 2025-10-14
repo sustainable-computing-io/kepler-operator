@@ -224,8 +224,8 @@ For complete setup and troubleshooting instructions, see:
 
 Now that the operator is installed, you can:
 
-1. **[Create a PowerMonitor resource](../guides/power-monitor.md)** to deploy Kepler
-2. **[Custom ConfigMaps](../guides/custom-configmaps.md)** for advanced Kepler configuration
+1. **[Create a PowerMonitor resource](../reference/power-monitor.md)** to deploy Kepler
+2. **[Custom ConfigMaps](../reference/custom-configmaps.md)** for advanced Kepler configuration
 3. **[Set up Monitoring Stack](./monitoring-stack-kubernetes.md)** (optional) - If you want to visualize metrics
 4. **[Validate Prometheus Integration](../guides/validating-prometheus-integration.md)** (if using Prometheus) - Ensure metrics are being scraped
 5. **[Set up Grafana dashboards](../guides/grafana-dashboard.md)** (if using Grafana) - Visualize metrics

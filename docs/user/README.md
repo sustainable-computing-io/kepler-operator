@@ -29,15 +29,14 @@ Choose your platform to begin:
   - Required only if you want metrics visualization
   - Not needed for basic Kepler installation
 
-## Usage Guides
+## Guides
 
-Once installed, learn how to use Kepler Operator:
+Step-by-step tutorials for common tasks:
 
-- **[Creating PowerMonitor Resources](guides/power-monitor.md)** - Deploy and configure Kepler on your cluster
-- **[Custom ConfigMaps](guides/custom-configmaps.md)** - Advanced Kepler configuration with custom ConfigMaps
 - **[Validating Prometheus Integration](guides/validating-prometheus-integration.md)** - Verify Prometheus is scraping Kepler metrics
 - **[Setting up Grafana Dashboards](guides/grafana-dashboard.md)** - Visualize energy metrics
 - **[Upgrading](guides/upgrading.md)** - Upgrade the operator (Helm and OLM)
+- **[Troubleshooting Guide](guides/troubleshooting.md)** - Common issues and platform-specific solutions
 
 ### Experimental Features
 
@@ -45,14 +44,14 @@ Once installed, learn how to use Kepler Operator:
 
 - **[Redfish BMC Power Monitoring](guides/experimental/redfish.md)** - Platform-level power consumption via Baseboard Management Controllers
 
-## Troubleshooting and Support
-
-- **[Troubleshooting Guide](guides/troubleshooting.md)** - Common issues and platform-specific solutions
-- **[Uninstallation](reference/uninstallation.md)** - Clean removal procedures
-
 ## Reference Documentation
 
-- **[API Reference](reference/api.md)** - Complete PowerMonitor API specification
+Detailed feature documentation and specifications:
+
+- **[PowerMonitor Resources](reference/power-monitor.md)** - Complete PowerMonitor CR specification and configuration options
+- **[Custom ConfigMaps](reference/custom-configmaps.md)** - Advanced Kepler configuration using additionalConfigMaps
+- **[API Reference](reference/api.md)** - Complete API specification
+- **[Uninstallation](reference/uninstallation.md)** - Clean removal procedures
 
 ## Developer Documentation
 

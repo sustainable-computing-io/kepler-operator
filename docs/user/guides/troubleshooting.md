@@ -835,6 +835,6 @@ If issues persist after troubleshooting:
 
 ## Additional Resources
 
-- **[PowerMonitor Guide](./power-monitor.md)** - Creating and configuring PowerMonitors
-- **[PowerMonitor Configuration](./power-monitor.md)** - Configuration options
+- **[PowerMonitor Guide](../reference/power-monitor.md)** - Creating and configuring PowerMonitors
+- **[PowerMonitor Configuration](../reference/power-monitor.md)** - Configuration options
 - **[API Reference](../reference/api.md)** - Complete API specification
