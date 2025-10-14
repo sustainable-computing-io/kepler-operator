@@ -31,8 +31,9 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 # Wait for cert-manager to be ready
 kubectl wait --for=condition=available --timeout=120s deployment -n cert-manager --all
 
-# 2. Install monitoring stack (Prometheus + Grafana)
-# Skip if you already have Prometheus installed
+# 2. Install Prometheus Operator (required for ServiceMonitor support)
+# This installs prometheus-operator + Prometheus + Grafana
+# If you only need prometheus-operator, see the monitoring stack guide
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm install prometheus prometheus-community/kube-prometheus-stack \
   --namespace monitoring \

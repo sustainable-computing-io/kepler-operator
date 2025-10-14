@@ -1,0 +1,29 @@
+# ConfigMap to enable Kepler's experimental Redfish BMC power monitoring
+#
+# IMPORTANT: This is an EXPERIMENTAL feature with no stability guarantees
+#
+# This ConfigMap enables platform-level power monitoring via Redfish API.
+# It must be used together with a Secret containing BMC credentials.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: enable-redfish
+  namespace: power-monitor
+data:
+  config.yaml: |
+    experimental:
+      platform:
+        redfish:
+          # Enable Redfish BMC power monitoring
+          enabled: true
+
+          # Node identifier - auto-resolves from Kubernetes if not specified
+          # Must match a key in the 'nodes' section of redfish.yaml
+          nodeName: ""  # Leave empty to auto-detect from Kubernetes node name
+
+          # Path to BMC configuration file (mounted from Secret)
+          configFile: /etc/kepler/secrets/redfish/redfish.yaml
+
+          # HTTP timeout for BMC requests
+          httpTimeout: 5s

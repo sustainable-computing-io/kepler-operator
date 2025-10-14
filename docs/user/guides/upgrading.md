@@ -447,4 +447,4 @@ For more troubleshooting, see the [Troubleshooting Guide](./troubleshooting.md).
 ## Next Steps
 
 - **[Troubleshooting Guide](./troubleshooting.md)** - Diagnose upgrade issues
-- **[PowerMonitor Configuration](./power-monitor.md)** - Review configuration options for new versions
+- **[PowerMonitor Configuration](../reference/power-monitor.md)** - Review configuration options for new versions

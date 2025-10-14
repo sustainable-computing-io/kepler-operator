@@ -4,24 +4,30 @@ This guide helps you set up Prometheus and Grafana on vanilla Kubernetes to visu
 
 ## Overview
 
-Kepler exports metrics in Prometheus format. To visualize these metrics with Grafana dashboards, you need:
+Kepler exports metrics in Prometheus format. To use Kepler Operator, you need:
 
-1. **Prometheus** - To collect and store Kepler metrics
-2. **prometheus-operator** - To enable ServiceMonitor-based discovery (optional but recommended)
-3. **Grafana** - To visualize metrics with dashboards
+1. **prometheus-operator** - **REQUIRED** for ServiceMonitor support (Kepler Operator creates ServiceMonitor resources)
+2. **Prometheus** - Optional, to collect and store Kepler metrics for visualization
+3. **Grafana** - Optional, to visualize metrics with dashboards
 
-**Note**: This is a prerequisite guide, not part of Kepler Operator itself. Kepler Operator assumes you already have a monitoring solution if you want metrics visualization.
+**Important**: Kepler Operator requires prometheus-operator to be installed because it creates ServiceMonitor custom resources. You can install just prometheus-operator without Prometheus/Grafana, but you won't be able to collect or visualize metrics.
 
-## When Do You Need This?
+## What Do You Need?
 
-You need a monitoring stack if you want to:
+### Required: prometheus-operator
+
+**You MUST install prometheus-operator** before installing Kepler Operator. The operator will fail to reconcile PowerMonitor resources without it.
+
+### Optional: Full Monitoring Stack
+
+You need a complete monitoring stack (Prometheus + Grafana) if you want to:
 
 - Visualize energy consumption metrics in Grafana dashboards
 - Query historical power consumption data
 - Set up alerts based on energy usage
 - Integrate with existing monitoring infrastructure
 
-You can install Kepler Operator without a monitoring stack, but you won't be able to visualize metrics.
+You can install only prometheus-operator without Prometheus/Grafana, but Kepler metrics won't be collected or visualized.
 
 ## Quick Start: kube-prometheus-stack (Recommended)
 
@@ -215,7 +221,7 @@ kubectl get servicemonitor -A | grep power-monitor
 Now that your monitoring stack is ready:
 
 1. **[Install Kepler Operator](./kubernetes.md)** with ServiceMonitor enabled
-2. **[Create a PowerMonitor](../guides/power-monitor.md)** to deploy Kepler
+2. **[Create a PowerMonitor](../reference/power-monitor.md)** to deploy Kepler
 3. **[Import Grafana dashboards](../guides/grafana-dashboard.md)** to visualize metrics
 
 ## Troubleshooting

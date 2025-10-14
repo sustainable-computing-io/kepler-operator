@@ -17,36 +17,41 @@ Choose your platform to begin:
 ### Installation Guides
 
 - **[Kubernetes Installation (Helm)](installation/kubernetes.md)** - Install on vanilla Kubernetes using Helm
-  - Includes prerequisites: cert-manager setup
-  - Optional: Prometheus and Grafana setup
+  - Includes prerequisites: cert-manager and prometheus-operator
+  - Optional: Prometheus and Grafana for metrics visualization
 - **[OpenShift Installation (OperatorHub)](installation/openshift.md)** - Install via OperatorHub/OLM
   - Uses OpenShift's built-in certificate management
   - Integrates with OpenShift monitoring stack
 
 ### Prerequisites
 
-- **[Setting up Monitoring Stack on Kubernetes](installation/monitoring-stack-kubernetes.md)** - Optional guide for Prometheus and Grafana setup
-  - Required only if you want metrics visualization
-  - Not needed for basic Kepler installation
+- **[Setting up Monitoring Stack on Kubernetes](installation/monitoring-stack-kubernetes.md)** - Guide for prometheus-operator, Prometheus, and Grafana
+  - prometheus-operator is **REQUIRED** (Kepler Operator creates ServiceMonitor resources)
+  - Prometheus and Grafana are optional (needed only for metrics visualization)
 
-## Usage Guides
+## Guides
 
-Once installed, learn how to use Kepler Operator:
+Step-by-step tutorials for common tasks:
 
-- **[Creating PowerMonitor Resources](guides/power-monitor.md)** - Deploy and configure Kepler on your cluster
-- **[Configuration Options](configuring-kepler.md)** - Deep dive into PowerMonitor configuration
 - **[Validating Prometheus Integration](guides/validating-prometheus-integration.md)** - Verify Prometheus is scraping Kepler metrics
 - **[Setting up Grafana Dashboards](guides/grafana-dashboard.md)** - Visualize energy metrics
 - **[Upgrading](guides/upgrading.md)** - Upgrade the operator (Helm and OLM)
-
-## Troubleshooting and Support
-
 - **[Troubleshooting Guide](guides/troubleshooting.md)** - Common issues and platform-specific solutions
-- **[Uninstallation](reference/uninstallation.md)** - Clean removal procedures
+
+### Experimental Features
+
+⚠️ These features are experimental and may change in future versions:
+
+- **[Redfish BMC Power Monitoring](guides/experimental/redfish.md)** - Platform-level power consumption via Baseboard Management Controllers
 
 ## Reference Documentation
 
-- **[API Reference](reference/api.md)** - Complete PowerMonitor API specification
+Detailed feature documentation and specifications:
+
+- **[PowerMonitor Resources](reference/power-monitor.md)** - Complete PowerMonitor CR specification and configuration options
+- **[Custom ConfigMaps](reference/custom-configmaps.md)** - Advanced Kepler configuration using additionalConfigMaps
+- **[API Reference](reference/api.md)** - Complete API specification
+- **[Uninstallation](reference/uninstallation.md)** - Clean removal procedures
 
 ## Developer Documentation
 
@@ -57,15 +62,23 @@ If you want to contribute to Kepler Operator or understand its internals, see th
 ### Kubernetes Quick Start
 
 ```bash
-# Install cert-manager
+# 1. Install cert-manager (required)
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
 
-# Install Kepler Operator via Helm
+# 2. Install prometheus-operator (required)
+# Using kube-prometheus-stack (includes Prometheus + Grafana)
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace \
+  --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false
+
+# 3. Install Kepler Operator via Helm
 helm install kepler-operator ./manifests/helm/kepler-operator \
   --namespace kepler-operator \
   --create-namespace
 
-# Create PowerMonitor
+# 4. Create PowerMonitor
 kubectl apply -f - <<EOF
 apiVersion: kepler.system.sustainable.computing.io/v1alpha1
 kind: PowerMonitor

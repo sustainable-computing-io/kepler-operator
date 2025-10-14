@@ -353,6 +353,6 @@ For more troubleshooting, see the [Troubleshooting Guide](./troubleshooting.md#k
 
 ## Next Steps
 
-- **[PowerMonitor Configuration](./power-monitor.md)** - Configure PowerMonitor resources
+- **[PowerMonitor Configuration](../reference/power-monitor.md)** - Configure PowerMonitor resources
 - **[Troubleshooting](./troubleshooting.md)** - Diagnose common issues
 - **[Validating Prometheus Integration](./validating-prometheus-integration.md)** - Deep dive into Prometheus setup

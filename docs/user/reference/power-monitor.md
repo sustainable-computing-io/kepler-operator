@@ -13,6 +13,20 @@ A PowerMonitor is a Kubernetes custom resource that defines how Kepler should be
 
 **Important**: The PowerMonitor resource must be named `power-monitor`. The operator enforces this naming constraint through admission webhooks. Attempting to create a PowerMonitor with any other name will be rejected with an error.
 
+## Deployment Namespace
+
+By default, the operator deploys Kepler components (DaemonSet, Services, etc.) to the `power-monitor` namespace. This namespace is automatically created by the operator when you create a PowerMonitor resource.
+
+**Note**: The deployment namespace is configurable via the operator's `--deployment-namespace` flag. If your operator was deployed with a custom namespace, all commands in this guide that reference `power-monitor` namespace should be updated to use your configured namespace.
+
+**Check your deployment namespace:**
+
+```bash
+kubectl get deployment kepler-operator-controller -n kepler-operator -o yaml | grep deployment-namespace
+```
+
+The output shows the namespace where Kepler will be deployed (e.g., `--deployment-namespace=power-monitor`).
+
 ## Singleton Resource
 
 The Kepler operator supports only one PowerMonitor resource per cluster, which must be named `power-monitor`. To modify your Kepler deployment configuration, update the existing PowerMonitor resource rather than creating a new one:
@@ -179,6 +193,38 @@ spec:
 
 Use subdirectories like `/etc/kepler/secrets/` or `/opt/secrets/`.
 
+#### Enabling Experimental Features
+
+Some experimental features require both secrets and configuration. For example, enabling Redfish BMC monitoring:
+
+```yaml
+apiVersion: kepler.system.sustainable.computing.io/v1alpha1
+kind: PowerMonitor
+metadata:
+  name: power-monitor
+spec:
+  kepler:
+    deployment:
+      # Mount Secret containing BMC credentials
+      secrets:
+      - name: redfish-secret
+        mountPath: /etc/kepler/secrets/redfish
+        readOnly: true
+
+    config:
+      logLevel: info
+      # Enable Redfish via ConfigMap
+      additionalConfigMaps:
+      - name: enable-redfish
+```
+
+The Secret contains BMC credentials, while the ConfigMap enables the feature and references the Secret path.
+
+For complete Redfish setup instructions, see:
+
+- **[Redfish BMC Monitoring Guide](./experimental/redfish.md)** - Complete setup and configuration
+- **[Custom ConfigMaps Guide](./custom-configmaps.md)** - Using additionalConfigMaps
+
 ### Kepler Configuration
 
 The `spec.kepler.config` section controls Kepler's runtime behavior.
@@ -264,6 +310,8 @@ spec:
 ```
 
 The ConfigMap must exist in the same namespace as PowerMonitor components.
+
+For detailed examples and best practices on using custom ConfigMaps, see the [Custom ConfigMaps Guide](./custom-configmaps.md).
 
 ## Common Use Cases
 
@@ -468,6 +516,7 @@ For more troubleshooting guidance, see the [Troubleshooting Guide](./troubleshoo
 
 ## Next Steps
 
+- **[Custom ConfigMaps Guide](./custom-configmaps.md)** - Advanced Kepler configuration with custom ConfigMaps
 - **[Grafana Dashboards](./grafana-dashboard.md)** - Visualize Kepler metrics
 - **[Troubleshooting Guide](./troubleshooting.md)** - Diagnose common issues
 - **[API Reference](../reference/api.md)** - Complete PowerMonitor API specification
