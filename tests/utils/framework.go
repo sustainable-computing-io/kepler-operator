@@ -550,10 +550,11 @@ func (f Framework) GetSchedulableNodes() []corev1.Node {
 	return ret
 }
 
+// DeployOpenshiftCerts creates cert-manager resources for TLS certificate management.
+// Note: This function assumes cert-manager is already installed (which happens during
+// 'make cluster-up' via hack/cluster.sh).
 func (f Framework) DeployOpenshiftCerts(serviceName, serviceNamespace, clusterIssuerName, caCertName, caCertSecretName, pmIssuerName, tlsCertName, tlsCertSecretName string) {
 	f.T.Helper()
-
-	f.InstallCertManager()
 
 	f.CreateSelfSignedClusterIssuer(clusterIssuerName)
 
@@ -590,32 +591,6 @@ func (f Framework) DeployOpenshiftCerts(serviceName, serviceNamespace, clusterIs
 	}, Timeout(5*time.Minute))
 }
 
-func (f Framework) InstallCertManager() {
-	f.T.Helper()
-
-	_, err := oc.Literal().From("kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml").Run()
-	assert.NoError(f.T, err, "failed to install cert-manager")
-
-	f.WaitUntil("cert-manager pods are running", func(ctx context.Context) (bool, error) {
-		pods := corev1.PodList{}
-		err := f.client.List(ctx, &pods, client.InNamespace("cert-manager"))
-		if err != nil {
-			return false, err
-		}
-
-		for _, pod := range pods.Items {
-			if pod.Status.Phase != corev1.PodRunning {
-				return false, nil
-			}
-		}
-		return true, nil
-	}, Timeout(5*time.Minute))
-
-	f.T.Cleanup(func() {
-		_, err := oc.Literal().From("kubectl delete -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml").Run()
-		assert.NoError(f.T, err, "failed to uninstall cert-manager")
-	})
-}
 
 func (f Framework) CreateSelfSignedClusterIssuer(name string) *certv1.ClusterIssuer {
 	issuer := certv1.ClusterIssuer{
