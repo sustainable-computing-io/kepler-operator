@@ -1,0 +1,59 @@
+# Please see the documentation for all configuration options:
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      day: monday
+      interval: weekly
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: k8s.io/*
+        update-types: [version-update:semver-major, version-update:semver-minor]
+    commit-message:
+      prefix: chore(deps)
+      include: scope
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - go
+  - package-ecosystem: gomod
+    directory: /tests
+    schedule:
+      day: monday
+      interval: weekly
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: k8s.io/*
+        update-types: [version-update:semver-major, version-update:semver-minor]
+    commit-message:
+      prefix: chore(deps)
+      include: scope
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - go
+      - tests
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      day: monday
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: chore(deps)
+      include: scope
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
