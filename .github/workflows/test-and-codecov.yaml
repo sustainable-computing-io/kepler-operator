@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5.4.0
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
@@ -35,15 +35,15 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download coverage report artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: coverage-report
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5.4.0
+        uses: codecov/codecov-action@v5.5.1
         with:
           fail_ci_if_error: true
           files: ./cover.out
