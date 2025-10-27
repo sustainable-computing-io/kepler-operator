@@ -12,7 +12,7 @@ jobs:
     name: Check x/crypto Dependencies in Pull Request
     steps:
       - name: checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
@@ -24,7 +24,7 @@ jobs:
             ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
 
       - name: setup go
-        uses: actions/setup-go@v5.5.0
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
