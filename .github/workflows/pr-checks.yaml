@@ -10,7 +10,7 @@ jobs:
       changes: ${{ steps.filter.outputs.changes }}
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Filter changes
         uses: dorny/paths-filter@v3
@@ -28,10 +28,10 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
@@ -48,10 +48,10 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
@@ -68,10 +68,10 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
@@ -88,10 +88,10 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
@@ -110,10 +110,10 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
@@ -135,16 +135,16 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v8
         with:
           version: v1.53
           args: --timeout=3m --issues-exit-code=0 ./...
@@ -156,10 +156,10 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
@@ -174,10 +174,10 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v6
 
       - name: Setup Pre-commit
         run: pip install pre-commit
@@ -190,7 +190,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0 # Fetch all the history of PR commits
 
@@ -214,10 +214,10 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
@@ -234,10 +234,10 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
@@ -274,10 +274,10 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
@@ -285,7 +285,7 @@ jobs:
         uses: ./.github/tools-cache
 
       - name: Use Kepler Action for Kind cluster
-        uses: sustainable-computing-io/kepler-action@v0.0.5
+        uses: sustainable-computing-io/kepler-action@v0.0.10
         with:
           ebpfprovider: libbpf
           cluster_provider: kind
@@ -320,7 +320,7 @@ jobs:
 
       - name: Archive production artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: cluster-state
           path: cluster-state
@@ -337,10 +337,10 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
@@ -349,7 +349,7 @@ jobs:
         uses: ./.github/tools-cache
 
       - name: Use Kepler Action for Kind cluster
-        uses: sustainable-computing-io/kepler-action@v0.0.5
+        uses: sustainable-computing-io/kepler-action@v0.0.10
         with:
           ebpfprovider: libbpf
           cluster_provider: kind
@@ -383,7 +383,7 @@ jobs:
 
       - name: Archive production artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: cluster-state
           path: cluster-state
@@ -392,10 +392,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
@@ -415,10 +415,10 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
@@ -442,7 +442,7 @@ jobs:
 
       - name: Archive cluster state
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: helm-cluster-state
           path: cluster-state
