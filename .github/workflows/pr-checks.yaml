@@ -283,16 +283,12 @@ jobs:
       - name: Install all tools
         uses: ./.github/tools-cache
 
-      - name: Use Kepler Action for Kind cluster
-        uses: sustainable-computing-io/kepler-action@v0.0.10
-        with:
-          ebpfprovider: libbpf
-          cluster_provider: kind
+      - name: Setup Kind cluster
+        shell: bash
+        run: |
+          make cluster-up
         env:
           PROMETHEUS_ENABLE: "false"
-
-      - name: Ensure cluster is able to run OLM bundles
-        run: make cluster-prereqs
 
       - name: Compute version
         uses: ./.github/compute-version
@@ -347,16 +343,12 @@ jobs:
       - name: Install all tools
         uses: ./.github/tools-cache
 
-      - name: Use Kepler Action for Kind cluster
-        uses: sustainable-computing-io/kepler-action@v0.0.10
-        with:
-          ebpfprovider: libbpf
-          cluster_provider: kind
+      - name: Setup Kind cluster
+        shell: bash
+        run: |
+          make cluster-up
         env:
-          PROMETHEUS_ENABLE: "false"
-
-      - name: Ensure cluster is able to run OLM bundles
-        run: make cluster-prereqs
+          GRAFANA_ENABLE: "false"
 
       - name: Compute version
         uses: ./.github/compute-version
@@ -428,7 +420,7 @@ jobs:
       - name: Setup cluster with prerequisites
         run: make cluster-up
         env:
-          PROMETHEUS_ENABLE: "true"
+          GRAFANA_ENABLE: "false"
 
       - name: Compute version
         uses: ./.github/compute-version
