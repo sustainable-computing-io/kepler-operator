@@ -22,73 +22,71 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 4,
   "links": [],
   "liveNow": false,
   "panels": [
     {
-      "collapsed": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Displays the current total power consumption across all nodes in the cluster measured in watts. This includes both active workload power and idle power from all available measurement zones (psys, package, and dram).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#6ED0E0",
+                "value": 200
+              },
+              {
+                "color": "#EAB839",
+                "value": 500
+              },
+              {
+                "color": "#EF843C",
+                "value": 800
+              },
+              {
+                "color": "#E24D42",
+                "value": 1000
+              }
+            ]
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
       "gridPos": {
-        "h": 1,
-        "w": 24,
+        "h": 5,
+        "w": 7,
         "x": 0,
         "y": 0
       },
-      "id": 102,
-      "panels": [],
-      "title": "Cluster Wide Consumption",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "watt"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 1
-      },
-      "id": 200,
+      "id": 216,
       "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
           "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
+          "values": false
         },
-        "showHeader": true
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -98,48 +96,102 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (zone) (kepler_node_cpu_watts{job=\"$job\", zone=~\"$zone\"})",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "expr": "# 1. Sum 'psys' from nodes that HAVE 'psys'\n(sum(\n  kepler_node_cpu_watts{zone=\"psys\"}\n) or vector(0))\n+\n# 2. Sum 'package' from nodes that DO NOT HAVE 'psys'\n(sum(\n  kepler_node_cpu_watts{zone=\"package\"}\n  unless on(node_name)\n  kepler_node_cpu_watts{zone=\"psys\"}\n) or vector(0))\n+\n# 3. Sum 'dram' from ALL nodes that have it\n(sum(\n  kepler_node_cpu_watts{zone=\"dram\"}\n) or vector(0))",
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "Current Power Consumption By Zone",
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true
-            },
-            "indexByName": {},
-            "renameByName": {
-              "Value": "Watts",
-              "zone": "Zone Name"
-            }
-          }
-        }
-      ],
-      "type": "table"
+      "title": "Total Cluster Power",
+      "type": "stat"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "",
+      "description": "Shows the power consumed by actively running workloads and processes across the cluster. This represents the power directly attributable to computational work being performed.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "light-green",
+                "value": 100
+              },
+              {
+                "color": "#EAB839",
+                "value": 300
+              },
+              {
+                "color": "#E24D42",
+                "value": 500
+              }
+            ]
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 7,
+        "y": 0
+      },
+      "id": 217,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "# 1. Sum 'psys' from nodes that HAVE 'psys'\n(sum(\n  kepler_node_cpu_active_watts{zone=\"psys\"}\n) or vector(0))\n+\n# 2. Sum 'package' from nodes that DO NOT HAVE 'psys'\n(sum(\n  kepler_node_cpu_active_watts{zone=\"package\"}\n  unless on(node_name)\n  kepler_node_cpu_active_watts{zone=\"psys\"}\n) or vector(0))\n+\n# 3. Sum 'dram' from ALL nodes that have it\n(sum(\n  kepler_node_cpu_active_watts{zone=\"dram\"}\n) or vector(0))",
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Active Workload Power",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Displays the baseline power consumption of idle cluster resources. This represents the power consumed by nodes even when they are not actively processing workloads.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
           },
           "mappings": [],
           "thresholds": {
@@ -156,23 +208,228 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 5,
+        "w": 6,
+        "x": 13,
+        "y": 0
+      },
+      "id": 218,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "# 1. Sum 'psys' from nodes that HAVE 'psys'\n(sum(\n  kepler_node_cpu_idle_watts{zone=\"psys\"}\n) or vector(0))\n+\n# 2. Sum 'package' from nodes that DO NOT HAVE 'psys'\n(sum(\n  kepler_node_cpu_idle_watts{zone=\"package\"}\n  unless on(node_name)\n  kepler_node_cpu_idle_watts{zone=\"psys\"}\n) or vector(0))\n+\n# 3. Sum 'dram' from ALL nodes that have it\n(sum(\n  kepler_node_cpu_idle_watts{zone=\"dram\"}\n) or vector(0))",
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Idle Resource Power",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Shows the percentage of total cluster power being used for active work versus idle consumption. Higher values indicate better efficiency, with more power being used for actual workloads rather than idle overhead.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 30
+              },
+              {
+                "color": "light-green",
+                "value": 50
+              },
+              {
+                "color": "green",
+                "value": 70
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 19,
+        "y": 0
+      },
+      "id": 219,
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "100 * (\n  (\n    (sum(kepler_node_cpu_active_watts{job=\"$job\", zone=\"psys\"}) or vector(0)) +\n    (sum(kepler_node_cpu_active_watts{job=\"$job\", zone=\"package\"} unless on(node_name) kepler_node_cpu_active_watts{job=\"$job\", zone=\"psys\"}) or vector(0)) +\n    (sum(kepler_node_cpu_active_watts{job=\"$job\", zone=\"dram\"}) or vector(0))\n  ) / (\n    (sum(kepler_node_cpu_watts{job=\"$job\", zone=\"psys\"}) or vector(0)) +\n    (sum(kepler_node_cpu_watts{job=\"$job\", zone=\"package\"} unless on(node_name) kepler_node_cpu_watts{job=\"$job\", zone=\"psys\"}) or vector(0)) +\n    (sum(kepler_node_cpu_watts{job=\"$job\", zone=\"dram\"}) or vector(0))\n  )\n)",
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Power Efficiency",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Displays the count of cluster nodes that are currently being monitored by Kepler for power consumption metrics. These are the nodes actively reporting power data.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 5
+      },
+      "id": 213,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "count(count by (instance)(kepler_node_cpu_info))",
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Active Nodes",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Shows the count of cluster nodes that are ready but not currently monitored by Kepler. These nodes may not have Kepler installed or configured properly.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
         "w": 8,
         "x": 8,
-        "y": 1
+        "y": 5
       },
-      "id": 201,
+      "id": 214,
       "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
           "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
+          "values": false
         },
-        "showHeader": true
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -182,48 +439,26 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (zone) (kepler_node_cpu_active_watts{job=\"$job\", zone=~\"$zone\"})",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "expr": "count(kube_node_status_condition{condition=\"Ready\",status=\"true\"}) - count(count by (instance)(kepler_node_cpu_info))",
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "Current Active Power Consumption By Zone",
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true
-            },
-            "indexByName": {},
-            "renameByName": {
-              "Value": "Watts",
-              "zone": "Zone Name"
-            }
-          }
-        }
-      ],
-      "type": "table"
+      "title": "Inactive nodes",
+      "type": "stat"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "",
+      "description": "Displays the number of Kubernetes namespaces that have workloads currently being monitored for power consumption by Kepler.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
           },
           "mappings": [],
           "thresholds": {
@@ -232,6 +467,105 @@
               {
                 "color": "green",
                 "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 5
+      },
+      "id": 215,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "count(count by (pod_namespace) (kepler_pod_cpu_watts))",
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Active Namespaces/Workload",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Displays a time-series graph showing how cluster power consumption has changed over time. The graph breaks down power into three categories: total power, active workload power, and idle power, allowing you to see trends and patterns in energy usage.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
               }
             ]
           },
@@ -240,121 +574,24 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 1
-      },
-      "id": 202,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (zone) (kepler_node_cpu_idle_watts{job=\"$job\", zone=~\"$zone\"})",
-          "format": "table",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Current Idle Power Consumption By Zone",
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true
-            },
-            "indexByName": {},
-            "renameByName": {
-              "Value": "Watts",
-              "zone": "Zone Name"
-            }
-          }
-        }
-      ],
-      "type": "table"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 9
-      },
-      "id": 103,
-      "panels": [],
-      "title": "Node Info",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
+        "h": 12,
         "w": 24,
         "x": 0,
         "y": 10
       },
-      "id": 203,
+      "id": 222,
       "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
+        "legend": {
+          "calcs": ["last", "mean"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "showHeader": true
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
-      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -362,33 +599,41 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "count by (instance, model_name)(kepler_node_cpu_info{job=\"$job\"})",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "expr": "# 1. Sum 'psys' from nodes that HAVE 'psys'\n(sum(\n  kepler_node_cpu_watts{zone=\"psys\"}\n) or vector(0))\n+\n# 2. Sum 'package' from nodes that DO NOT HAVE 'psys'\n(sum(\n  kepler_node_cpu_watts{zone=\"package\"}\n  unless on(node_name)\n  kepler_node_cpu_watts{zone=\"psys\"}\n) or vector(0))\n+\n# 3. Sum 'dram' from ALL nodes that have it\n(sum(\n  kepler_node_cpu_watts{zone=\"dram\"}\n) or vector(0))",
+          "instant": false,
+          "legendFormat": "Total Power",
+          "range": true,
           "refId": "A"
-        }
-      ],
-      "title": "CPU Info",
-      "transformations": [
+        },
         {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "Value": false
-            },
-            "includeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "Value": "Cores",
-              "instance": "Node Name",
-              "model_name": "Model Name"
-            }
-          }
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "# 1. Sum 'psys' from nodes that HAVE 'psys'\n(sum(\n  kepler_node_cpu_active_watts{zone=\"psys\"}\n) or vector(0))\n+\n# 2. Sum 'package' from nodes that DO NOT HAVE 'psys'\n(sum(\n  kepler_node_cpu_active_watts{zone=\"package\"}\n  unless on(node_name)\n  kepler_node_cpu_active_watts{zone=\"psys\"}\n) or vector(0))\n+\n# 3. Sum 'dram' from ALL nodes that have it\n(sum(\n  kepler_node_cpu_active_watts{zone=\"dram\"}\n) or vector(0))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Active Power",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "# 1. Sum 'psys' from nodes that HAVE 'psys'\n(sum(\n  kepler_node_cpu_idle_watts{zone=\"psys\"}\n) or vector(0))\n+\n# 2. Sum 'package' from nodes that DO NOT HAVE 'psys'\n(sum(\n  kepler_node_cpu_idle_watts{zone=\"package\"}\n  unless on(node_name)\n  kepler_node_cpu_idle_watts{zone=\"psys\"}\n) or vector(0))\n+\n# 3. Sum 'dram' from ALL nodes that have it\n(sum(\n  kepler_node_cpu_idle_watts{zone=\"dram\"}\n) or vector(0))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Idle Power",
+          "range": true,
+          "refId": "C"
         }
       ],
-      "type": "table"
+      "title": "Cluster Power Consumption Trend",
+      "type": "timeseries"
     },
     {
       "collapsed": false,
@@ -396,11 +641,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 22
       },
       "id": 211,
       "panels": [],
-      "title": "RAPL Info",
+      "title": "Hardware Power Measurement Capabilities",
       "type": "row"
     },
     {
@@ -408,13 +653,14 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
+      "description": "Lists the hardware power measurement capabilities (RAPL zones) available on each node. Common zones include psys (platform/SoC power), package (CPU package power), and dram (memory power). This helps identify which nodes can provide which types of power measurements.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
           "custom": {
-            "align": "auto",
+            "align": "left",
             "cellOptions": {
               "type": "auto"
             },
@@ -438,10 +684,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 9,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 23
       },
       "id": 212,
       "options": {
@@ -449,9 +695,7 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": [
-            "sum"
-          ],
+          "reducer": ["sum"],
           "show": false
         },
         "showHeader": true
@@ -472,7 +716,7 @@
           "refId": "A"
         }
       ],
-      "title": "RAPL Info",
+      "title": "Available RAPL Zones by Node",
       "transformations": [
         {
           "id": "labelsToFields",
@@ -489,9 +733,7 @@
                 "operation": "groupby"
               },
               "zone": {
-                "aggregations": [
-                  "uniqueValues"
-                ],
+                "aggregations": ["uniqueValues"],
                 "operation": "aggregate"
               }
             }
@@ -505,7 +747,7 @@
             "indexByName": {},
             "renameByName": {
               "node_name": "Node",
-              "zone (uniqueValues)": "Zones"
+              "zone (uniqueValues)": "Available Measurement Types"
             }
           }
         }
@@ -518,11 +760,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 27
+        "y": 32
       },
-      "id": 104,
+      "id": 103,
       "panels": [],
-      "title": "Node Consumption",
+      "title": "Cluster Node Information",
       "type": "row"
     },
     {
@@ -530,18 +772,459 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "",
+      "description": "Displays detailed CPU information for each monitored node, including the CPU model and number of cores. This helps understand the hardware capabilities of each node.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
+      "id": 203,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "count by (instance, model_name)(kepler_node_cpu_info{job=\"$job\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Node CPU Configuration",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": false
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value": "CPU Cores",
+              "instance": "Node",
+              "model_name": "CPU Model"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Shows the current power consumption broken down by measurement zone (psys, package, dram) for each selected node. This table helps identify which power zones are consuming the most energy.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 42
+      },
+      "id": 200,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (zone,node_name) (kepler_node_cpu_watts{job=\"$job\", zone=~\"$zone\",node_name=~\"$node\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Current Power Usage By Zone",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value": "Power(W)",
+              "node_name": "Node",
+              "zone": "Zone"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Displays the power being consumed by active workloads for each measurement zone on the selected node. This shows how much power is directly attributable to computational work in each zone.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 42
+      },
+      "id": 201,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (zone,node_name) (kepler_node_cpu_active_watts{job=\"$job\", zone=~\"$zone\",node_name=~\"$node\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Active Workload Power Usage by Zone",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value": "Power(W)",
+              "node_name": "Node",
+              "zone": "Zone"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Shows the baseline idle power consumption for each measurement zone on the selected node. This represents the power consumed when the node is not actively processing workloads.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 42
+      },
+      "id": 202,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (zone,node_name) (kepler_node_cpu_idle_watts{job=\"$job\", zone=~\"$zone\",node_name=~\"$node\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Idle Power Usage By Zone",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value": "Power(W)",
+              "node_name": "Node",
+              "zone": "Zone"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
+      "id": 104,
+      "panels": [],
+      "title": "Power Consumption by Node",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Lists the five nodes with the highest average power consumption over the selected time range. Use this to quickly identify which nodes are consuming the most energy in your cluster.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 51
+      },
+      "id": 220,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "topk(5,\n  avg_over_time(\n    # Sum all valid power components by node\n    sum by (node_name) (\n      (\n        # A.1: Get PSYS values from PSYS nodes\n        kepler_node_cpu_watts{zone=\"psys\"}\n      )\n      or\n      (\n        # A.2: Get PACKAGE values from non-PSYS nodes\n        kepler_node_cpu_watts{zone=\"package\"}\n        unless on(node_name)\n        kepler_node_cpu_watts{zone=\"psys\"}\n      )\n      or\n      (\n        # Part B: Get DRAM values from ALL nodes\n        kepler_node_cpu_watts{zone=\"dram\"}\n      )\n    )[$__range:]\n  ) > 0\n)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{label_name}}",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Top 5 Nodes by Power Usage",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value": "Power(W)",
+              "node_name": "Node"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Displays a time-series graph of power consumption for the selected node, showing trends for total power, active power, and idle power over time. This helps identify patterns and anomalies in node power usage.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
-            "axisPlacement": "left",
+            "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 11,
+            "fillOpacity": 20,
             "gradientMode": "opacity",
             "hideFrom": {
               "graph": false,
@@ -549,6 +1232,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 5,
@@ -580,16 +1264,16 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 28
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 51
       },
       "id": 204,
       "options": {
         "legend": {
-          "calcs": [],
-          "displayMode": "list",
+          "calcs": ["lastNotNull", "mean"],
+          "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
@@ -605,15 +1289,41 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (zone) (kepler_node_cpu_watts{job=\"$job\", zone=~\"$zone\"})",
+          "expr": "# Get total power for the selected node(s)\nsum(\n  (\n    # A.1: Get PSYS value from PSYS nodes\n    kepler_node_cpu_watts{job=\"$job\", zone=\"psys\", node_name=~\"$node\"}\n  )\n  or\n  (\n    # A.2: Get PACKAGE value from non-PSYS nodes\n    kepler_node_cpu_watts{job=\"$job\", zone=\"package\", node_name=~\"$node\"}\n    unless on(node_name)\n    kepler_node_cpu_watts{job=\"$job\", zone=\"psys\", node_name=~\"$node\"}\n  )\n  or\n  (\n    # Part B: Get DRAM value from ALL nodes\n    kepler_node_cpu_watts{job=\"$job\", zone=\"dram\", node_name=~\"$node\"}\n  )\n) or vector(0)",
           "hide": false,
           "interval": "",
-          "legendFormat": "Zone - {{zone}}",
+          "legendFormat": "$node - Total Power",
           "range": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "# Get total power for the selected node(s)\nsum(\n  (\n    # A.1: Get PSYS value from PSYS nodes\n    kepler_node_cpu_active_watts{job=\"$job\", zone=\"psys\", node_name=~\"$node\"}\n  )\n  or\n  (\n    # A.2: Get PACKAGE value from non-PSYS nodes\n    kepler_node_cpu_active_watts{job=\"$job\", zone=\"package\", node_name=~\"$node\"}\n    unless on(node_name)\n    kepler_node_cpu_active_watts{job=\"$job\", zone=\"psys\", node_name=~\"$node\"}\n  )\n  or\n  (\n    # Part B: Get DRAM value from ALL nodes\n    kepler_node_cpu_active_watts{job=\"$job\", zone=\"dram\", node_name=~\"$node\"}\n  )\n) or vector(0)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "$node - Active Power",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "# Get total power for the selected node(s)\nsum(\n  (\n    # A.1: Get PSYS value from PSYS nodes\n    kepler_node_cpu_idle_watts{job=\"$job\", zone=\"psys\", node_name=~\"$node\"}\n  )\n  or\n  (\n    # A.2: Get PACKAGE value from non-PSYS nodes\n    kepler_node_cpu_idle_watts{job=\"$job\", zone=\"package\", node_name=~\"$node\"}\n    unless on(node_name)\n    kepler_node_cpu_idle_watts{job=\"$job\", zone=\"psys\", node_name=~\"$node\"}\n  )\n  or\n  (\n    # Part B: Get DRAM value from ALL nodes\n    kepler_node_cpu_idle_watts{job=\"$job\", zone=\"dram\", node_name=~\"$node\"}\n  )\n) or vector(0)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "$node - Idle Power",
+          "range": true,
+          "refId": "C"
         }
       ],
-      "title": "Total Power Consumption (W) per Zone",
+      "title": "Power Usage Trends for Node",
       "type": "timeseries"
     },
     {
@@ -621,18 +1331,21 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "",
+      "description": "Shows a detailed time-series breakdown of power consumption by measurement zone (psys, package, dram) for the selected node. This helps understand which hardware components are consuming power over time.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 11,
+            "fillOpacity": 20,
             "gradientMode": "opacity",
             "hideFrom": {
               "graph": false,
@@ -675,7 +1388,7 @@
         "h": 10,
         "w": 8,
         "x": 0,
-        "y": 38
+        "y": 59
       },
       "id": 205,
       "options": {
@@ -700,12 +1413,12 @@
           "expr": "kepler_node_cpu_watts{job=\"$job\", instance=~\"$node\", zone=~\"$zone\"}",
           "hide": false,
           "interval": "",
-          "legendFormat": "{{zone}} - {{instance}}",
+          "legendFormat": "{{instance}} - {{zone}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Node Power Consumption (W) By Zone",
+      "title": "Selected Node Power Breakdown",
       "type": "timeseries"
     },
     {
@@ -713,18 +1426,21 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "",
+      "description": "Displays a time-series graph showing the active workload power consumption broken down by measurement zone for the selected node. This tracks how much power is being used for actual computational work in each zone.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 11,
+            "fillOpacity": 20,
             "gradientMode": "opacity",
             "hideFrom": {
               "graph": false,
@@ -767,7 +1483,7 @@
         "h": 10,
         "w": 8,
         "x": 8,
-        "y": 38
+        "y": 59
       },
       "id": 206,
       "options": {
@@ -792,12 +1508,12 @@
           "expr": "kepler_node_cpu_active_watts{job=\"$job\", instance=~\"$node\", zone=~\"$zone\"}",
           "hide": false,
           "interval": "",
-          "legendFormat": "{{zone}} - {{instance}}",
+          "legendFormat": "{{instance}} - {{zone}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Node Active Power Consumption (W) By Zone",
+      "title": "Selected Node Active Workload Power",
       "type": "timeseries"
     },
     {
@@ -805,18 +1521,21 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "",
+      "description": "Shows a time-series graph of idle power consumption by measurement zone for the selected node. This tracks the baseline power consumption when the node is not actively processing workloads.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 11,
+            "fillOpacity": 20,
             "gradientMode": "opacity",
             "hideFrom": {
               "graph": false,
@@ -859,7 +1578,7 @@
         "h": 10,
         "w": 8,
         "x": 16,
-        "y": 38
+        "y": 59
       },
       "id": 207,
       "options": {
@@ -884,12 +1603,12 @@
           "expr": "kepler_node_cpu_idle_watts{job=\"$job\", instance=~\"$node\", zone=~\"$zone\"}",
           "hide": false,
           "interval": "",
-          "legendFormat": "{{zone}} - {{instance}}",
+          "legendFormat": "{{instance}} - {{zone}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Node Idle Power Consumption (W) By Zone",
+      "title": "Selected Node Idle Power",
       "type": "timeseries"
     },
     {
@@ -898,11 +1617,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 48
+        "y": 69
       },
       "id": 105,
       "panels": [],
-      "title": "Power Monitor - Namespace Info",
+      "title": "Namespace and Workload Power Usage",
       "type": "row"
     },
     {
@@ -910,13 +1629,14 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
+      "description": "Lists the ten namespaces with the highest average power consumption over the selected time range, aggregated across all nodes and measurement zones. This helps identify which namespaces are consuming the most energy in your cluster.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
           "custom": {
-            "align": "auto",
+            "align": "left",
             "cellOptions": {
               "type": "auto"
             },
@@ -938,15 +1658,16 @@
       },
       "gridPos": {
         "h": 12,
-        "w": 24,
+        "w": 12,
         "x": 0,
-        "y": 49
+        "y": 70
       },
       "id": 208,
       "options": {
         "cellHeight": "sm",
         "footer": {
           "countRows": false,
+          "enablePagination": true,
           "fields": "",
           "reducer": [],
           "show": false
@@ -961,14 +1682,14 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "topk(10,sum by (pod_namespace,zone)(kepler_pod_cpu_watts{job=\"$job\", zone=~\"$zone\"}))",
+          "expr": "topk(10,\n  # Step 2: Sum the average pod power by namespace\n  sum by (pod_namespace) (\n    avg_over_time(\n      # Step 1: Sum all valid power components by pod\n      sum by (pod_namespace, pod_name) (\n        (\n          # A.1: Get PSYS attributions from pods on PSYS nodes\n          kepler_pod_cpu_watts{job=\"$job\", zone=\"psys\"}\n          and on(node_name)\n          kepler_node_cpu_watts{job=\"$job\", zone=\"psys\"}\n        )\n        or\n        (\n          # A.2: Get PACKAGE attributions from pods on non-PSYS nodes\n          kepler_pod_cpu_watts{job=\"$job\", zone=\"package\"}\n          unless on(node_name)\n          kepler_node_cpu_watts{job=\"$job\", zone=\"psys\"}\n        )\n        or\n        (\n          # Part B: Get DRAM power from ALL nodes\n          kepler_pod_cpu_watts{job=\"$job\", zone=\"dram\"}\n        )\n      )[$__range:]\n    )\n  ) > 0\n)",
           "format": "table",
           "instant": true,
           "range": false,
           "refId": "A"
         }
       ],
-      "title": "Top 10 Power Consuming Namespaces (W) per Zone",
+      "title": "Top 10 Power Consuming Namespaces",
       "transformations": [
         {
           "id": "organize",
@@ -979,9 +1700,8 @@
             "includeByName": {},
             "indexByName": {},
             "renameByName": {
-              "Value": "Power Consumption",
-              "pod_namespace": "Namespace",
-              "zone": "Zone"
+              "Value": "Power (W)",
+              "pod_namespace": "Namespace"
             }
           }
         },
@@ -1005,18 +1725,118 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "",
+      "description": "Lists the ten pods with the highest average power consumption over the selected time range. Shows both the namespace and pod name to help identify which specific workloads are consuming the most energy.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 70
+      },
+      "id": 221,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": true,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Power (W)"
+          }
+        ]
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "topk(10,\n  avg_over_time(\n    # Sum all valid power components by pod\n    sum by (pod_namespace, pod_name) (\n      (\n        # A.1: Get PSYS attributions from pods on PSYS nodes\n        kepler_pod_cpu_watts{job=\"$job\", zone=\"psys\"}\n        and on(node_name)\n        kepler_node_cpu_watts{job=\"$job\", zone=\"psys\"}\n      )\n      or\n      (\n        # A.2: Get PACKAGE attributions from pods on non-PSYS nodes\n        kepler_pod_cpu_watts{job=\"$job\", zone=\"package\"}\n        unless on(node_name)\n        kepler_node_cpu_watts{job=\"$job\", zone=\"psys\"}\n      )\n      or\n      (\n        # Part B: Get DRAM power from ALL nodes\n        kepler_pod_cpu_watts{job=\"$job\", zone=\"dram\"}\n      )\n    )[$__range:]\n  ) > 0\n)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Top 10 Pods by Power Usage",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value": "Power (W)",
+              "pod_name": "Pod",
+              "pod_namespace": "Namespace"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Displays a time-series graph of power consumption for all pods in the selected namespace. Each line represents a different pod, allowing you to compare power usage across workloads within the namespace over time.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 11,
+            "fillOpacity": 20,
             "gradientMode": "opacity",
             "hideFrom": {
               "graph": false,
@@ -1059,13 +1879,13 @@
         "h": 10,
         "w": 12,
         "x": 0,
-        "y": 61
+        "y": 82
       },
       "id": 209,
       "options": {
         "legend": {
-          "calcs": [],
-          "displayMode": "list",
+          "calcs": ["lastNotNull", "mean"],
+          "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
@@ -1081,15 +1901,15 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (zone) (kepler_pod_cpu_watts{job=\"$job\", pod_namespace=~\"$namespace\", zone=~\"$zone\"})",
+          "expr": "sum by (pod_namespace, pod_name) (\n  (\n    # A.1: Get PSYS attributions from pods on PSYS nodes\n    # This is the \"SoC\" power for Node 2\n    kepler_pod_cpu_watts{job=\"$job\", zone=\"psys\", pod_namespace=~\"$namespace\"}\n    and on(node_name)\n    kepler_node_cpu_watts{job=\"$job\", zone=\"psys\"}\n  )\n  or\n  (\n    # A.2: Get PACKAGE attributions from pods on non-PSYS nodes\n    # This is the \"SoC\" power for Node 1 and Node 3\n    kepler_pod_cpu_watts{job=\"$job\", zone=\"package\", pod_namespace=~\"$namespace\"}\n    unless on(node_name)\n    kepler_node_cpu_watts{job=\"$job\", zone=\"psys\"}\n  )\n  or\n  (\n    # Part B: Get DRAM power from ALL nodes\n    # This adds the \"DRAM\" component for Node 1 and Node 3\n    kepler_pod_cpu_watts{job=\"$job\", zone=\"dram\", pod_namespace=~\"$namespace\"}\n  )\n)",
           "hide": false,
           "interval": "",
-          "legendFormat": "Zone - {{zone}}",
+          "legendFormat": "{{pod_namespace}} - {{pod_name}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Total Power Consumption of Pods in Namespace (W) per Zone",
+      "title": "Power Usage Trends for Namespace",
       "type": "timeseries"
     },
     {
@@ -1097,18 +1917,21 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "",
+      "description": "Shows a detailed time-series breakdown of power consumption by measurement zone for the selected pod(s) in the namespace. This helps understand which hardware components are consuming power for specific workloads.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "left",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 11,
+            "fillOpacity": 20,
             "gradientMode": "opacity",
             "hideFrom": {
               "graph": false,
@@ -1151,13 +1974,13 @@
         "h": 10,
         "w": 12,
         "x": 12,
-        "y": 61
+        "y": 82
       },
       "id": 210,
       "options": {
         "legend": {
-          "calcs": [],
-          "displayMode": "list",
+          "calcs": ["lastNotNull", "mean"],
+          "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
@@ -1176,27 +1999,25 @@
           "expr": "kepler_pod_cpu_watts{job=\"$job\", pod_namespace=~\"$namespace\", pod_name=~\"$pod\", zone=~\"$zone\"}",
           "hide": false,
           "interval": "",
-          "legendFormat": "{{zone}} - {{pod_name}}",
+          "legendFormat": "{{pod_name}} - {{zone}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Pod Power Consumption (W) By Zone",
+      "title": "Selected Namespace Power Breakdown",
       "type": "timeseries"
     }
   ],
-  "refresh": "",
+  "refresh": "10s",
   "schemaVersion": 39,
-  "tags": [
-    "power-monitor-mixin"
-  ],
+  "tags": ["power-monitor-mixin"],
   "templating": {
     "list": [
       {
         "current": {
           "selected": false,
           "text": "prometheus",
-          "value": "prometheus"
+          "value": "${datasource}"
         },
         "hide": 0,
         "includeAll": false,
@@ -1211,6 +2032,11 @@
       },
       {
         "allValue": ".*",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
@@ -1266,8 +2092,8 @@
         "allValue": ".*",
         "current": {
           "selected": false,
-          "text": "All",
-          "value": "$__all"
+          "text": "",
+          "value": ""
         },
         "datasource": {
           "type": "prometheus",
@@ -1276,7 +2102,7 @@
         "definition": "label_values(kepler_pod_cpu_watts{job=\"$job\"}, pod_namespace)",
         "description": "Namespace to choose",
         "hide": 0,
-        "includeAll": true,
+        "includeAll": false,
         "label": "Namespace",
         "multi": false,
         "name": "namespace",
@@ -1327,7 +2153,7 @@
       {
         "allValue": ".*",
         "current": {
-          "selected": true,
+          "selected": false,
           "text": "power-monitor",
           "value": "power-monitor"
         },
@@ -1367,6 +2193,6 @@
   "timezone": "browser",
   "title": "Power Monitor Dashboard",
   "uid": "381ef848417532a1ef945494449453a41fdabaa7",
-  "version": 1,
+  "version": 42,
   "weekStart": ""
 }
