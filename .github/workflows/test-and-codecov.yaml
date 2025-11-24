@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Download coverage report artifact
         uses: actions/download-artifact@v6
