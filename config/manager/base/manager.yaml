@@ -91,5 +91,7 @@ spec:
             - containerPort: 8080
               protocol: TCP
               name: metrics
+          volumeMounts: []
+      volumes: []
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

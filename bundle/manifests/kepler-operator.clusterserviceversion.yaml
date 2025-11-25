@@ -27,9 +27,9 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.22.3
-    createdAt: "2025-10-09T13:54:51Z"
+    createdAt: "2025-11-13T06:04:17Z"
     description: Deploys and Manages Kepler on Kubernetes
-    operators.operatorframework.io/builder: operator-sdk-v1.39.1
+    operators.operatorframework.io/builder: operator-sdk-v1.41.1
     operators.operatorframework.io/internal-objects: |-
       [
         "powermonitorinternals.kepler.system.sustainable.computing.io"
@@ -243,11 +243,11 @@ spec:
                   periodSeconds: 20
                 name: manager
                 ports:
-                - containerPort: 9443
-                  name: webhook-server
-                  protocol: TCP
                 - containerPort: 8080
                   name: metrics
+                  protocol: TCP
+                - containerPort: 9443
+                  name: webhook-server
                   protocol: TCP
                 readinessProbe:
                   httpGet:
