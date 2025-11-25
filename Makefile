@@ -336,7 +336,7 @@ helm-sync-crds: ## Sync CRDs from config/crd/bases to Helm chart
 	@echo "✅ CRDs synced to Helm chart"
 
 .PHONY: helm-validate
-helm-validate: kustomize helm yq ## Validate Helm chart (syntax, templates, CRD sync, resources)
+helm-validate: ## Validate Helm chart (syntax, templates, CRD sync, resources)
 	@echo "Validating Helm chart against kustomize..."
 	./hack/helm/validate.sh
 
