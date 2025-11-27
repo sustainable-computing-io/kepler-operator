@@ -15,34 +15,22 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-HELM_CHART_DIR="$PROJECT_ROOT/manifests/helm/kepler-operator"
-CRD_SOURCE_DIR="$PROJECT_ROOT/config/crd/bases"
-CRD_DEST_DIR="$HELM_CHART_DIR/crds"
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+declare -r PROJECT_ROOT
+declare -r TMP_DIR="$PROJECT_ROOT/tmp"
+declare -r BIN_DIR="$TMP_DIR/bin"
+
+declare -r HELM_CHART_DIR="$PROJECT_ROOT/manifests/helm/kepler-operator"
+declare -r CRD_SOURCE_DIR="$PROJECT_ROOT/config/crd/bases"
+declare -r CRD_DEST_DIR="$HELM_CHART_DIR/crds"
 
 # Image versions for validation
-OPERATOR_IMAGE="${OPERATOR_IMAGE:-quay.io/sustainable_computing_io/kepler-operator:0.21.0}"
-KEPLER_IMAGE="${KEPLER_IMAGE:-quay.io/sustainable_computing_io/kepler:latest}"
-KUBE_RBAC_PROXY_IMAGE="${KUBE_RBAC_PROXY_IMAGE:-quay.io/brancz/kube-rbac-proxy:v0.18.1}"
+declare OPERATOR_IMAGE="${OPERATOR_IMAGE:-quay.io/sustainable_computing_io/kepler-operator:0.21.0}"
+declare KEPLER_IMAGE="${KEPLER_IMAGE:-quay.io/sustainable_computing_io/kepler:latest}"
+declare KUBE_RBAC_PROXY_IMAGE="${KUBE_RBAC_PROXY_IMAGE:-quay.io/brancz/kube-rbac-proxy:v0.18.1}"
 
 # shellcheck source=hack/utils.bash
-source "$SCRIPT_DIR/../utils.bash"
-
-# Validate that required tools are available
-check_tools() {
-	local bin_dir="$PROJECT_ROOT/tmp/bin"
-	local tools=("helm" "kustomize" "yq")
-	for tool in "${tools[@]}"; do
-		if [[ ! -x "$bin_dir/$tool" ]]; then
-			fail "$tool is not installed. Please run 'make $tool' to install it."
-			return 1
-		fi
-	done
-}
-
-# Use project-local tools
-export PATH="$PROJECT_ROOT/tmp/bin:$PATH"
+source "$PROJECT_ROOT/hack/utils.bash"
 
 # Render Helm templates with standard test values
 render_helm_template() {
@@ -79,6 +67,11 @@ validate_helm_template() {
 	}
 	ok "Helm templates render successfully"
 	return 0
+}
+
+ensure_all_tools() {
+	info "Ensuring tools are installed"
+	"$PROJECT_ROOT/hack/tools.sh" helm
 }
 
 # Validate CRD sync status
@@ -146,7 +139,11 @@ validate_resources() {
 main() {
 	info "Starting Helm chart validation..."
 
-	check_tools
+	cd "$PROJECT_ROOT"
+	export PATH="$BIN_DIR:$PATH"
+	mkdir -p "${TMP_DIR}"
+	ensure_all_tools
+
 	validate_helm_syntax
 	validate_helm_template
 	validate_crd_sync
