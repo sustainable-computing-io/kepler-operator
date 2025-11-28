@@ -91,5 +91,6 @@ This documentation is for:
 
 ## Developer Guides
 
+- [E2E Tests](e2e-tests.md) - Test architecture, writing new tests, and CI integration
 - [Helm Chart Maintenance](helm-chart-maintenance.md) - How to update and maintain the Helm chart
 - [Pre-commit Hooks](pre-commit-hooks.md) - Setting up and using pre-commit hooks

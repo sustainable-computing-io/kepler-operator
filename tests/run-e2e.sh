@@ -338,7 +338,7 @@ cmd_help() {
 
 	read -r -d '' help <<-EOF_HELP || true
 		🔆 Usage:
-		  $scr <command> [OPTIONS] -- [GO TEST ARGS]
+		  $scr <command> [OPTIONS] -- [GINKGO/TEST FLAGS]
 		  $scr -h|--help
 
 		📋 Commands:
@@ -352,11 +352,14 @@ cmd_help() {
 		  # run upgrade tests
 		  ❯   $scr upgrade
 
-		  # run only invalid test with e2e
-		  ❯   $scr e2e -- -run TestInvalid
+		  # run only reconciliation specs
+		  ❯   $scr e2e -- --ginkgo.focus "Reconciliation"
 
-		  # do not redeploy operator and run only invalid test
-		  ❯   $scr e2e --no-deploy -- -run TestInvalid
+		  # do not redeploy operator and run only secret specs
+		  ❯   $scr e2e --no-deploy -- --ginkgo.focus "Secrets"
+
+		  # skip slow RBAC specs
+		  ❯   $scr e2e --no-deploy -- --ginkgo.skip "RBAC"
 
 		⚙️ Options:
 		  -h|--help        show this help
