@@ -61,9 +61,6 @@ ADDITIONAL_TAGS ?=
 KEPLER_IMG ?= $(KEPLER_IMG_BASE):$(KEPLER_VERSION)
 KUBE_RBAC_PROXY_IMG ?= $(KUBE_RBAC_PROXY_IMG_BASE):$(KUBE_RBAC_PROXY_VERSION)
 
-# E2E_TEST_IMG defines the image:tag used for the e2e test image
-E2E_TEST_IMG ?=$(IMG_BASE)/kepler-operator-e2e:$(VERSION)
-
 LDFLAGS=-ldflags "\
 	-X github.com/sustainable.computing.io/kepler-operator/pkg/version.version=$(VERSION) \
 	-X github.com/sustainable.computing.io/kepler-operator/pkg/version.buildTime=$(BUILD_TIME) \
@@ -257,13 +254,6 @@ operator-build: manifests generate ## Build docker image with the manager.
 .PHONY: operator-push
 operator-push: ## Push docker image with the manager.
 	$(call docker_push,$(OPERATOR_IMG),$(ADDITIONAL_TAGS))
-
-
-.PHONY: e2e-test-image
-e2e-test-image: test
-	docker build -f tests/Dockerfile \
-		--platform=linux/$(GOARCH) \
-		-t $(E2E_TEST_IMG) .
 
 ##@ Deployment
 
