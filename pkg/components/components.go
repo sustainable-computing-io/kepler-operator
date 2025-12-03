@@ -31,13 +31,9 @@ func NewNamespace(ns string) *corev1.Namespace {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ns,
 			Labels: CommonLabels.Merge(k8s.StringMap{
-				// NOTE: Fixes the following error On Openshift 4.14
-				//   Warning  FailedCreate  daemonset-controller
-				//   Error creating: pods "kepler-exporter-ds-d6f28" is forbidden:
-				//   violates PodSecurity "restricted:latest":
-				//   privileged (container "kepler-exporter" must not set securityContext.privileged=true),
-				//   allowPrivilegeEscalation != false (container "kepler-exporter" must set
-				//   securityContext.allowPrivilegeEscalation=false),
+				// NOTE: Kepler requires hostPID and hostPath volumes for /proc and /sys access
+				// Only the "privileged" PSA level allows these host-level features
+				// However, the Kepler container itself does NOT run as privileged (privileged: false)
 				"pod-security.kubernetes.io/enforce": "privileged",
 			}),
 			//TODO: ensure in-cluster monitoring ignores this ns
