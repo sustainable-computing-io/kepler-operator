@@ -341,10 +341,17 @@ func NewPowerMonitorSCC(d components.Detail, pmi *v1alpha1.PowerMonitorInternal)
 			Labels: labels(pmi),
 		},
 
-		AllowPrivilegedContainer: true,
-		AllowHostDirVolumePlugin: true,
-		AllowHostPID:             true,
-		ReadOnlyRootFilesystem:   true,
+		// NOTE: Kepler requires CAP_SYS_PTRACE to read /proc
+		// Hence drop ALL capabilities, and set Privileged to false
+		// and ReadOnlyRootFilesystem to true
+		AllowPrivilegedContainer:        false,
+		AllowPrivilegeEscalation:        ptr.To(false),
+		DefaultAllowPrivilegeEscalation: ptr.To(false),
+		AllowHostDirVolumePlugin:        true,
+		AllowHostPID:                    true,
+		ReadOnlyRootFilesystem:          true,
+		RequiredDropCapabilities:        []corev1.Capability{"ALL"},
+		AllowedCapabilities:             []corev1.Capability{"SYS_PTRACE"},
 
 		FSGroup: secv1.FSGroupStrategyOptions{
 			Type: secv1.FSGroupStrategyRunAsAny,
@@ -707,8 +714,16 @@ func newKeplerContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Container {
 	volumeMounts := buildVolumeMounts(deployment)
 
 	return corev1.Container{
-		Name:            pmi.DaemonsetName(),
-		SecurityContext: &corev1.SecurityContext{Privileged: ptr.To(true)},
+		Name: pmi.DaemonsetName(),
+		SecurityContext: &corev1.SecurityContext{
+			Privileged:               ptr.To(false),
+			AllowPrivilegeEscalation: ptr.To(false),
+			ReadOnlyRootFilesystem:   ptr.To(true),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+				Add:  []corev1.Capability{"SYS_PTRACE"},
+			},
+		},
 		Image:           deployment.Image,
 		ImagePullPolicy: corev1.PullAlways,
 		Env: []corev1.EnvVar{{

@@ -375,7 +375,7 @@ func TestSCCAllows(t *testing.T) {
 	}{
 		{
 			sccAllows: k8s.SCCAllows{
-				AllowPrivilegedContainer: true,
+				AllowPrivilegedContainer: false,
 				AllowHostDirVolumePlugin: true,
 				AllowHostIPC:             false,
 				AllowHostNetwork:         false,
