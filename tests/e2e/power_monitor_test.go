@@ -62,6 +62,20 @@ func TestPowerMonitor_Reconciliation(t *testing.T) {
 	ds := appsv1.DaemonSet{}
 	f.AssertResourceExists(pm.Name, controller.PowerMonitorDeploymentNS, &ds)
 
+	// Verify pod-level security settings
+	assert.True(t, ds.Spec.Template.Spec.HostPID, "hostPID should be enabled for /proc access")
+	assert.False(t, ds.Spec.Template.Spec.HostNetwork, "hostNetwork should be disabled")
+
+	// Verify Kepler container security context (minimal privileges)
+	keplerContainer, err := f.ContainerWithName(ds.Spec.Template.Spec.Containers, pm.Name)
+	assert.NoError(t, err, "Should find the kepler container")
+	assert.NotNil(t, keplerContainer.SecurityContext, "SecurityContext should be set")
+	assert.False(t, *keplerContainer.SecurityContext.Privileged, "Container should not be privileged")
+	assert.False(t, *keplerContainer.SecurityContext.AllowPrivilegeEscalation, "Should not allow privilege escalation")
+	assert.True(t, *keplerContainer.SecurityContext.ReadOnlyRootFilesystem, "Root filesystem should be read-only")
+	assert.Equal(t, []corev1.Capability{"ALL"}, keplerContainer.SecurityContext.Capabilities.Drop, "Should drop ALL capabilities")
+	assert.Equal(t, []corev1.Capability{"SYS_PTRACE"}, keplerContainer.SecurityContext.Capabilities.Add, "Should only add SYS_PTRACE capability")
+
 	// Verify default toleration
 	assert.Equal(t, []corev1.Toleration{{Operator: "Exists"}}, pm.Spec.Kepler.Deployment.Tolerations)
 	reconciled, err := k8s.FindCondition(pm.Status.Conditions, v1alpha1.Reconciled)
