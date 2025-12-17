@@ -89,7 +89,7 @@ jobs:
           helm push ./tmp/helm-releases/kepler-operator-helm-${VERSION}.tgz oci://quay.io/sustainable_computing_io/charts
       - name: Create Pull Request
         id: create_pr
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "chore: update VERSION to ${{ github.event.inputs.tag }}"

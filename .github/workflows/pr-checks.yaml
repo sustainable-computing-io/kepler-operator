@@ -315,7 +315,7 @@ jobs:
 
       - name: Archive production artifacts
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: cluster-state
           path: cluster-state
@@ -374,7 +374,7 @@ jobs:
 
       - name: Archive production artifacts
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: cluster-state
           path: cluster-state
@@ -433,7 +433,7 @@ jobs:
 
       - name: Archive cluster state
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: helm-cluster-state
           path: cluster-state
