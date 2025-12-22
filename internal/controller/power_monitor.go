@@ -202,6 +202,8 @@ func (r PowerMonitorReconciler) reconcilersForPowerMonitor(pm *v1alpha1.PowerMon
 		detail = components.Full
 	}
 
+	// The Deleter returns Requeue until the resource is gone, ensuring
+	// the Finalizer won't run until PowerMonitorInternal is deleted
 	rs := []reconciler.Reconciler{
 		op(newPowerMonitorInternal(detail, pm)),
 		reconciler.Finalizer{
