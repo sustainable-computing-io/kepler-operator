@@ -27,28 +27,49 @@ func TestDeleterReconcile(t *testing.T) {
 	require.NoError(t, corev1.AddToScheme(testScheme))
 	require.NoError(t, appsv1.AddToScheme(testScheme))
 
-	dep := k8s.Deployment("ns", "name").Build()
-	c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(dep).Build()
+	t.Run("returns Continue when deleting existing resource", func(t *testing.T) {
+		dep := k8s.Deployment("ns", "existing").Build()
+		c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(dep).Build()
 
-	tt := []struct {
-		scenario string
-		resource client.Object
-	}{
-		{"deletes existing resources", dep},
-		{"deletes non-existent resources", k8s.Deployment("ns", "non-existent").Build()},
-	}
+		deleter := Deleter{Resource: dep}
+		result := deleter.Reconcile(context.TODO(), c, testScheme)
 
-	for _, tc := range tt {
-		tc := tc
-		t.Run(tc.scenario, func(t *testing.T) {
-			deleter := Deleter{Resource: tc.resource}
-			result := deleter.Reconcile(context.TODO(), c, testScheme)
-			assert.Exactly(t, Continue, result.Action)
-			assert.NoError(t, result.Error)
+		// Non-blocking: returns Continue to proceed with next reconciler
+		assert.Exactly(t, Continue, result.Action)
+		assert.NoError(t, result.Error)
 
-			dummy := tc.resource.DeepCopyObject().(client.Object)
-			err := c.Get(context.TODO(), client.ObjectKeyFromObject(tc.resource), dummy)
-			assert.ErrorContains(t, err, fmt.Sprintf(`"%s" not found`, tc.resource.GetName()))
-		})
-	}
+		// Resource should be marked for deletion (fake client deletes immediately)
+		dummy := dep.DeepCopyObject().(client.Object)
+		err := c.Get(context.TODO(), client.ObjectKeyFromObject(dep), dummy)
+		assert.ErrorContains(t, err, fmt.Sprintf(`"%s" not found`, dep.GetName()))
+	})
+
+	t.Run("returns Continue when resource already deleted", func(t *testing.T) {
+		nonExistent := k8s.Deployment("ns", "non-existent").Build()
+		c := fake.NewClientBuilder().WithScheme(testScheme).Build()
+
+		deleter := Deleter{Resource: nonExistent}
+		result := deleter.Reconcile(context.TODO(), c, testScheme)
+
+		// Resource already gone, no requeue needed
+		assert.Exactly(t, Continue, result.Action)
+		assert.NoError(t, result.Error)
+	})
+
+	t.Run("multiple deleters execute in sequence", func(t *testing.T) {
+		dep1 := k8s.Deployment("ns", "dep1").Build()
+		dep2 := k8s.Deployment("ns", "dep2").Build()
+		c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(dep1, dep2).Build()
+
+		// Both deleters return Continue, allowing sequential execution
+		deleter1 := Deleter{Resource: dep1}
+		result := deleter1.Reconcile(context.TODO(), c, testScheme)
+		assert.Exactly(t, Continue, result.Action)
+		assert.NoError(t, result.Error)
+
+		deleter2 := Deleter{Resource: dep2}
+		result = deleter2.Reconcile(context.TODO(), c, testScheme)
+		assert.Exactly(t, Continue, result.Action)
+		assert.NoError(t, result.Error)
+	})
 }
