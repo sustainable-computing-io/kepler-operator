@@ -7,17 +7,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"sync"
-	"testing"
 	"time"
 
 	"golang.org/x/exp/slices"
 
-	"github.com/stretchr/testify/assert"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/internal/controller"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
-	"github.com/sustainable.computing.io/kepler-operator/tests/utils/oc"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/ptr"
 )
 
@@ -43,23 +44,30 @@ import (
 // function to set the timeout for just that assertion.
 const TestTimeout = 2 * time.Minute
 
+// Framework provides test utilities for e2e tests.
+// It uses Ginkgo/Gomega internally for test organization and assertions.
 type Framework struct {
-	T      *testing.T
 	client client.Client
 }
+
 type frameworkFn func(*Framework)
 
-func NewFramework(t *testing.T, fns ...frameworkFn) *Framework {
-	t.Helper()
-	f := Framework{T: t}
+// NewFramework creates a new test framework
+func NewFramework(fns ...frameworkFn) *Framework {
+	f := &Framework{}
 	for _, fn := range fns {
-		fn(&f)
+		fn(f)
 	}
 	if f.client == nil {
-		f.client = f.NewClient(f.Scheme())
+		f.client = newClient(newScheme())
 	}
+	return f
+}
 
-	return &f
+// NewGinkgoFramework is an alias for NewFramework for backward compatibility
+// Deprecated: Use NewFramework instead
+func NewGinkgoFramework(fns ...frameworkFn) *Framework {
+	return NewFramework(fns...)
 }
 
 func WithClient(c client.Client) frameworkFn {
@@ -68,33 +76,31 @@ func WithClient(c client.Client) frameworkFn {
 	}
 }
 
-func (f Framework) Client() client.Client {
+func (f *Framework) Client() client.Client {
 	return f.client
 }
 
-func (f Framework) Scheme() *runtime.Scheme {
-	f.T.Helper()
+func newScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
-	assert.NoError(f.T, corev1.AddToScheme(scheme))
-	assert.NoError(f.T, appsv1.AddToScheme(scheme))
-	assert.NoError(f.T, secv1.AddToScheme(scheme))
-	assert.NoError(f.T, rbacv1.AddToScheme(scheme))
-	assert.NoError(f.T, v1alpha1.AddToScheme(scheme))
-	assert.NoError(f.T, certv1.AddToScheme(scheme))
-	assert.NoError(f.T, batchv1.AddToScheme(scheme))
+	Expect(corev1.AddToScheme(scheme)).To(Succeed())
+	Expect(appsv1.AddToScheme(scheme)).To(Succeed())
+	Expect(secv1.AddToScheme(scheme)).To(Succeed())
+	Expect(rbacv1.AddToScheme(scheme)).To(Succeed())
+	Expect(v1alpha1.AddToScheme(scheme)).To(Succeed())
+	Expect(certv1.AddToScheme(scheme)).To(Succeed())
+	Expect(batchv1.AddToScheme(scheme)).To(Succeed())
 	return scheme
 }
 
 var once sync.Once
 
-func (f Framework) NewClient(scheme *runtime.Scheme) client.Client {
-	f.T.Helper()
+func newClient(scheme *runtime.Scheme) client.Client {
 	once.Do(func() {
 		ctrl.SetLogger(zap.New())
 	})
 	cfg := config.GetConfigOrDie()
 	c, err := client.New(cfg, client.Options{Scheme: scheme})
-	assert.NoError(f.T, err)
+	Expect(err).NotTo(HaveOccurred(), "failed to create client")
 	return c
 }
 
@@ -103,8 +109,8 @@ type (
 	powermonitorFn         func(*v1alpha1.PowerMonitor)
 )
 
-func (f Framework) Patch(obj client.Object) error {
-	f.T.Logf("%s: creating/updating object %s", time.Now().UTC().Format(time.RFC3339), obj.GetName())
+func (f *Framework) Patch(obj client.Object) error {
+	GinkgoWriter.Printf("%s: creating/updating object %s\n", time.Now().UTC().Format(time.RFC3339), obj.GetName())
 
 	// Clear managedFields to avoid patch conflicts when updating objects retrieved from cluster
 	obj.SetManagedFields(nil)
@@ -114,9 +120,9 @@ func (f Framework) Patch(obj client.Object) error {
 	)
 }
 
-func (f Framework) GetPowerMonitor(name string) *v1alpha1.PowerMonitor {
+func (f *Framework) GetPowerMonitor(name string) *v1alpha1.PowerMonitor {
 	pm := v1alpha1.PowerMonitor{}
-	f.AssertResourceExists(name, "", &pm)
+	f.ExpectResourceExists(name, "", &pm)
 
 	// Get does not set the type meta information, setting this manually here
 	// to help with functions like Patch() that require the type meta
@@ -127,7 +133,7 @@ func (f Framework) GetPowerMonitor(name string) *v1alpha1.PowerMonitor {
 	return &pm
 }
 
-func (f Framework) NewPowerMonitor(name string, fns ...powermonitorFn) v1alpha1.PowerMonitor {
+func (f *Framework) NewPowerMonitor(name string, fns ...powermonitorFn) v1alpha1.PowerMonitor {
 	pm := v1alpha1.PowerMonitor{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.GroupVersion.String(),
@@ -146,25 +152,23 @@ func (f Framework) NewPowerMonitor(name string, fns ...powermonitorFn) v1alpha1.
 	return pm
 }
 
-func (f Framework) CreatePowerMonitor(name string, fns ...powermonitorFn) *v1alpha1.PowerMonitor {
+func (f *Framework) CreatePowerMonitor(name string, fns ...powermonitorFn) *v1alpha1.PowerMonitor {
 	pm := f.NewPowerMonitor(name, fns...)
-	f.T.Logf("%s: creating/updating powermonitor %s", time.Now().UTC().Format(time.RFC3339), name)
+	GinkgoWriter.Printf("%s: creating/updating powermonitor %s\n", time.Now().UTC().Format(time.RFC3339), name)
 	err := f.client.Patch(context.TODO(), &pm, client.Apply,
 		client.ForceOwnership, client.FieldOwner("e2e-test"),
 	)
-	assert.NoError(f.T, err, "failed to create powermonitor")
+	Expect(err).NotTo(HaveOccurred(), "failed to create powermonitor")
 
-	f.T.Cleanup(func() {
-		f.T.Logf("cleanup: deleting powermonitor %s", name)
+	DeferCleanup(func() {
+		GinkgoWriter.Printf("cleanup: deleting powermonitor %s\n", name)
 		f.DeletePowerMonitor(name)
 	})
 
 	return &pm
 }
 
-func (f Framework) DeletePowerMonitor(name string) {
-	f.T.Helper()
-
+func (f *Framework) DeletePowerMonitor(name string) {
 	pm := v1alpha1.PowerMonitor{}
 	pmi := v1alpha1.PowerMonitorInternal{}
 
@@ -172,24 +176,24 @@ func (f Framework) DeletePowerMonitor(name string) {
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get powermonitor :%s", name)
+	Expect(err).NotTo(HaveOccurred(), "failed to get powermonitor: %s", name)
 
 	// Get PMI to obtain the deployment namespace in order to wait for deletion for namespace to happen
 	err = f.client.Get(context.Background(), client.ObjectKey{Name: name}, &pmi)
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get power-monitor-internal :%s", name)
+	Expect(err).NotTo(HaveOccurred(), "failed to get power-monitor-internal: %s", name)
 
-	f.T.Logf("%s: deleting powermonitor %s", time.Now().UTC().Format(time.RFC3339), name)
+	GinkgoWriter.Printf("%s: deleting powermonitor %s\n", time.Now().UTC().Format(time.RFC3339), name)
 
 	err = f.client.Delete(context.Background(), &pm)
 	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete powermonitor:%s :%v", name, err)
+		Fail(fmt.Sprintf("failed to delete powermonitor %s: %v", name, err))
 	}
 
 	f.WaitUntil(fmt.Sprintf("powermonitor %s is deleted", name), func(ctx context.Context) (bool, error) {
-		f.T.Logf("Waiting for powermonitor %s to be deleted", name)
+		GinkgoWriter.Printf("Waiting for powermonitor %s to be deleted\n", name)
 		pm := v1alpha1.PowerMonitor{}
 		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &pm)
 		return errors.IsNotFound(err), nil
@@ -197,17 +201,16 @@ func (f Framework) DeletePowerMonitor(name string) {
 
 	ns := pmi.Spec.Kepler.Deployment.Namespace
 	f.WaitUntil(fmt.Sprintf("namespace %s should not exist", ns), func(ctx context.Context) (bool, error) {
-		f.T.Logf("Waiting for namespace %s to be deleted", ns)
+		GinkgoWriter.Printf("Waiting for namespace %s to be deleted\n", ns)
 		namespace := corev1.Namespace{}
 		err := f.client.Get(ctx, client.ObjectKey{Name: ns}, &namespace)
 		return errors.IsNotFound(err), nil
 	})
 }
 
-func (f Framework) GetPowerMonitorInternal(name string) *v1alpha1.PowerMonitorInternal {
-	f.T.Helper()
+func (f *Framework) GetPowerMonitorInternal(name string) *v1alpha1.PowerMonitorInternal {
 	pmi := v1alpha1.PowerMonitorInternal{}
-	f.AssertResourceExists(name, "", &pmi)
+	f.ExpectResourceExists(name, "", &pmi)
 
 	// Get does not set the type meta information, setting this manually here
 	// to help with functions like Patch() that require the type meta
@@ -218,7 +221,7 @@ func (f Framework) GetPowerMonitorInternal(name string) *v1alpha1.PowerMonitorIn
 	return &pmi
 }
 
-func (f Framework) CreatePowerMonitorInternal(name string, fns ...powermonitorinternalFn) *v1alpha1.PowerMonitorInternal {
+func (f *Framework) CreatePowerMonitorInternal(name string, fns ...powermonitorinternalFn) *v1alpha1.PowerMonitorInternal {
 	pmi := v1alpha1.PowerMonitorInternal{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.GroupVersion.String(),
@@ -235,56 +238,54 @@ func (f Framework) CreatePowerMonitorInternal(name string, fns ...powermonitorin
 		fn(&pmi)
 	}
 
-	f.T.Logf("%s: creating/updating power-monitor-internal %s", time.Now().UTC().Format(time.RFC3339), name)
+	GinkgoWriter.Printf("%s: creating/updating power-monitor-internal %s\n", time.Now().UTC().Format(time.RFC3339), name)
 	err := f.client.Patch(context.TODO(), &pmi, client.Apply,
 		client.ForceOwnership, client.FieldOwner("e2e-test"),
 	)
-	assert.NoError(f.T, err, "failed to create power-monitor-internal")
+	Expect(err).NotTo(HaveOccurred(), "failed to create power-monitor-internal")
 
-	f.T.Cleanup(func() {
-		f.T.Logf("cleanup: deleting powermonitorinternal %s", name)
+	DeferCleanup(func() {
+		GinkgoWriter.Printf("cleanup: deleting powermonitorinternal %s\n", name)
 		f.DeletePowerMonitorInternal(name, Timeout(3*time.Minute))
 	})
 
 	return &pmi
 }
 
-func (f Framework) DeletePowerMonitorInternal(name string, fns ...AssertOptionFn) {
-	f.T.Helper()
-
+func (f *Framework) DeletePowerMonitorInternal(name string, fns ...AssertOptionFn) {
 	pmi := v1alpha1.PowerMonitorInternal{}
 	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &pmi)
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get power-monitor-internal :%s", name)
+	Expect(err).NotTo(HaveOccurred(), "failed to get power-monitor-internal: %s", name)
 
 	ns := pmi.Spec.Kepler.Deployment.Namespace
 
-	f.T.Logf("%s: deleting power-monitor-internal %s", time.Now().UTC().Format(time.RFC3339), name)
+	GinkgoWriter.Printf("%s: deleting power-monitor-internal %s\n", time.Now().UTC().Format(time.RFC3339), name)
 
 	err = f.client.Delete(context.Background(), &pmi)
 	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete power-monitor-internal:%s :%v", name, err)
+		Fail(fmt.Sprintf("failed to delete power-monitor-internal %s: %v", name, err))
 	}
 
 	f.WaitUntil(fmt.Sprintf("power-monitor-internal %s is deleted", name), func(ctx context.Context) (bool, error) {
-		f.T.Logf("Waiting for power-monitor-internal %s to be deleted", name)
+		GinkgoWriter.Printf("Waiting for power-monitor-internal %s to be deleted\n", name)
 		pmi := v1alpha1.PowerMonitorInternal{}
 		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &pmi)
 		return errors.IsNotFound(err), nil
 	}, fns...)
 
 	f.WaitUntil(fmt.Sprintf("namespace %s should not exist", ns), func(ctx context.Context) (bool, error) {
-		f.T.Logf("Waiting for namespace %s to be deleted", ns)
+		GinkgoWriter.Printf("Waiting for namespace %s to be deleted\n", ns)
 		namespace := corev1.Namespace{}
 		err := f.client.Get(ctx, client.ObjectKey{Name: ns}, &namespace)
 		return errors.IsNotFound(err), nil
 	})
 }
 
-func (f Framework) WaitUntilPowerMonitorInternalCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus, fns ...AssertOptionFn) *v1alpha1.PowerMonitorInternal {
-	f.T.Helper()
+// WaitUntilPowerMonitorInternalCondition waits for a PowerMonitorInternal to have a specific condition
+func (f *Framework) WaitUntilPowerMonitorInternalCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus, fns ...AssertOptionFn) *v1alpha1.PowerMonitorInternal {
 	pmi := v1alpha1.PowerMonitorInternal{}
 	f.WaitUntil(fmt.Sprintf("power-monitor-internal %s is %s", name, t),
 		func(ctx context.Context) (bool, error) {
@@ -299,8 +300,8 @@ func (f Framework) WaitUntilPowerMonitorInternalCondition(name string, t v1alpha
 	return &pmi
 }
 
-func (f Framework) WaitUntilPowerMonitorCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus, fns ...AssertOptionFn) *v1alpha1.PowerMonitor {
-	f.T.Helper()
+// WaitUntilPowerMonitorCondition waits for a PowerMonitor to have a specific condition
+func (f *Framework) WaitUntilPowerMonitorCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus, fns ...AssertOptionFn) *v1alpha1.PowerMonitor {
 	pm := v1alpha1.PowerMonitor{}
 	f.WaitUntil(fmt.Sprintf("powermonitor %s is %s", name, t),
 		func(ctx context.Context) (bool, error) {
@@ -316,8 +317,7 @@ func (f Framework) WaitUntilPowerMonitorCondition(name string, t v1alpha1.Condit
 }
 
 // WaitForResource waits for a resource to exist and returns true if it exists, false if timeout
-func (f Framework) WaitForResource(name, namespace string, obj client.Object, fns ...AssertOptionFn) bool {
-	f.T.Helper()
+func (f *Framework) WaitForResource(name, namespace string, obj client.Object, fns ...AssertOptionFn) bool {
 	var exists bool
 	f.WaitUntil(fmt.Sprintf("resource %s in namespace %s to exist", name, namespace),
 		func(ctx context.Context) (bool, error) {
@@ -336,66 +336,172 @@ func (f Framework) WaitForResource(name, namespace string, obj client.Object, fn
 	return exists
 }
 
-func (f Framework) AddResourceLabels(kind, name string, l map[string]string) error {
-	f.T.Helper()
-	b := new(bytes.Buffer)
-	for label, value := range l {
-		fmt.Fprintf(b, "%s=%s ", label, value)
+func (f *Framework) AddResourceLabels(kind, name string, l map[string]string) error {
+	if kind != "node" {
+		return fmt.Errorf("AddResourceLabels only supports 'node' kind, got: %s", kind)
 	}
-	f.T.Cleanup(func() {
-		err := f.RemoveResourceLabels(kind, name, []string{"e2e-test"})
-		assert.NoError(f.T, err, "could not remove label from node")
+
+	node := &corev1.Node{}
+	err := f.client.Get(context.Background(), client.ObjectKey{Name: name}, node)
+	if err != nil {
+		return fmt.Errorf("failed to get node %s: %w", name, err)
+	}
+
+	if node.Labels == nil {
+		node.Labels = make(map[string]string)
+	}
+
+	// Store original labels for cleanup
+	originalLabels := make(map[string]string)
+	for k := range l {
+		if v, exists := node.Labels[k]; exists {
+			originalLabels[k] = v
+		}
+	}
+
+	// Add new labels
+	for k, v := range l {
+		node.Labels[k] = v
+	}
+
+	err = f.client.Update(context.Background(), node)
+	if err != nil {
+		return fmt.Errorf("failed to update node %s labels: %w", name, err)
+	}
+
+	DeferCleanup(func() {
+		node := &corev1.Node{}
+		err := f.client.Get(context.Background(), client.ObjectKey{Name: name}, node)
+		if err != nil {
+			GinkgoWriter.Printf("Warning: failed to get node %s for cleanup: %v\n", name, err)
+			return
+		}
+
+		// Remove added labels or restore original values
+		for k := range l {
+			if origVal, hadOriginal := originalLabels[k]; hadOriginal {
+				node.Labels[k] = origVal
+			} else {
+				delete(node.Labels, k)
+			}
+		}
+
+		err = f.client.Update(context.Background(), node)
+		if err != nil {
+			GinkgoWriter.Printf("Warning: failed to cleanup node %s labels: %v\n", name, err)
+		}
 	})
-	return f.AddResourceLabelsStr(kind, name, b.String())
+
+	return nil
 }
 
-func (f Framework) AddResourceLabelsStr(kind, name, l string) error {
-	f.T.Helper()
-	_, err := oc.Literal().From("oc label %s %s %s", kind, name, l).Run()
-	return err
-}
-
-func (f Framework) RemoveResourceLabels(kind, name string, l []string) error {
-	f.T.Helper()
-	b := new(bytes.Buffer)
-	for _, label := range l {
-		fmt.Fprintf(b, "%s- ", label)
+func (f *Framework) RemoveResourceLabels(kind, name string, l []string) error {
+	if kind != "node" {
+		return fmt.Errorf("RemoveResourceLabels only supports 'node' kind, got: %s", kind)
 	}
-	_, err := oc.Literal().From("oc label %s %s %s", kind, name, b.String()).Run()
-	return err
+
+	node := &corev1.Node{}
+	err := f.client.Get(context.Background(), client.ObjectKey{Name: name}, node)
+	if err != nil {
+		return fmt.Errorf("failed to get node %s: %w", name, err)
+	}
+
+	if node.Labels == nil {
+		return nil // Nothing to remove
+	}
+
+	// Remove labels
+	for _, label := range l {
+		delete(node.Labels, label)
+	}
+
+	err = f.client.Update(context.Background(), node)
+	if err != nil {
+		return fmt.Errorf("failed to update node %s labels: %w", name, err)
+	}
+
+	return nil
 }
 
-func (f Framework) WithPowerMonitorNodeSelector(label map[string]string) func(k *v1alpha1.PowerMonitor) {
+func (f *Framework) WithPowerMonitorNodeSelector(label map[string]string) func(k *v1alpha1.PowerMonitor) {
 	return func(pm *v1alpha1.PowerMonitor) {
 		pm.Spec.Kepler.Deployment.NodeSelector = label
 	}
 }
 
-func (f Framework) TaintNode(node, taintStr string) error {
-	f.T.Helper()
-	_, err := oc.Literal().From("oc adm taint node %s %s", node, taintStr).Run()
-	f.T.Cleanup(func() {
-		// remove taint
-		_, err := oc.Literal().From("oc adm taint node %s %s", node, fmt.Sprintf("%s-", taintStr)).Run()
-		assert.NoError(f.T, err, "could not remove taint from node")
+func (f *Framework) TaintNode(node, taintStr string) error {
+	// Parse taint string (format: "key=value:effect")
+	parts := strings.Split(taintStr, ":")
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid taint format: %s (expected key=value:effect)", taintStr)
+	}
+
+	keyValue := strings.Split(parts[0], "=")
+	if len(keyValue) != 2 {
+		return fmt.Errorf("invalid taint key=value format: %s", parts[0])
+	}
+
+	taint := corev1.Taint{
+		Key:    keyValue[0],
+		Value:  keyValue[1],
+		Effect: corev1.TaintEffect(parts[1]),
+	}
+
+	nodeObj := &corev1.Node{}
+	err := f.client.Get(context.Background(), client.ObjectKey{Name: node}, nodeObj)
+	if err != nil {
+		return fmt.Errorf("failed to get node %s: %w", node, err)
+	}
+
+	// Add taint
+	nodeObj.Spec.Taints = append(nodeObj.Spec.Taints, taint)
+
+	err = f.client.Update(context.Background(), nodeObj)
+	if err != nil {
+		return fmt.Errorf("failed to update node %s taints: %w", node, err)
+	}
+
+	DeferCleanup(func() {
+		// Remove taint
+		nodeObj := &corev1.Node{}
+		err := f.client.Get(context.Background(), client.ObjectKey{Name: node}, nodeObj)
+		if err != nil {
+			GinkgoWriter.Printf("Warning: failed to get node %s for taint cleanup: %v\n", node, err)
+			return
+		}
+
+		// Filter out the taint we added
+		var newTaints []corev1.Taint
+		for _, t := range nodeObj.Spec.Taints {
+			if t.Key != taint.Key || t.Value != taint.Value || t.Effect != taint.Effect {
+				newTaints = append(newTaints, t)
+			}
+		}
+		nodeObj.Spec.Taints = newTaints
+
+		err = f.client.Update(context.Background(), nodeObj)
+		if err != nil {
+			GinkgoWriter.Printf("Warning: failed to remove taint from node %s: %v\n", node, err)
+		}
 	})
+
 	return err
 }
 
-func (f Framework) WithPowerMonitorTolerations(taints []corev1.Taint) func(k *v1alpha1.PowerMonitor) {
+func (f *Framework) WithPowerMonitorTolerations(taints []corev1.Taint) func(k *v1alpha1.PowerMonitor) {
 	return func(pm *v1alpha1.PowerMonitor) {
 		pm.Spec.Kepler.Deployment.Tolerations = tolerateTaints(taints)
 	}
 }
 
-func (f Framework) WithPowerMonitorSecuritySet(mode v1alpha1.SecurityMode, allowedSANames []string) func(k *v1alpha1.PowerMonitor) {
+func (f *Framework) WithPowerMonitorSecuritySet(mode v1alpha1.SecurityMode, allowedSANames []string) func(k *v1alpha1.PowerMonitor) {
 	return func(pm *v1alpha1.PowerMonitor) {
 		pm.Spec.Kepler.Deployment.Security.Mode = mode
 		pm.Spec.Kepler.Deployment.Security.AllowedSANames = allowedSANames
 	}
 }
 
-func (f Framework) WithAdditionalConfigMaps(configMapNames []string) func(k *v1alpha1.PowerMonitor) {
+func (f *Framework) WithAdditionalConfigMaps(configMapNames []string) func(k *v1alpha1.PowerMonitor) {
 	return func(pm *v1alpha1.PowerMonitor) {
 		var configMapRefs []v1alpha1.ConfigMapRef
 		for _, name := range configMapNames {
@@ -405,26 +511,26 @@ func (f Framework) WithAdditionalConfigMaps(configMapNames []string) func(k *v1a
 	}
 }
 
-func (f Framework) WithPowerMonitorSecrets(secrets []v1alpha1.SecretRef) func(k *v1alpha1.PowerMonitor) {
+func (f *Framework) WithPowerMonitorSecrets(secrets []v1alpha1.SecretRef) func(k *v1alpha1.PowerMonitor) {
 	return func(pm *v1alpha1.PowerMonitor) {
 		pm.Spec.Kepler.Deployment.Secrets = secrets
 	}
 }
 
-func (f Framework) WithMaxTerminated(maxTerminated int32) func(k *v1alpha1.PowerMonitor) {
+func (f *Framework) WithMaxTerminated(maxTerminated int32) func(k *v1alpha1.PowerMonitor) {
 	return func(pm *v1alpha1.PowerMonitor) {
 		pm.Spec.Kepler.Config.MaxTerminated = &maxTerminated
 	}
 }
 
-func (f Framework) WithStaleness(staleness string) func(k *v1alpha1.PowerMonitor) {
+func (f *Framework) WithStaleness(staleness string) func(k *v1alpha1.PowerMonitor) {
 	return func(pm *v1alpha1.PowerMonitor) {
 		duration, _ := time.ParseDuration(staleness)
 		pm.Spec.Kepler.Config.Staleness = &metav1.Duration{Duration: duration}
 	}
 }
 
-func (f Framework) WithSampleRate(sampleRate string) func(k *v1alpha1.PowerMonitor) {
+func (f *Framework) WithSampleRate(sampleRate string) func(k *v1alpha1.PowerMonitor) {
 	return func(pm *v1alpha1.PowerMonitor) {
 		duration, _ := time.ParseDuration(sampleRate)
 		pm.Spec.Kepler.Config.SampleRate = &metav1.Duration{Duration: duration}
@@ -434,7 +540,7 @@ func (f Framework) WithSampleRate(sampleRate string) func(k *v1alpha1.PowerMonit
 // CreateTestPowerMonitor creates a PowerMonitor with standard test configuration
 // for VM or non-VM environments. It handles the common pattern of creating
 // additional ConfigMaps for VM environments and applies standard security settings.
-func (f Framework) CreateTestPowerMonitor(name string, runningOnVM bool, additionalFns ...powermonitorFn) *v1alpha1.PowerMonitor {
+func (f *Framework) CreateTestPowerMonitor(name string, runningOnVM bool, additionalFns ...powermonitorFn) *v1alpha1.PowerMonitor {
 	configMapName := "my-custom-config"
 
 	// Combine the base configuration with any additional functions
@@ -466,7 +572,7 @@ func (f Framework) CreateTestPowerMonitor(name string, runningOnVM bool, additio
   fake-cpu-meter:
     enabled: true`)
 		err := f.Patch(cfm)
-		assert.NoError(f.T, err, "failed to create additional config map for VM environment")
+		Expect(err).NotTo(HaveOccurred(), "failed to create additional config map for VM environment")
 	}
 
 	return pm
@@ -475,7 +581,7 @@ func (f Framework) CreateTestPowerMonitor(name string, runningOnVM bool, additio
 // CreateTestPowerMonitorInternal creates a PowerMonitorInternal with standard test configuration
 // for VM or non-VM environments. It handles the common pattern of creating
 // additional ConfigMaps for VM environments and applies standard configuration.
-func (f Framework) CreateTestPowerMonitorInternal(name string, testNs string, runningOnVM bool, keplerImage string, kubeRbacProxyImage string, cluster k8s.Cluster, securityMode v1alpha1.SecurityMode, allowedSANames []string, additionalFns ...powermonitorinternalFn) *v1alpha1.PowerMonitorInternal {
+func (f *Framework) CreateTestPowerMonitorInternal(name string, testNs string, runningOnVM bool, keplerImage string, kubeRbacProxyImage string, cluster k8s.Cluster, securityMode v1alpha1.SecurityMode, allowedSANames []string, additionalFns ...powermonitorinternalFn) *v1alpha1.PowerMonitorInternal {
 	configMapName := "my-custom-config"
 
 	// Set up the builder with standard configuration
@@ -512,13 +618,13 @@ func (f Framework) CreateTestPowerMonitorInternal(name string, testNs string, ru
   fake-cpu-meter:
     enabled: true`)
 		err := f.Patch(cfm)
-		assert.NoError(f.T, err, "failed to create additional config map for VM environment")
+		Expect(err).NotTo(HaveOccurred(), "failed to create additional config map for VM environment")
 	}
 
 	return pmi
 }
 
-func (f Framework) NewAdditionalConfigMap(configMapName, namespace, config string) *corev1.ConfigMap {
+func (f *Framework) NewAdditionalConfigMap(configMapName, namespace, config string) *corev1.ConfigMap {
 	cm := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      configMapName,
@@ -535,11 +641,10 @@ func (f Framework) NewAdditionalConfigMap(configMapName, namespace, config strin
 	return &cm
 }
 
-func (f Framework) GetSchedulableNodes() []corev1.Node {
-	f.T.Helper()
+func (f *Framework) GetSchedulableNodes() []corev1.Node {
 	var nodes corev1.NodeList
 	err := f.client.List(context.TODO(), &nodes)
-	assert.NoError(f.T, err, "failed to get nodes")
+	Expect(err).NotTo(HaveOccurred(), "failed to get nodes")
 
 	var ret []corev1.Node
 	for _, n := range nodes.Items {
@@ -553,9 +658,7 @@ func (f Framework) GetSchedulableNodes() []corev1.Node {
 // DeployOpenshiftCerts creates cert-manager resources for TLS certificate management.
 // Note: This function assumes cert-manager is already installed (which happens during
 // 'make cluster-up' via hack/cluster.sh).
-func (f Framework) DeployOpenshiftCerts(serviceName, serviceNamespace, clusterIssuerName, caCertName, caCertSecretName, pmIssuerName, tlsCertName, tlsCertSecretName string) {
-	f.T.Helper()
-
+func (f *Framework) DeployOpenshiftCerts(serviceName, serviceNamespace, clusterIssuerName, caCertName, caCertSecretName, pmIssuerName, tlsCertName, tlsCertSecretName string) {
 	f.CreateSelfSignedClusterIssuer(clusterIssuerName)
 
 	caCert := f.CreateCACertificate(caCertName, caCertSecretName, serviceNamespace, clusterIssuerName)
@@ -591,8 +694,7 @@ func (f Framework) DeployOpenshiftCerts(serviceName, serviceNamespace, clusterIs
 	}, Timeout(5*time.Minute))
 }
 
-
-func (f Framework) CreateSelfSignedClusterIssuer(name string) *certv1.ClusterIssuer {
+func (f *Framework) CreateSelfSignedClusterIssuer(name string) *certv1.ClusterIssuer {
 	issuer := certv1.ClusterIssuer{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: certv1.SchemeGroupVersion.String(),
@@ -609,29 +711,27 @@ func (f Framework) CreateSelfSignedClusterIssuer(name string) *certv1.ClusterIss
 	}
 
 	err := f.client.Patch(context.TODO(), &issuer, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
-	assert.NoError(f.T, err, "failed to create ClusterIssuer")
+	Expect(err).NotTo(HaveOccurred(), "failed to create ClusterIssuer")
 
-	f.T.Cleanup(func() {
+	DeferCleanup(func() {
 		f.DeleteSelfSignedClusterIssuer(name, Timeout(5*time.Minute))
 	})
 	return &issuer
 }
 
-func (f Framework) DeleteSelfSignedClusterIssuer(name string, fns ...AssertOptionFn) {
-	f.T.Helper()
-
+func (f *Framework) DeleteSelfSignedClusterIssuer(name string, fns ...AssertOptionFn) {
 	issuer := certv1.ClusterIssuer{}
 	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &issuer)
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get self signed cluster issuer :%s", name)
+	Expect(err).NotTo(HaveOccurred(), "failed to get self signed cluster issuer: %s", name)
 
-	f.T.Logf("%s: deleting self signed cluster issuer %s", time.Now().UTC().Format(time.RFC3339), name)
+	GinkgoWriter.Printf("%s: deleting self signed cluster issuer %s\n", time.Now().UTC().Format(time.RFC3339), name)
 
 	err = f.client.Delete(context.Background(), &issuer)
 	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete self signed cluster issuer:%s :%v", name, err)
+		Fail(fmt.Sprintf("failed to delete self signed cluster issuer %s: %v", name, err))
 	}
 
 	f.WaitUntil(fmt.Sprintf("self signed cluster %s is deleted", name), func(ctx context.Context) (bool, error) {
@@ -641,7 +741,7 @@ func (f Framework) DeleteSelfSignedClusterIssuer(name string, fns ...AssertOptio
 	}, fns...)
 }
 
-func (f Framework) CreateCACertificate(name, secretName, ns, issuerName string) *certv1.Certificate {
+func (f *Framework) CreateCACertificate(name, secretName, ns, issuerName string) *certv1.Certificate {
 	cert := certv1.Certificate{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: certv1.SchemeGroupVersion.String(),
@@ -668,36 +768,35 @@ func (f Framework) CreateCACertificate(name, secretName, ns, issuerName string) 
 	}
 
 	err := f.client.Patch(context.TODO(), &cert, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
-	assert.NoError(f.T, err, "failed to create CA Certificate")
+	Expect(err).NotTo(HaveOccurred(), "failed to create CA Certificate")
 
-	f.T.Cleanup(func() {
+	DeferCleanup(func() {
 		f.DeleteCACertificate(name, name, ns, Timeout(5*time.Minute))
 	})
 
 	return &cert
 }
 
-func (f Framework) DeleteCACertificate(name, secretName, ns string, fns ...AssertOptionFn) {
-	f.T.Helper()
+func (f *Framework) DeleteCACertificate(name, secretName, ns string, fns ...AssertOptionFn) {
 	caCert := certv1.Certificate{}
 	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &caCert)
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get ca certificate :%s", name)
+	Expect(err).NotTo(HaveOccurred(), "failed to get ca certificate: %s", name)
 
 	caSecret := corev1.Secret{}
 	err = f.client.Get(context.TODO(), client.ObjectKey{Name: secretName, Namespace: ns}, &caSecret)
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get ca secret:%s", secretName)
+	Expect(err).NotTo(HaveOccurred(), "failed to get ca secret: %s", secretName)
 
-	f.T.Logf("%s: deleting ca certificate %s", time.Now().UTC().Format(time.RFC3339), name)
+	GinkgoWriter.Printf("%s: deleting ca certificate %s\n", time.Now().UTC().Format(time.RFC3339), name)
 
 	err = f.client.Delete(context.Background(), &caCert)
 	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete ca certificate:%s :%v", name, err)
+		Fail(fmt.Sprintf("failed to delete ca certificate %s: %v", name, err))
 	}
 
 	f.WaitUntil(fmt.Sprintf("ca certificate %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
@@ -706,11 +805,11 @@ func (f Framework) DeleteCACertificate(name, secretName, ns string, fns ...Asser
 		return errors.IsNotFound(err), nil
 	}, fns...)
 
-	f.T.Logf("%s: deleting ca secret %s", time.Now().UTC().Format(time.RFC3339), secretName)
+	GinkgoWriter.Printf("%s: deleting ca secret %s\n", time.Now().UTC().Format(time.RFC3339), secretName)
 
 	err = f.client.Delete(context.Background(), &caSecret)
 	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete ca secret:%s :%v", secretName, err)
+		Fail(fmt.Sprintf("failed to delete ca secret %s: %v", secretName, err))
 	}
 
 	f.WaitUntil(fmt.Sprintf("ca secret %s in %s is deleted", secretName, ns), func(ctx context.Context) (bool, error) {
@@ -720,7 +819,7 @@ func (f Framework) DeleteCACertificate(name, secretName, ns string, fns ...Asser
 	}, fns...)
 }
 
-func (f Framework) CreateCAIssuer(name, secretName, ns string) *certv1.Issuer {
+func (f *Framework) CreateCAIssuer(name, secretName, ns string) *certv1.Issuer {
 	issuer := certv1.Issuer{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: certv1.SchemeGroupVersion.String(),
@@ -740,29 +839,28 @@ func (f Framework) CreateCAIssuer(name, secretName, ns string) *certv1.Issuer {
 	}
 
 	err := f.client.Patch(context.TODO(), &issuer, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
-	assert.NoError(f.T, err, "failed to create CA Issuer")
+	Expect(err).NotTo(HaveOccurred(), "failed to create CA Issuer")
 
-	f.T.Cleanup(func() {
+	DeferCleanup(func() {
 		f.DeleteCAIssuer(name, ns, Timeout(5*time.Minute))
 	})
 
 	return &issuer
 }
 
-func (f Framework) DeleteCAIssuer(name, ns string, fns ...AssertOptionFn) {
-	f.T.Helper()
+func (f *Framework) DeleteCAIssuer(name, ns string, fns ...AssertOptionFn) {
 	issuer := certv1.Issuer{}
 	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &issuer)
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get ca issuer:%s", name)
+	Expect(err).NotTo(HaveOccurred(), "failed to get ca issuer: %s", name)
 
-	f.T.Logf("%s: deleting ca issuer %s", time.Now().UTC().Format(time.RFC3339), name)
+	GinkgoWriter.Printf("%s: deleting ca issuer %s\n", time.Now().UTC().Format(time.RFC3339), name)
 
 	err = f.client.Delete(context.Background(), &issuer)
 	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete ca issuer:%s :%v", name, err)
+		Fail(fmt.Sprintf("failed to delete ca issuer %s: %v", name, err))
 	}
 
 	f.WaitUntil(fmt.Sprintf("ca issuer %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
@@ -772,7 +870,7 @@ func (f Framework) DeleteCAIssuer(name, ns string, fns ...AssertOptionFn) {
 	}, fns...)
 }
 
-func (f Framework) CreateTLSCertificate(name, secretName, ns, issuerName string, dnsNames []string) *certv1.Certificate {
+func (f *Framework) CreateTLSCertificate(name, secretName, ns, issuerName string, dnsNames []string) *certv1.Certificate {
 	cert := certv1.Certificate{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: certv1.SchemeGroupVersion.String(),
@@ -794,36 +892,35 @@ func (f Framework) CreateTLSCertificate(name, secretName, ns, issuerName string,
 	}
 
 	err := f.client.Patch(context.TODO(), &cert, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
-	assert.NoError(f.T, err, "failed to create TLS Certificate")
+	Expect(err).NotTo(HaveOccurred(), "failed to create TLS Certificate")
 
-	f.T.Cleanup(func() {
+	DeferCleanup(func() {
 		f.DeleteTLSCertificate(name, name, ns, Timeout(5*time.Minute))
 	})
 
 	return &cert
 }
 
-func (f Framework) DeleteTLSCertificate(name, secretName, ns string, fns ...AssertOptionFn) {
-	f.T.Helper()
+func (f *Framework) DeleteTLSCertificate(name, secretName, ns string, fns ...AssertOptionFn) {
 	caCert := certv1.Certificate{}
 	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &caCert)
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get ca certificate :%s", name)
+	Expect(err).NotTo(HaveOccurred(), "failed to get ca certificate: %s", name)
 
 	caSecret := corev1.Secret{}
 	err = f.client.Get(context.TODO(), client.ObjectKey{Name: secretName, Namespace: ns}, &caSecret)
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get ca secret:%s", secretName)
+	Expect(err).NotTo(HaveOccurred(), "failed to get ca secret: %s", secretName)
 
-	f.T.Logf("%s: deleting ca certificate %s", time.Now().UTC().Format(time.RFC3339), name)
+	GinkgoWriter.Printf("%s: deleting ca certificate %s\n", time.Now().UTC().Format(time.RFC3339), name)
 
 	err = f.client.Delete(context.Background(), &caCert)
 	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete ca certificate:%s :%v", name, err)
+		Fail(fmt.Sprintf("failed to delete ca certificate %s: %v", name, err))
 	}
 
 	f.WaitUntil(fmt.Sprintf("ca certificate %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
@@ -832,11 +929,11 @@ func (f Framework) DeleteTLSCertificate(name, secretName, ns string, fns ...Asse
 		return errors.IsNotFound(err), nil
 	}, fns...)
 
-	f.T.Logf("%s: deleting ca secret %s", time.Now().UTC().Format(time.RFC3339), secretName)
+	GinkgoWriter.Printf("%s: deleting ca secret %s\n", time.Now().UTC().Format(time.RFC3339), secretName)
 
 	err = f.client.Delete(context.Background(), &caSecret)
 	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete ca secret:%s :%v", secretName, err)
+		Fail(fmt.Sprintf("failed to delete ca secret %s: %v", secretName, err))
 	}
 
 	f.WaitUntil(fmt.Sprintf("ca secret %s in %s is deleted", secretName, ns), func(ctx context.Context) (bool, error) {
@@ -846,7 +943,7 @@ func (f Framework) DeleteTLSCertificate(name, secretName, ns string, fns ...Asse
 	}, fns...)
 }
 
-func (f Framework) CreateCurlPowerMonitorTestSuite(testJobName, testSAName, testNs, audience, serviceURL, caCertSecretName, caCertSecretNs string) string {
+func (f *Framework) CreateCurlPowerMonitorTestSuite(testJobName, testSAName, testNs, audience, serviceURL, caCertSecretName, caCertSecretNs string) string {
 	f.CreateNamespace(testNs)
 
 	f.CreateSA(testSAName, testNs)
@@ -863,14 +960,14 @@ func (f Framework) CreateCurlPowerMonitorTestSuite(testJobName, testSAName, test
 		return curlJob.Status.Succeeded > 0, nil
 	}, Timeout(5*time.Minute))
 
-	logs, err := oc.Literal().From("oc logs job/%s -n %s", testJobName, testNs).Run()
+	logs, err := f.GetJobLogs(testJobName, testNs)
 	if err != nil {
-		f.T.Errorf("failed to get job pod's logs: %s :%v", testJobName, err)
+		Fail(fmt.Sprintf("failed to get job pod's logs %s: %v", testJobName, err))
 	}
 	return logs
 }
 
-func (f Framework) CreateCAConfigMap(name, ns, caCertSecretName, caCertSecretNs string) *corev1.ConfigMap {
+func (f *Framework) CreateCAConfigMap(name, ns, caCertSecretName, caCertSecretNs string) *corev1.ConfigMap {
 	newCAConfigMap := corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -883,34 +980,33 @@ func (f Framework) CreateCAConfigMap(name, ns, caCertSecretName, caCertSecretNs 
 		Data: map[string]string{},
 	}
 	caSecret := corev1.Secret{}
-	f.AssertResourceExists(caCertSecretName, caCertSecretNs, &caSecret)
+	f.ExpectResourceExists(caCertSecretName, caCertSecretNs, &caSecret)
 	caCertData := caSecret.Data["tls.crt"]
 	newCAConfigMap.Data["service-ca.crt"] = string(caCertData)
 
 	err := f.client.Patch(context.TODO(), &newCAConfigMap, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
-	assert.NoError(f.T, err, "failed to create ca bundle config map")
+	Expect(err).NotTo(HaveOccurred(), "failed to create ca bundle config map")
 
-	f.T.Cleanup(func() {
+	DeferCleanup(func() {
 		f.DeleteCAConfigMap(name, ns, Timeout(5*time.Minute))
 	})
 
 	return &newCAConfigMap
 }
 
-func (f Framework) DeleteCAConfigMap(name, ns string, fns ...AssertOptionFn) {
-	f.T.Helper()
+func (f *Framework) DeleteCAConfigMap(name, ns string, fns ...AssertOptionFn) {
 	caConfigMap := corev1.ConfigMap{}
 	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &caConfigMap)
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get ca bundle config map:%s", name)
+	Expect(err).NotTo(HaveOccurred(), "failed to get ca bundle config map: %s", name)
 
-	f.T.Logf("%s: deleting ca bundle config map %s", time.Now().UTC().Format(time.RFC3339), name)
+	GinkgoWriter.Printf("%s: deleting ca bundle config map %s\n", time.Now().UTC().Format(time.RFC3339), name)
 
 	err = f.client.Delete(context.Background(), &caConfigMap)
 	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete ca config map:%s :%v", name, err)
+		Fail(fmt.Sprintf("failed to delete ca config map %s: %v", name, err))
 	}
 
 	f.WaitUntil(fmt.Sprintf("ca bundle configmap %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
@@ -920,7 +1016,7 @@ func (f Framework) DeleteCAConfigMap(name, ns string, fns ...AssertOptionFn) {
 	}, fns...)
 }
 
-func (f Framework) CreateCurlPowerMonitorJob(name, ns, saName, caConfigMapName, audience, serviceURL string) *batchv1.Job {
+func (f *Framework) CreateCurlPowerMonitorJob(name, ns, saName, caConfigMapName, audience, serviceURL string) *batchv1.Job {
 	volumes := []corev1.Volume{
 		k8s.VolumeFromConfigMap("ca-bundle", caConfigMapName),
 		k8s.VolumeFromProjectedToken("token-vol", audience, "token"),
@@ -968,25 +1064,24 @@ func (f Framework) CreateCurlPowerMonitorJob(name, ns, saName, caConfigMapName, 
 	}
 
 	err := f.client.Patch(context.TODO(), &curlJob, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
-	assert.NoError(f.T, err, "failed to create curl power monitor job")
+	Expect(err).NotTo(HaveOccurred(), "failed to create curl power monitor job")
 
-	f.T.Cleanup(func() {
+	DeferCleanup(func() {
 		f.DeleteCurlPowerMonitorJob(name, ns, Timeout(5*time.Minute))
 	})
 
 	return &curlJob
 }
 
-func (f Framework) DeleteCurlPowerMonitorJob(name, ns string, fns ...AssertOptionFn) {
-	f.T.Helper()
+func (f *Framework) DeleteCurlPowerMonitorJob(name, ns string, fns ...AssertOptionFn) {
 	curlJob := batchv1.Job{}
 	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &curlJob)
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get curl power monitor job:%s", name)
+	Expect(err).NotTo(HaveOccurred(), "failed to get curl power monitor job: %s", name)
 
-	f.T.Logf("%s: deleting curl power monitor job %s", time.Now().UTC().Format(time.RFC3339), name)
+	GinkgoWriter.Printf("%s: deleting curl power monitor job %s\n", time.Now().UTC().Format(time.RFC3339), name)
 
 	foregroundPolicy := metav1.DeletePropagationForeground
 	err = f.client.Delete(context.Background(), &curlJob, &client.DeleteOptions{
@@ -994,7 +1089,7 @@ func (f Framework) DeleteCurlPowerMonitorJob(name, ns string, fns ...AssertOptio
 		PropagationPolicy:  &foregroundPolicy,
 	})
 	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete curl power monitor job:%s :%v", name, err)
+		Fail(fmt.Sprintf("failed to delete curl power monitor job %s: %v", name, err))
 	}
 
 	f.WaitUntil(fmt.Sprintf("curl power monitor %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
@@ -1004,7 +1099,7 @@ func (f Framework) DeleteCurlPowerMonitorJob(name, ns string, fns ...AssertOptio
 	}, fns...)
 }
 
-func (f Framework) CreateNamespace(name string) *corev1.Namespace {
+func (f *Framework) CreateNamespace(name string) *corev1.Namespace {
 	namespace := corev1.Namespace{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -1016,31 +1111,30 @@ func (f Framework) CreateNamespace(name string) *corev1.Namespace {
 	}
 
 	err := f.client.Patch(context.TODO(), &namespace, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
-	assert.NoError(f.T, err, "failed to create namespace")
+	Expect(err).NotTo(HaveOccurred(), "failed to create namespace")
 
-	f.T.Cleanup(func() {
+	DeferCleanup(func() {
 		f.DeleteNamespace(name, Timeout(5*time.Minute))
 	})
 
 	return &namespace
 }
 
-func (f Framework) DeleteNamespace(name string, fns ...AssertOptionFn) {
-	f.T.Helper()
+func (f *Framework) DeleteNamespace(name string, fns ...AssertOptionFn) {
 	namespace := corev1.Namespace{}
 	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name}, &namespace)
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get namespace:%s", name)
+	Expect(err).NotTo(HaveOccurred(), "failed to get namespace: %s", name)
 
-	f.T.Logf("%s: deleting namespace %s", time.Now().UTC().Format(time.RFC3339), name)
+	GinkgoWriter.Printf("%s: deleting namespace %s\n", time.Now().UTC().Format(time.RFC3339), name)
 
 	err = f.client.Delete(context.Background(), &namespace, &client.DeleteOptions{
 		PropagationPolicy: ptr.To(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete namespace:%s :%v", name, err)
+		Fail(fmt.Sprintf("failed to delete namespace %s: %v", name, err))
 	}
 
 	f.WaitUntil(fmt.Sprintf("namespace %s is deleted", name), func(ctx context.Context) (bool, error) {
@@ -1050,7 +1144,7 @@ func (f Framework) DeleteNamespace(name string, fns ...AssertOptionFn) {
 	}, fns...)
 }
 
-func (f Framework) CreateSA(name, ns string) *corev1.ServiceAccount {
+func (f *Framework) CreateSA(name, ns string) *corev1.ServiceAccount {
 	serviceAccount := corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -1066,29 +1160,28 @@ func (f Framework) CreateSA(name, ns string) *corev1.ServiceAccount {
 		},
 	}
 	err := f.client.Patch(context.TODO(), &serviceAccount, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
-	assert.NoError(f.T, err, "failed to create service account")
+	Expect(err).NotTo(HaveOccurred(), "failed to create service account")
 
-	f.T.Cleanup(func() {
+	DeferCleanup(func() {
 		f.DeleteSA(name, ns, Timeout(5*time.Minute))
 	})
 
 	return &serviceAccount
 }
 
-func (f Framework) DeleteSA(name, ns string, fns ...AssertOptionFn) {
-	f.T.Helper()
+func (f *Framework) DeleteSA(name, ns string, fns ...AssertOptionFn) {
 	serviceAccount := corev1.ServiceAccount{}
 	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &serviceAccount)
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get service account:%s", name)
+	Expect(err).NotTo(HaveOccurred(), "failed to get service account: %s", name)
 
-	f.T.Logf("%s: deleting service account %s", time.Now().UTC().Format(time.RFC3339), name)
+	GinkgoWriter.Printf("%s: deleting service account %s\n", time.Now().UTC().Format(time.RFC3339), name)
 
 	err = f.client.Delete(context.Background(), &serviceAccount)
 	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete service account:%s :%v", name, err)
+		Fail(fmt.Sprintf("failed to delete service account %s: %v", name, err))
 	}
 
 	f.WaitUntil(fmt.Sprintf("service account %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
@@ -1099,8 +1192,7 @@ func (f Framework) DeleteSA(name, ns string, fns ...AssertOptionFn) {
 }
 
 // WaitForNamespace waits for a namespace to be created and available
-func (f Framework) WaitForNamespace(name string, fns ...AssertOptionFn) {
-	f.T.Helper()
+func (f *Framework) WaitForNamespace(name string, fns ...AssertOptionFn) {
 	f.WaitUntil(fmt.Sprintf("namespace %s is created", name), func(ctx context.Context) (bool, error) {
 		ns := corev1.Namespace{}
 		err := f.client.Get(ctx, client.ObjectKey{Name: name}, &ns)
@@ -1110,8 +1202,7 @@ func (f Framework) WaitForNamespace(name string, fns ...AssertOptionFn) {
 
 // ContainerWithName finds a container by name in the given list of containers
 // Returns the container if found, or an error if not found
-func (f Framework) ContainerWithName(containers []corev1.Container, name string) (*corev1.Container, error) {
-	f.T.Helper()
+func (f *Framework) ContainerWithName(containers []corev1.Container, name string) (*corev1.Container, error) {
 	for i, container := range containers {
 		if container.Name == name {
 			return &containers[i], nil
@@ -1120,7 +1211,56 @@ func (f Framework) ContainerWithName(containers []corev1.Container, name string)
 	return nil, fmt.Errorf("container with name %q not found", name)
 }
 
-func (f Framework) CreateTestSecret(name, ns string, data map[string]string) *corev1.Secret {
+// GetJobLogs retrieves logs from the first pod of a job
+func (f *Framework) GetJobLogs(jobName, namespace string) (string, error) {
+	// Get the job to find its pods
+	job := &batchv1.Job{}
+	err := f.client.Get(context.Background(), client.ObjectKey{Name: jobName, Namespace: namespace}, job)
+	if err != nil {
+		return "", fmt.Errorf("failed to get job %s/%s: %w", namespace, jobName, err)
+	}
+
+	// List pods owned by this job
+	podList := &corev1.PodList{}
+	err = f.client.List(context.Background(), podList,
+		client.InNamespace(namespace),
+		client.MatchingLabels(job.Spec.Selector.MatchLabels),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to list pods for job %s/%s: %w", namespace, jobName, err)
+	}
+
+	if len(podList.Items) == 0 {
+		return "", fmt.Errorf("no pods found for job %s/%s", namespace, jobName)
+	}
+
+	// Get logs from the first pod
+	pod := podList.Items[0]
+
+	// Use the raw Kubernetes client for logs
+	cfg := config.GetConfigOrDie()
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return "", fmt.Errorf("failed to create kubernetes clientset: %w", err)
+	}
+
+	req := clientset.CoreV1().Pods(namespace).GetLogs(pod.Name, &corev1.PodLogOptions{})
+	podLogs, err := req.Stream(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("failed to get logs for pod %s/%s: %w", namespace, pod.Name, err)
+	}
+	defer podLogs.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(podLogs)
+	if err != nil {
+		return "", fmt.Errorf("failed to read logs from pod %s/%s: %w", namespace, pod.Name, err)
+	}
+
+	return buf.String(), nil
+}
+
+func (f *Framework) CreateTestSecret(name, ns string, data map[string]string) *corev1.Secret {
 	secret := corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -1138,27 +1278,26 @@ func (f Framework) CreateTestSecret(name, ns string, data map[string]string) *co
 		StringData: data,
 	}
 	err := f.client.Patch(context.TODO(), &secret, client.Apply, client.ForceOwnership, client.FieldOwner("e2e-test"))
-	assert.NoError(f.T, err, "failed to create test secret")
-	f.T.Cleanup(func() {
+	Expect(err).NotTo(HaveOccurred(), "failed to create test secret")
+	DeferCleanup(func() {
 		f.DeleteTestSecret(name, ns, Timeout(5*time.Minute))
 	})
 	return &secret
 }
 
-func (f Framework) DeleteTestSecret(name, ns string, fns ...AssertOptionFn) {
-	f.T.Helper()
+func (f *Framework) DeleteTestSecret(name, ns string, fns ...AssertOptionFn) {
 	secret := corev1.Secret{}
 	err := f.client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: ns}, &secret)
 	if errors.IsNotFound(err) {
 		return
 	}
-	assert.NoError(f.T, err, "failed to get test secret:%s", name)
+	Expect(err).NotTo(HaveOccurred(), "failed to get test secret: %s", name)
 
-	f.T.Logf("%s: deleting test secret %s", time.Now().UTC().Format(time.RFC3339), name)
+	GinkgoWriter.Printf("%s: deleting test secret %s\n", time.Now().UTC().Format(time.RFC3339), name)
 
 	err = f.client.Delete(context.Background(), &secret)
 	if err != nil && !errors.IsNotFound(err) {
-		f.T.Errorf("failed to delete test secret:%s :%v", name, err)
+		Fail(fmt.Sprintf("failed to delete test secret %s: %v", name, err))
 	}
 
 	f.WaitUntil(fmt.Sprintf("test secret %s in %s is deleted", name, ns), func(ctx context.Context) (bool, error) {
@@ -1188,8 +1327,7 @@ func isSchedulableNode(n corev1.Node) bool {
 	}) == -1
 }
 
-func (f Framework) WaitForOpenshiftCerts(serviceName, serviceNamespace, tlsCertSecretName string) {
-	f.T.Helper()
+func (f *Framework) WaitForOpenshiftCerts(serviceName, serviceNamespace, tlsCertSecretName string) {
 	f.WaitUntil("OpenShift TLS secret is created", func(ctx context.Context) (bool, error) {
 		tlsSecret := corev1.Secret{}
 		err := f.client.Get(ctx, client.ObjectKey{
@@ -1209,7 +1347,7 @@ func (f Framework) WaitForOpenshiftCerts(serviceName, serviceNamespace, tlsCertS
 	})
 }
 
-func (f Framework) CreateCAConfigMapFromOpenshiftServiceCert(name, ns, tlsCertSecretName, tlsCertSecretNs string) *corev1.ConfigMap {
+func (f *Framework) CreateCAConfigMapFromOpenshiftServiceCert(name, ns, tlsCertSecretName, tlsCertSecretNs string) *corev1.ConfigMap {
 	newCAConfigMap := corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -1226,9 +1364,7 @@ func (f Framework) CreateCAConfigMapFromOpenshiftServiceCert(name, ns, tlsCertSe
 	}
 
 	err := f.Patch(&newCAConfigMap)
-	if err != nil {
-		f.T.Fatalf("failed to create CA ConfigMap with injection annotation: %v", err)
-	}
+	Expect(err).NotTo(HaveOccurred(), "failed to create CA ConfigMap with injection annotation")
 
 	f.WaitUntil("OpenShift injects service CA into ConfigMap", func(ctx context.Context) (bool, error) {
 		caConfigMap := corev1.ConfigMap{}
@@ -1252,7 +1388,7 @@ func (f Framework) CreateCAConfigMapFromOpenshiftServiceCert(name, ns, tlsCertSe
 	return &newCAConfigMap
 }
 
-func (f Framework) CreateCurlPowerMonitorTestSuiteForOpenShift(testJobName, testSAName, testNs, audience, serviceURL, caCertConfigMapName, caCertConfigMapNs string) string {
+func (f *Framework) CreateCurlPowerMonitorTestSuiteForOpenShift(testJobName, testSAName, testNs, audience, serviceURL, caCertConfigMapName, caCertConfigMapNs string) string {
 	f.CreateNamespace(testNs)
 
 	f.CreateSA(testSAName, testNs)
@@ -1269,9 +1405,9 @@ func (f Framework) CreateCurlPowerMonitorTestSuiteForOpenShift(testJobName, test
 		return curlJob.Status.Succeeded > 0, nil
 	}, Timeout(5*time.Minute))
 
-	logs, err := oc.Literal().From("oc logs job/%s -n %s", testJobName, testNs).Run()
+	logs, err := f.GetJobLogs(testJobName, testNs)
 	if err != nil {
-		f.T.Errorf("failed to get job pod's logs: %s :%v", testJobName, err)
+		Fail(fmt.Sprintf("failed to get job pod's logs %s: %v", testJobName, err))
 	}
 	return logs
 }
