@@ -143,8 +143,12 @@ coverage: test ## Run tests and generate coverage report.
 	go tool cover -html=cover.out -o cover.html
 
 .PHONY: docs
-docs: crdoc manifests ## Generate docs.
-	$(CRDOC) --resources config/crd/bases --output docs/user/reference/api.md
+docs: crd-ref-docs manifests ## Generate docs.
+	$(CRD_REF_DOCS) \
+		--source-path=./api/v1alpha1 \
+		--config=./hack/crd-ref-docs-config.yaml \
+		--renderer=markdown \
+		--output-path=docs/user/reference/api.md
 
 ##@ Development env
 CLUSTER_PROVIDER ?= kind
@@ -348,12 +352,12 @@ LOCALBIN ?= $(shell pwd)/tmp/bin
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
-CRDOC ?= $(LOCALBIN)/crdoc
+CRD_REF_DOCS ?= $(LOCALBIN)/crd-ref-docs
 HELM ?= $(LOCALBIN)/helm
 
 # NOTE: please keep this list sorted so that it can be easily searched
 TOOLS = controller-gen \
-		crdoc \
+		crd-ref-docs \
 		govulncheck \
 		helm \
 		jq \
