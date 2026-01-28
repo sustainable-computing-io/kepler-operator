@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2025 The Kepler Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# Configuration for crd-ref-docs
+# For more informtaion see: https://github.com/elastic/crd-ref-docs
+processor:
+  ignoreTypes: []
+  ignoreFields: []
+render:
+  kubernetesVersion: "1.32"

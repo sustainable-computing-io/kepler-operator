@@ -1,1016 +1,497 @@
 # API Reference
 
-Packages:
-
+## Packages
 - [kepler.system.sustainable.computing.io/v1alpha1](#keplersystemsustainablecomputingiov1alpha1)
 
-# kepler.system.sustainable.computing.io/v1alpha1
 
-Resource Types:
+## kepler.system.sustainable.computing.io/v1alpha1
 
-- [PowerMonitorInternal](#powermonitorinternal)
+Package v1alpha1 contains API Schema definitions for the kepler.system v1alpha1 API group
 
+### Resource Types
 - [PowerMonitor](#powermonitor)
+- [PowerMonitorInternal](#powermonitorinternal)
+- [PowerMonitorInternalList](#powermonitorinternallist)
+- [PowerMonitorList](#powermonitorlist)
 
 
 
-
-## PowerMonitorInternal
-<sup><sup>[↩ Parent](#keplersystemsustainablecomputingiov1alpha1 )</sup></sup>
-
-
-
-
-
-
-PowerMonitorInternal is the Schema for the internal kepler 2 API
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-      <td><b>apiVersion</b></td>
-      <td>string</td>
-      <td>kepler.system.sustainable.computing.io/v1alpha1</td>
-      <td>true</td>
-      </tr>
-      <tr>
-      <td><b>kind</b></td>
-      <td>string</td>
-      <td>PowerMonitorInternal</td>
-      <td>true</td>
-      </tr>
-      <tr>
-      <td><b><a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta">metadata</a></b></td>
-      <td>object</td>
-      <td>Refer to the Kubernetes API documentation for the fields of the `metadata` field.</td>
-      <td>true</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorinternalspec">spec</a></b></td>
-        <td>object</td>
-        <td>
-          PowerMonitorInternalSpec defines the desired state of PowerMonitorInternalSpec<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorinternalstatus">status</a></b></td>
-        <td>object</td>
-        <td>
-          <br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitorInternal.spec
-<sup><sup>[↩ Parent](#powermonitorinternal)</sup></sup>
-
-
-
-PowerMonitorInternalSpec defines the desired state of PowerMonitorInternalSpec
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b><a href="#powermonitorinternalspeckepler">kepler</a></b></td>
-        <td>object</td>
-        <td>
-          <br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorinternalspecopenshift">openshift</a></b></td>
-        <td>object</td>
-        <td>
-          <br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitorInternal.spec.kepler
-<sup><sup>[↩ Parent](#powermonitorinternalspec)</sup></sup>
+#### Condition
 
 
 
 
 
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b><a href="#powermonitorinternalspeckeplerdeployment">deployment</a></b></td>
-        <td>object</td>
-        <td>
-          <br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorinternalspeckeplerconfig">config</a></b></td>
-        <td>object</td>
-        <td>
-          <br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
 
 
-### PowerMonitorInternal.spec.kepler.deployment
-<sup><sup>[↩ Parent](#powermonitorinternalspeckepler)</sup></sup>
+_Appears in:_
+- [PowerMonitorInternalStatus](#powermonitorinternalstatus)
+- [PowerMonitorStatus](#powermonitorstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `type` _[ConditionType](#conditiontype)_ | Type of Kepler Condition - Reconciled, Available ... |  |  |
+| `status` _[ConditionStatus](#conditionstatus)_ | status of the condition, one of True, False, Unknown. |  |  |
+| `observedGeneration` _integer_ | observedGeneration represents the .metadata.generation that the condition was set based upon.<br />For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br />with respect to the current state of the instance. |  | Minimum: 0 <br /> |
+| `lastTransitionTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#time-v1-meta)_ | lastTransitionTime is the last time the condition transitioned from one status to another.<br />This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable. |  | Format: date-time <br />Required: \{\} <br />Type: string <br /> |
+| `reason` _[ConditionReason](#conditionreason)_ | reason contains a programmatic identifier indicating the reason for the condition's last transition. |  |  |
+| `message` _string_ | message is a human readable message indicating details about the transition.<br />This may be an empty string. |  | MaxLength: 32768 <br />Required: \{\} <br /> |
+
+
+#### ConditionReason
+
+_Underlying type:_ _string_
 
 
 
 
 
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>image</b></td>
-        <td>string</td>
-        <td>
-          <br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>namespace</b></td>
-        <td>string</td>
-        <td>
-          <br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>kubeRbacProxyImage</b></td>
-        <td>string</td>
-        <td>
-          <br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>nodeSelector</b></td>
-        <td>map[string]string</td>
-        <td>
-          Defines which Nodes the Pod is scheduled on<br/>
-          <br/>
-            <i>Default</i>: map[kubernetes.io/os:linux]<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorinternalspeckeplerdeploymentsecretsindex">secrets</a></b></td>
-        <td>[]object</td>
-        <td>
-          Secrets to be mounted in the power monitor containers<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorinternalspeckeplerdeploymentsecurity">security</a></b></td>
-        <td>object</td>
-        <td>
-          If set, defines the security mode and allowed SANames<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorinternalspeckeplerdeploymenttolerationsindex">tolerations</a></b></td>
-        <td>[]object</td>
-        <td>
-          If specified, define Pod's tolerations<br/>
-          <br/>
-            <i>Default</i>: [map[effect: key: operator:Exists value:]]<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
+_Appears in:_
+- [Condition](#condition)
+
+| Field | Description |
+| --- | --- |
+| `InvalidPowerMonitorResource` | InvalidPowerMonitorResource indicates the CR name was invalid<br /> |
+| `ReconcileSuccess` | ReconcileComplete indicates the CR was successfully reconciled<br /> |
+| `ReconcileError` | ReconcileError indicates an error was encountered while reconciling the CR<br /> |
+| `DaemonSetNotFound` | DaemonSetNotFound indicates the DaemonSet created for a kepler was not found<br /> |
+| `DaemonSetError` |  |
+| `DaemonSetInProgress` |  |
+| `DaemonSetUnavailable` |  |
+| `DaemonSetPartiallyAvailable` |  |
+| `DaemonSetPodsNotRunning` |  |
+| `DaemonSetRolloutInProgress` |  |
+| `DaemonSetReady` |  |
+| `DaemonSetOutOfSync` |  |
+| `SecretNotFound` | SecretNotFound indicates one or more referenced secrets are missing<br /> |
 
 
-### PowerMonitorInternal.spec.kepler.deployment.secrets[index]
-<sup><sup>[↩ Parent](#powermonitorinternalspeckeplerdeployment)</sup></sup>
+#### ConditionStatus
+
+_Underlying type:_ _string_
+
+These are valid condition statuses.
+"ConditionTrue" means a resource is in the condition.
+"ConditionFalse" means a resource is not in the condition.
+"ConditionUnknown" means kubernetes can't decide if a resource is in the condition or not.
+In the future, we could add other intermediate conditions, e.g. ConditionDegraded.
 
 
 
-SecretRef defines a reference to a Secret to be mounted
+_Appears in:_
+- [Condition](#condition)
 
-Mount Path Cautions:
-Exercise caution when setting mount paths for secrets. Avoid mounting secrets to critical system paths
-that may interfere with Kepler's operation or container security:
-- /etc/kepler - Reserved for Kepler configuration files
-- /sys, /proc, /dev - System directories that should remain read-only
-- /usr, /bin, /sbin, /lib - System binaries and libraries
-- / - Root filesystem
-
-Best practices:
-- Use subdirectories like /etc/kepler/secrets/ or /opt/secrets/
-- Ensure mount paths don't conflict with existing volume mounts
-- Test mount paths in development environments before production deployment
-- Monitor Kepler pod logs for mount-related errors
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>mountPath</b></td>
-        <td>string</td>
-        <td>
-          MountPath where the secret should be mounted in the container<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>name</b></td>
-        <td>string</td>
-        <td>
-          Name of the secret in the same namespace as the Kepler deployment<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>readOnly</b></td>
-        <td>boolean</td>
-        <td>
-          ReadOnly specifies whether the secret should be mounted read-only<br/>
-          <br/>
-            <i>Default</i>: true<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
+| Field | Description |
+| --- | --- |
+| `True` |  |
+| `False` |  |
+| `Unknown` |  |
+| `Degraded` |  |
 
 
-### PowerMonitorInternal.spec.kepler.deployment.security
-<sup><sup>[↩ Parent](#powermonitorinternalspeckeplerdeployment)</sup></sup>
+#### ConditionType
 
-
-
-If set, defines the security mode and allowed SANames
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>allowedSANames</b></td>
-        <td>[]string</td>
-        <td>
-          <br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>mode</b></td>
-        <td>enum</td>
-        <td>
-          <br/>
-          <br/>
-            <i>Enum</i>: none, rbac<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitorInternal.spec.kepler.deployment.tolerations[index]
-<sup><sup>[↩ Parent](#powermonitorinternalspeckeplerdeployment)</sup></sup>
-
-
-
-The pod this Toleration is attached to tolerates any taint that matches
-the triple <key,value,effect> using the matching operator <operator>.
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>effect</b></td>
-        <td>string</td>
-        <td>
-          Effect indicates the taint effect to match. Empty means match all taint effects.
-When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>key</b></td>
-        <td>string</td>
-        <td>
-          Key is the taint key that the toleration applies to. Empty means match all taint keys.
-If the key is empty, operator must be Exists; this combination means to match all values and all keys.<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>operator</b></td>
-        <td>string</td>
-        <td>
-          Operator represents a key's relationship to the value.
-Valid operators are Exists and Equal. Defaults to Equal.
-Exists is equivalent to wildcard for value, so that a pod can
-tolerate all taints of a particular category.<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>tolerationSeconds</b></td>
-        <td>integer</td>
-        <td>
-          TolerationSeconds represents the period of time the toleration (which must be
-of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
-it is not set, which means tolerate the taint forever (do not evict). Zero and
-negative values will be treated as 0 (evict immediately) by the system.<br/>
-          <br/>
-            <i>Format</i>: int64<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>value</b></td>
-        <td>string</td>
-        <td>
-          Value is the taint value the toleration matches to.
-If the operator is Exists, the value should be empty, otherwise just a regular string.<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitorInternal.spec.kepler.config
-<sup><sup>[↩ Parent](#powermonitorinternalspeckepler)</sup></sup>
+_Underlying type:_ _string_
 
 
 
 
 
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b><a href="#powermonitorinternalspeckeplerconfigadditionalconfigmapsindex">additionalConfigMaps</a></b></td>
-        <td>[]object</td>
-        <td>
-          AdditionalConfigMaps is a list of ConfigMap names that will be merged with the default ConfigMap
-These AdditionalConfigMaps must exist in the same namespace as PowerMonitor components<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>logLevel</b></td>
-        <td>string</td>
-        <td>
-          <br/>
-          <br/>
-            <i>Default</i>: info<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>maxTerminated</b></td>
-        <td>integer</td>
-        <td>
-          MaxTerminated controls terminated workload tracking behavior
-Negative values: track unlimited terminated workloads (no capacity limit)
-Zero: disable terminated workload tracking completely
-Positive values: track top N terminated workloads by energy consumption<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-            <i>Default</i>: 0<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>metricLevels</b></td>
-        <td>[]enum</td>
-        <td>
-          MetricLevels specifies which metrics levels to export
-Valid values are combinations of: node, process, container, vm, pod<br/>
-          <br/>
-            <i>Default</i>: [node pod vm]<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>sampleRate</b></td>
-        <td>string</td>
-        <td>
-          SampleRate specifies the interval for monitoring resources (processes, containers, vms, etc.)
-Must be a positive duration (e.g., "5s", "1m", "30s"). Negative values are not allowed.<br/>
-          <br/>
-            <i>Default</i>: 5s<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>staleness</b></td>
-        <td>string</td>
-        <td>
-          Staleness specifies how long to wait before considering calculated power values as stale
-Must be a positive duration (e.g., "500ms", "5s", "1h"). Negative values are not allowed.<br/>
-          <br/>
-            <i>Default</i>: 500ms<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
+_Appears in:_
+- [Condition](#condition)
+
+| Field | Description |
+| --- | --- |
+| `Available` |  |
+| `Reconciled` |  |
 
 
-### PowerMonitorInternal.spec.kepler.config.additionalConfigMaps[index]
-<sup><sup>[↩ Parent](#powermonitorinternalspeckeplerconfig)</sup></sup>
+#### ConfigMapRef
 
 
 
 ConfigMapRef defines a reference to a ConfigMap
 
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>name</b></td>
-        <td>string</td>
-        <td>
-          Name of the ConfigMap<br/>
-        </td>
-        <td>true</td>
-      </tr></tbody>
-</table>
 
 
-### PowerMonitorInternal.spec.openshift
-<sup><sup>[↩ Parent](#powermonitorinternalspec)</sup></sup>
+_Appears in:_
+- [PowerMonitorInternalKeplerConfigSpec](#powermonitorinternalkeplerconfigspec)
+- [PowerMonitorKeplerConfigSpec](#powermonitorkeplerconfigspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `name` _string_ | Name of the ConfigMap |  | MinLength: 1 <br /> |
 
 
-
-
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>enabled</b></td>
-        <td>boolean</td>
-        <td>
-          <br/>
-          <br/>
-            <i>Default</i>: true<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorinternalspecopenshiftdashboard">dashboard</a></b></td>
-        <td>object</td>
-        <td>
-          <br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitorInternal.spec.openshift.dashboard
-<sup><sup>[↩ Parent](#powermonitorinternalspecopenshift)</sup></sup>
-
-
-
-
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>enabled</b></td>
-        <td>boolean</td>
-        <td>
-          <br/>
-          <br/>
-            <i>Default</i>: false<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitorInternal.status
-<sup><sup>[↩ Parent](#powermonitorinternal)</sup></sup>
-
-
-
-
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b><a href="#powermonitorinternalstatusconditionsindex">conditions</a></b></td>
-        <td>[]object</td>
-        <td>
-          conditions represent the latest available observations of power-monitor-internal<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorinternalstatuskepler">kepler</a></b></td>
-        <td>object</td>
-        <td>
-          <br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitorInternal.status.conditions[index]
-<sup><sup>[↩ Parent](#powermonitorinternalstatus)</sup></sup>
-
-
-
-
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>lastTransitionTime</b></td>
-        <td>string</td>
-        <td>
-          lastTransitionTime is the last time the condition transitioned from one status to another.
-This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>
-          <br/>
-            <i>Format</i>: date-time<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>message</b></td>
-        <td>string</td>
-        <td>
-          message is a human readable message indicating details about the transition.
-This may be an empty string.<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>reason</b></td>
-        <td>string</td>
-        <td>
-          reason contains a programmatic identifier indicating the reason for the condition's last transition.<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>status</b></td>
-        <td>string</td>
-        <td>
-          status of the condition, one of True, False, Unknown.<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>type</b></td>
-        <td>string</td>
-        <td>
-          Type of Kepler Condition - Reconciled, Available ...<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>observedGeneration</b></td>
-        <td>integer</td>
-        <td>
-          observedGeneration represents the .metadata.generation that the condition was set based upon.
-For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-with respect to the current state of the instance.<br/>
-          <br/>
-            <i>Format</i>: int64<br/>
-            <i>Minimum</i>: 0<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitorInternal.status.kepler
-<sup><sup>[↩ Parent](#powermonitorinternalstatus)</sup></sup>
-
-
-
-
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>currentNumberScheduled</b></td>
-        <td>integer</td>
-        <td>
-          The number of nodes that are running at least 1 power-monitor-internal pod and are
-supposed to run the power-monitor-internal pod.<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>desiredNumberScheduled</b></td>
-        <td>integer</td>
-        <td>
-          The total number of nodes that should be running the power-monitor-internal
-pod (including nodes correctly running the power-monitor-internal pod).<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>numberMisscheduled</b></td>
-        <td>integer</td>
-        <td>
-          The number of nodes that are running the power-monitor-internal pod, but are not supposed
-to run the power-monitor-internal pod.<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>numberReady</b></td>
-        <td>integer</td>
-        <td>
-          numberReady is the number of nodes that should be running the power-monitor-internal pod
-and have one or more of the power-monitor-internal pod running with a Ready Condition.<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>numberAvailable</b></td>
-        <td>integer</td>
-        <td>
-          The number of nodes that should be running the power-monitor-internal pod and have one or
-more of the power-monitor-internal pod running and available<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>numberUnavailable</b></td>
-        <td>integer</td>
-        <td>
-          The number of nodes that should be running the
-power-monitor-internal pod and have none of the power-monitor-internal pod running and available<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>updatedNumberScheduled</b></td>
-        <td>integer</td>
-        <td>
-          The total number of nodes that are running updated power-monitor-internal pod<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-## PowerMonitor
-<sup><sup>[↩ Parent](#keplersystemsustainablecomputingiov1alpha1 )</sup></sup>
-
-
-
+#### PowerMonitor
 
 
 
 PowerMonitor is the Schema for the PowerMonitor API
 
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-      <td><b>apiVersion</b></td>
-      <td>string</td>
-      <td>kepler.system.sustainable.computing.io/v1alpha1</td>
-      <td>true</td>
-      </tr>
-      <tr>
-      <td><b>kind</b></td>
-      <td>string</td>
-      <td>PowerMonitor</td>
-      <td>true</td>
-      </tr>
-      <tr>
-      <td><b><a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta">metadata</a></b></td>
-      <td>object</td>
-      <td>Refer to the Kubernetes API documentation for the fields of the `metadata` field.</td>
-      <td>true</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorspec">spec</a></b></td>
-        <td>object</td>
-        <td>
-          PowerMonitorSpec defines the desired state of Power Monitor<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorstatus">status</a></b></td>
-        <td>object</td>
-        <td>
-          PowerMonitorStatus defines the observed state of Power Monitor<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
 
 
-### PowerMonitor.spec
-<sup><sup>[↩ Parent](#powermonitor)</sup></sup>
+_Appears in:_
+- [PowerMonitorList](#powermonitorlist)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `kepler.system.sustainable.computing.io/v1alpha1` | | |
+| `kind` _string_ | `PowerMonitor` | | |
+| `kind` _string_ | Kind is a string value representing the REST resource this object represents.<br />Servers may infer this from the endpoint the client submits requests to.<br />Cannot be updated.<br />In CamelCase.<br />More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds |  |  |
+| `apiVersion` _string_ | APIVersion defines the versioned schema of this representation of an object.<br />Servers should convert recognized schemas to the latest internal value, and<br />may reject unrecognized values.<br />More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources |  |  |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |  |  |
+| `spec` _[PowerMonitorSpec](#powermonitorspec)_ |  |  |  |
+| `status` _[PowerMonitorStatus](#powermonitorstatus)_ |  |  |  |
+
+
+
+
+
+
+#### PowerMonitorInternal
+
+
+
+PowerMonitorInternal is the Schema for the internal kepler 2 API
+
+
+
+_Appears in:_
+- [PowerMonitorInternalList](#powermonitorinternallist)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `kepler.system.sustainable.computing.io/v1alpha1` | | |
+| `kind` _string_ | `PowerMonitorInternal` | | |
+| `kind` _string_ | Kind is a string value representing the REST resource this object represents.<br />Servers may infer this from the endpoint the client submits requests to.<br />Cannot be updated.<br />In CamelCase.<br />More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds |  |  |
+| `apiVersion` _string_ | APIVersion defines the versioned schema of this representation of an object.<br />Servers should convert recognized schemas to the latest internal value, and<br />may reject unrecognized values.<br />More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources |  |  |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |  |  |
+| `spec` _[PowerMonitorInternalSpec](#powermonitorinternalspec)_ |  |  |  |
+| `status` _[PowerMonitorInternalStatus](#powermonitorinternalstatus)_ |  |  |  |
+
+
+#### PowerMonitorInternalDashboardSpec
+
+
+
+
+
+
+
+_Appears in:_
+- [PowerMonitorInternalOpenShiftSpec](#powermonitorinternalopenshiftspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `enabled` _boolean_ |  | false |  |
+
+
+#### PowerMonitorInternalKeplerConfigSpec
+
+
+
+
+
+
+
+_Appears in:_
+- [PowerMonitorInternalKeplerSpec](#powermonitorinternalkeplerspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `logLevel` _string_ |  | info |  |
+| `additionalConfigMaps` _[ConfigMapRef](#configmapref) array_ | AdditionalConfigMaps is a list of ConfigMap names that will be merged with the default ConfigMap<br />These AdditionalConfigMaps must exist in the same namespace as PowerMonitor components |  |  |
+| `metricLevels` _string array_ | MetricLevels specifies which metrics levels to export<br />Valid values are combinations of: node, process, container, vm, pod | [node pod vm] | items:Enum: [node process container vm pod] <br /> |
+| `staleness` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#duration-v1-meta)_ | Staleness specifies how long to wait before considering calculated power values as stale<br />Must be a positive duration (e.g., "500ms", "5s", "1h"). Negative values are not allowed. | 500ms | Pattern: `^[0-9]+(\.[0-9]+)?(ns\|us\|ms\|s\|m\|h)$` <br />Type: string <br /> |
+| `sampleRate` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#duration-v1-meta)_ | SampleRate specifies the interval for monitoring resources (processes, containers, vms, etc.)<br />Must be a positive duration (e.g., "5s", "1m", "30s"). Negative values are not allowed. | 5s | Pattern: `^[0-9]+(\.[0-9]+)?(ns\|us\|ms\|s\|m\|h)$` <br />Type: string <br /> |
+| `maxTerminated` _integer_ | MaxTerminated controls terminated workload tracking behavior<br />Negative values: track unlimited terminated workloads (no capacity limit)<br />Zero: disable terminated workload tracking completely<br />Positive values: track top N terminated workloads by energy consumption | 0 |  |
+
+
+#### PowerMonitorInternalKeplerDeploymentSpec
+
+
+
+
+
+
+
+_Appears in:_
+- [PowerMonitorInternalKeplerSpec](#powermonitorinternalkeplerspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `nodeSelector` _object (keys:string, values:string)_ | Defines which Nodes the Pod is scheduled on | \{ kubernetes.io/os:linux \} |  |
+| `tolerations` _[Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#toleration-v1-core) array_ | If specified, define Pod's tolerations | [map[effect: key: operator:Exists value:]] |  |
+| `security` _[PowerMonitorKeplerDeploymentSecuritySpec](#powermonitorkeplerdeploymentsecurityspec)_ | If set, defines the security mode and allowed SANames |  |  |
+| `secrets` _[SecretRef](#secretref) array_ | Secrets to be mounted in the power monitor containers |  |  |
+| `image` _string_ |  |  | MinLength: 3 <br /> |
+| `kubeRbacProxyImage` _string_ |  |  | MinLength: 3 <br /> |
+| `namespace` _string_ |  |  | MinLength: 1 <br /> |
+
+
+#### PowerMonitorInternalKeplerSpec
+
+
+
+
+
+
+
+_Appears in:_
+- [PowerMonitorInternalSpec](#powermonitorinternalspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `deployment` _[PowerMonitorInternalKeplerDeploymentSpec](#powermonitorinternalkeplerdeploymentspec)_ |  |  | Required: \{\} <br /> |
+| `config` _[PowerMonitorInternalKeplerConfigSpec](#powermonitorinternalkeplerconfigspec)_ |  |  |  |
+
+
+#### PowerMonitorInternalKeplerStatus
+
+
+
+
+
+
+
+_Appears in:_
+- [PowerMonitorInternalStatus](#powermonitorinternalstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `currentNumberScheduled` _integer_ | The number of nodes that are running at least 1 power-monitor-internal pod and are<br />supposed to run the power-monitor-internal pod. |  |  |
+| `numberMisscheduled` _integer_ | The number of nodes that are running the power-monitor-internal pod, but are not supposed<br />to run the power-monitor-internal pod. |  |  |
+| `desiredNumberScheduled` _integer_ | The total number of nodes that should be running the power-monitor-internal<br />pod (including nodes correctly running the power-monitor-internal pod). |  |  |
+| `numberReady` _integer_ | numberReady is the number of nodes that should be running the power-monitor-internal pod<br />and have one or more of the power-monitor-internal pod running with a Ready Condition. |  |  |
+| `updatedNumberScheduled` _integer_ | The total number of nodes that are running updated power-monitor-internal pod |  |  |
+| `numberAvailable` _integer_ | The number of nodes that should be running the power-monitor-internal pod and have one or<br />more of the power-monitor-internal pod running and available |  |  |
+| `numberUnavailable` _integer_ | The number of nodes that should be running the<br />power-monitor-internal pod and have none of the power-monitor-internal pod running and available |  |  |
+
+
+#### PowerMonitorInternalList
+
+
+
+PowerMonitorInternalList contains a list of PowerMonitorInternal
+
+
+
+
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `kepler.system.sustainable.computing.io/v1alpha1` | | |
+| `kind` _string_ | `PowerMonitorInternalList` | | |
+| `kind` _string_ | Kind is a string value representing the REST resource this object represents.<br />Servers may infer this from the endpoint the client submits requests to.<br />Cannot be updated.<br />In CamelCase.<br />More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds |  |  |
+| `apiVersion` _string_ | APIVersion defines the versioned schema of this representation of an object.<br />Servers should convert recognized schemas to the latest internal value, and<br />may reject unrecognized values.<br />More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources |  |  |
+| `metadata` _[ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#listmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |  |  |
+| `items` _[PowerMonitorInternal](#powermonitorinternal) array_ |  |  |  |
+
+
+#### PowerMonitorInternalOpenShiftSpec
+
+
+
+
+
+
+
+_Appears in:_
+- [PowerMonitorInternalSpec](#powermonitorinternalspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `enabled` _boolean_ |  | true |  |
+| `dashboard` _[PowerMonitorInternalDashboardSpec](#powermonitorinternaldashboardspec)_ |  |  |  |
+
+
+#### PowerMonitorInternalSpec
+
+
+
+PowerMonitorInternalSpec defines the desired state of PowerMonitorInternalSpec
+
+
+
+_Appears in:_
+- [PowerMonitorInternal](#powermonitorinternal)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `kepler` _[PowerMonitorInternalKeplerSpec](#powermonitorinternalkeplerspec)_ |  |  | Required: \{\} <br /> |
+| `openshift` _[PowerMonitorInternalOpenShiftSpec](#powermonitorinternalopenshiftspec)_ |  |  |  |
+
+
+#### PowerMonitorInternalStatus
+
+
+
+
+
+
+
+_Appears in:_
+- [PowerMonitorInternal](#powermonitorinternal)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `kepler` _[PowerMonitorInternalKeplerStatus](#powermonitorinternalkeplerstatus)_ |  |  |  |
+| `conditions` _[Condition](#condition) array_ | conditions represent the latest available observations of power-monitor-internal |  |  |
+
+
+#### PowerMonitorKeplerConfigSpec
+
+
+
+
+
+
+
+_Appears in:_
+- [PowerMonitorKeplerSpec](#powermonitorkeplerspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `logLevel` _string_ |  | info |  |
+| `additionalConfigMaps` _[ConfigMapRef](#configmapref) array_ | AdditionalConfigMaps is a list of ConfigMap names that will be merged with the default ConfigMap<br />These AdditionalConfigMaps must exist in the same namespace as PowerMonitor components |  |  |
+| `metricLevels` _string array_ | MetricLevels specifies which metrics levels to export<br />Valid values are combinations of: node, process, container, vm, pod | [node pod vm] | items:Enum: [node process container vm pod] <br /> |
+| `staleness` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#duration-v1-meta)_ | Staleness specifies how long to wait before considering calculated power values as stale<br />Must be a positive duration (e.g., "500ms", "5s", "1h"). Negative values are not allowed. | 500ms | Pattern: `^[0-9]+(\.[0-9]+)?(ns\|us\|ms\|s\|m\|h)$` <br />Type: string <br /> |
+| `sampleRate` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#duration-v1-meta)_ | SampleRate specifies the interval for monitoring resources (processes, containers, vms, etc.)<br />Must be a positive duration (e.g., "5s", "1m", "30s"). Negative values are not allowed. | 5s | Pattern: `^[0-9]+(\.[0-9]+)?(ns\|us\|ms\|s\|m\|h)$` <br />Type: string <br /> |
+| `maxTerminated` _integer_ | MaxTerminated controls terminated workload tracking behavior<br />Negative values: track unlimited terminated workloads (no capacity limit)<br />Zero: disable terminated workload tracking completely<br />Positive values: track top N terminated workloads by energy consumption | 0 |  |
+
+
+#### PowerMonitorKeplerDeploymentSecuritySpec
+
+
+
+
+
+
+
+_Appears in:_
+- [PowerMonitorInternalKeplerDeploymentSpec](#powermonitorinternalkeplerdeploymentspec)
+- [PowerMonitorKeplerDeploymentSpec](#powermonitorkeplerdeploymentspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `mode` _[SecurityMode](#securitymode)_ |  |  | Enum: [none rbac] <br /> |
+| `allowedSANames` _string array_ |  |  |  |
+
+
+#### PowerMonitorKeplerDeploymentSpec
+
+
+
+
+
+
+
+_Appears in:_
+- [PowerMonitorInternalKeplerDeploymentSpec](#powermonitorinternalkeplerdeploymentspec)
+- [PowerMonitorKeplerSpec](#powermonitorkeplerspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `nodeSelector` _object (keys:string, values:string)_ | Defines which Nodes the Pod is scheduled on | \{ kubernetes.io/os:linux \} |  |
+| `tolerations` _[Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#toleration-v1-core) array_ | If specified, define Pod's tolerations | [map[effect: key: operator:Exists value:]] |  |
+| `security` _[PowerMonitorKeplerDeploymentSecuritySpec](#powermonitorkeplerdeploymentsecurityspec)_ | If set, defines the security mode and allowed SANames |  |  |
+| `secrets` _[SecretRef](#secretref) array_ | Secrets to be mounted in the power monitor containers |  |  |
+
+
+#### PowerMonitorKeplerSpec
+
+
+
+
+
+
+
+_Appears in:_
+- [PowerMonitorSpec](#powermonitorspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `deployment` _[PowerMonitorKeplerDeploymentSpec](#powermonitorkeplerdeploymentspec)_ |  |  |  |
+| `config` _[PowerMonitorKeplerConfigSpec](#powermonitorkeplerconfigspec)_ |  |  |  |
+
+
+#### PowerMonitorKeplerStatus
+
+
+
+
+
+
+
+_Appears in:_
+- [PowerMonitorStatus](#powermonitorstatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `currentNumberScheduled` _integer_ | The number of nodes that are running at least 1 power-monitor pod and are<br />supposed to run the power-monitor pod. |  |  |
+| `numberMisscheduled` _integer_ | The number of nodes that are running the power-monitor pod, but are not supposed<br />to run the power-monitor pod. |  |  |
+| `desiredNumberScheduled` _integer_ | The total number of nodes that should be running the power-monitor<br />pod (including nodes correctly running the power-monitor pod). |  |  |
+| `numberReady` _integer_ | numberReady is the number of nodes that should be running the power-monitor pod<br />and have one or more of the power-monitor pod running with a Ready Condition. |  |  |
+| `updatedNumberScheduled` _integer_ | The total number of nodes that are running updated power-monitor pod |  |  |
+| `numberAvailable` _integer_ | The number of nodes that should be running the power-monitor pod and have one or<br />more of the power-monitor pod running and available |  |  |
+| `numberUnavailable` _integer_ | The number of nodes that should be running the<br />power-monitor pod and have none of the power-monitor pod running and available |  |  |
+
+
+#### PowerMonitorList
+
+
+
+PowerMonitorList contains a list of PowerMonitor
+
+
+
+
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `kepler.system.sustainable.computing.io/v1alpha1` | | |
+| `kind` _string_ | `PowerMonitorList` | | |
+| `kind` _string_ | Kind is a string value representing the REST resource this object represents.<br />Servers may infer this from the endpoint the client submits requests to.<br />Cannot be updated.<br />In CamelCase.<br />More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds |  |  |
+| `apiVersion` _string_ | APIVersion defines the versioned schema of this representation of an object.<br />Servers should convert recognized schemas to the latest internal value, and<br />may reject unrecognized values.<br />More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources |  |  |
+| `metadata` _[ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#listmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |  |  |
+| `items` _[PowerMonitor](#powermonitor) array_ |  |  |  |
+
+
+#### PowerMonitorSpec
 
 
 
 PowerMonitorSpec defines the desired state of Power Monitor
 
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b><a href="#powermonitorspeckepler">kepler</a></b></td>
-        <td>object</td>
-        <td>
-          <br/>
-        </td>
-        <td>true</td>
-      </tr></tbody>
-</table>
 
 
-### PowerMonitor.spec.kepler
-<sup><sup>[↩ Parent](#powermonitorspec)</sup></sup>
+_Appears in:_
+- [PowerMonitor](#powermonitor)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `kepler` _[PowerMonitorKeplerSpec](#powermonitorkeplerspec)_ |  |  |  |
+
+
+#### PowerMonitorStatus
 
 
 
-
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b><a href="#powermonitorspeckeplerconfig">config</a></b></td>
-        <td>object</td>
-        <td>
-          <br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorspeckeplerdeployment">deployment</a></b></td>
-        <td>object</td>
-        <td>
-          <br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitor.spec.kepler.config
-<sup><sup>[↩ Parent](#powermonitorspeckepler)</sup></sup>
+PowerMonitorStatus defines the observed state of Power Monitor
 
 
 
+_Appears in:_
+- [PowerMonitor](#powermonitor)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `kepler` _[PowerMonitorKeplerStatus](#powermonitorkeplerstatus)_ |  |  |  |
+| `conditions` _[Condition](#condition) array_ | conditions represent the latest available observations of power-monitor |  |  |
 
 
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b><a href="#powermonitorspeckeplerconfigadditionalconfigmapsindex">additionalConfigMaps</a></b></td>
-        <td>[]object</td>
-        <td>
-          AdditionalConfigMaps is a list of ConfigMap names that will be merged with the default ConfigMap
-These AdditionalConfigMaps must exist in the same namespace as PowerMonitor components<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>logLevel</b></td>
-        <td>string</td>
-        <td>
-          <br/>
-          <br/>
-            <i>Default</i>: info<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>maxTerminated</b></td>
-        <td>integer</td>
-        <td>
-          MaxTerminated controls terminated workload tracking behavior
-Negative values: track unlimited terminated workloads (no capacity limit)
-Zero: disable terminated workload tracking completely
-Positive values: track top N terminated workloads by energy consumption<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-            <i>Default</i>: 0<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>metricLevels</b></td>
-        <td>[]enum</td>
-        <td>
-          MetricLevels specifies which metrics levels to export
-Valid values are combinations of: node, process, container, vm, pod<br/>
-          <br/>
-            <i>Default</i>: [node pod vm]<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>sampleRate</b></td>
-        <td>string</td>
-        <td>
-          SampleRate specifies the interval for monitoring resources (processes, containers, vms, etc.)
-Must be a positive duration (e.g., "5s", "1m", "30s"). Negative values are not allowed.<br/>
-          <br/>
-            <i>Default</i>: 5s<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>staleness</b></td>
-        <td>string</td>
-        <td>
-          Staleness specifies how long to wait before considering calculated power values as stale
-Must be a positive duration (e.g., "500ms", "5s", "1h"). Negative values are not allowed.<br/>
-          <br/>
-            <i>Default</i>: 500ms<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitor.spec.kepler.config.additionalConfigMaps[index]
-<sup><sup>[↩ Parent](#powermonitorspeckeplerconfig)</sup></sup>
-
-
-
-ConfigMapRef defines a reference to a ConfigMap
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>name</b></td>
-        <td>string</td>
-        <td>
-          Name of the ConfigMap<br/>
-        </td>
-        <td>true</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitor.spec.kepler.deployment
-<sup><sup>[↩ Parent](#powermonitorspeckepler)</sup></sup>
-
-
-
-
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>nodeSelector</b></td>
-        <td>map[string]string</td>
-        <td>
-          Defines which Nodes the Pod is scheduled on<br/>
-          <br/>
-            <i>Default</i>: map[kubernetes.io/os:linux]<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorspeckeplerdeploymentsecretsindex">secrets</a></b></td>
-        <td>[]object</td>
-        <td>
-          Secrets to be mounted in the power monitor containers<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorspeckeplerdeploymentsecurity">security</a></b></td>
-        <td>object</td>
-        <td>
-          If set, defines the security mode and allowed SANames<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorspeckeplerdeploymenttolerationsindex">tolerations</a></b></td>
-        <td>[]object</td>
-        <td>
-          If specified, define Pod's tolerations<br/>
-          <br/>
-            <i>Default</i>: [map[effect: key: operator:Exists value:]]<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitor.spec.kepler.deployment.secrets[index]
-<sup><sup>[↩ Parent](#powermonitorspeckeplerdeployment)</sup></sup>
+#### SecretRef
 
 
 
@@ -1030,334 +511,36 @@ Best practices:
 - Test mount paths in development environments before production deployment
 - Monitor Kepler pod logs for mount-related errors
 
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>mountPath</b></td>
-        <td>string</td>
-        <td>
-          MountPath where the secret should be mounted in the container<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>name</b></td>
-        <td>string</td>
-        <td>
-          Name of the secret in the same namespace as the Kepler deployment<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>readOnly</b></td>
-        <td>boolean</td>
-        <td>
-          ReadOnly specifies whether the secret should be mounted read-only<br/>
-          <br/>
-            <i>Default</i>: true<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
 
 
-### PowerMonitor.spec.kepler.deployment.security
-<sup><sup>[↩ Parent](#powermonitorspeckeplerdeployment)</sup></sup>
+_Appears in:_
+- [PowerMonitorInternalKeplerDeploymentSpec](#powermonitorinternalkeplerdeploymentspec)
+- [PowerMonitorKeplerDeploymentSpec](#powermonitorkeplerdeploymentspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `name` _string_ | Name of the secret in the same namespace as the Kepler deployment |  | MinLength: 1 <br />Required: \{\} <br /> |
+| `mountPath` _string_ | MountPath where the secret should be mounted in the container |  | MinLength: 1 <br />Required: \{\} <br /> |
+| `readOnly` _boolean_ | ReadOnly specifies whether the secret should be mounted read-only | true |  |
 
 
 
-If set, defines the security mode and allowed SANames
 
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>allowedSANames</b></td>
-        <td>[]string</td>
-        <td>
-          <br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>mode</b></td>
-        <td>enum</td>
-        <td>
-          <br/>
-          <br/>
-            <i>Enum</i>: none, rbac<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
+#### SecurityMode
 
-
-### PowerMonitor.spec.kepler.deployment.tolerations[index]
-<sup><sup>[↩ Parent](#powermonitorspeckeplerdeployment)</sup></sup>
-
-
-
-The pod this Toleration is attached to tolerates any taint that matches
-the triple <key,value,effect> using the matching operator <operator>.
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>effect</b></td>
-        <td>string</td>
-        <td>
-          Effect indicates the taint effect to match. Empty means match all taint effects.
-When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>key</b></td>
-        <td>string</td>
-        <td>
-          Key is the taint key that the toleration applies to. Empty means match all taint keys.
-If the key is empty, operator must be Exists; this combination means to match all values and all keys.<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>operator</b></td>
-        <td>string</td>
-        <td>
-          Operator represents a key's relationship to the value.
-Valid operators are Exists and Equal. Defaults to Equal.
-Exists is equivalent to wildcard for value, so that a pod can
-tolerate all taints of a particular category.<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>tolerationSeconds</b></td>
-        <td>integer</td>
-        <td>
-          TolerationSeconds represents the period of time the toleration (which must be
-of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
-it is not set, which means tolerate the taint forever (do not evict). Zero and
-negative values will be treated as 0 (evict immediately) by the system.<br/>
-          <br/>
-            <i>Format</i>: int64<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>value</b></td>
-        <td>string</td>
-        <td>
-          Value is the taint value the toleration matches to.
-If the operator is Exists, the value should be empty, otherwise just a regular string.<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitor.status
-<sup><sup>[↩ Parent](#powermonitor)</sup></sup>
-
-
-
-PowerMonitorStatus defines the observed state of Power Monitor
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b><a href="#powermonitorstatusconditionsindex">conditions</a></b></td>
-        <td>[]object</td>
-        <td>
-          conditions represent the latest available observations of power-monitor<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b><a href="#powermonitorstatuskepler">kepler</a></b></td>
-        <td>object</td>
-        <td>
-          <br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
-
-
-### PowerMonitor.status.conditions[index]
-<sup><sup>[↩ Parent](#powermonitorstatus)</sup></sup>
+_Underlying type:_ _string_
 
 
 
 
 
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>lastTransitionTime</b></td>
-        <td>string</td>
-        <td>
-          lastTransitionTime is the last time the condition transitioned from one status to another.
-This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>
-          <br/>
-            <i>Format</i>: date-time<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>message</b></td>
-        <td>string</td>
-        <td>
-          message is a human readable message indicating details about the transition.
-This may be an empty string.<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>reason</b></td>
-        <td>string</td>
-        <td>
-          reason contains a programmatic identifier indicating the reason for the condition's last transition.<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>status</b></td>
-        <td>string</td>
-        <td>
-          status of the condition, one of True, False, Unknown.<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>type</b></td>
-        <td>string</td>
-        <td>
-          Type of Kepler Condition - Reconciled, Available ...<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>observedGeneration</b></td>
-        <td>integer</td>
-        <td>
-          observedGeneration represents the .metadata.generation that the condition was set based upon.
-For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-with respect to the current state of the instance.<br/>
-          <br/>
-            <i>Format</i>: int64<br/>
-            <i>Minimum</i>: 0<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
+_Appears in:_
+- [PowerMonitorKeplerDeploymentSecuritySpec](#powermonitorkeplerdeploymentsecurityspec)
+- [SecurityConfig](#securityconfig)
+
+| Field | Description |
+| --- | --- |
+| `none` |  |
+| `rbac` |  |
 
 
-### PowerMonitor.status.kepler
-<sup><sup>[↩ Parent](#powermonitorstatus)</sup></sup>
-
-
-
-
-
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Required</th>
-        </tr>
-    </thead>
-    <tbody><tr>
-        <td><b>currentNumberScheduled</b></td>
-        <td>integer</td>
-        <td>
-          The number of nodes that are running at least 1 power-monitor pod and are
-supposed to run the power-monitor pod.<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>desiredNumberScheduled</b></td>
-        <td>integer</td>
-        <td>
-          The total number of nodes that should be running the power-monitor
-pod (including nodes correctly running the power-monitor pod).<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>numberMisscheduled</b></td>
-        <td>integer</td>
-        <td>
-          The number of nodes that are running the power-monitor pod, but are not supposed
-to run the power-monitor pod.<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>numberReady</b></td>
-        <td>integer</td>
-        <td>
-          numberReady is the number of nodes that should be running the power-monitor pod
-and have one or more of the power-monitor pod running with a Ready Condition.<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>true</td>
-      </tr><tr>
-        <td><b>numberAvailable</b></td>
-        <td>integer</td>
-        <td>
-          The number of nodes that should be running the power-monitor pod and have one or
-more of the power-monitor pod running and available<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>numberUnavailable</b></td>
-        <td>integer</td>
-        <td>
-          The number of nodes that should be running the
-power-monitor pod and have none of the power-monitor pod running and available<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>false</td>
-      </tr><tr>
-        <td><b>updatedNumberScheduled</b></td>
-        <td>integer</td>
-        <td>
-          The total number of nodes that are running updated power-monitor pod<br/>
-          <br/>
-            <i>Format</i>: int32<br/>
-        </td>
-        <td>false</td>
-      </tr></tbody>
-</table>
