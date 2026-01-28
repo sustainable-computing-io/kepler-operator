@@ -7,30 +7,41 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// PowerMonitorInternalDashboardSpec defines settings for the Kepler Grafana dashboard
 type PowerMonitorInternalDashboardSpec struct {
+	// Enabled controls whether to deploy the Grafana dashboard
 	// +kubebuilder:default=false
 	Enabled bool `json:"enabled,omitempty"`
 }
 
+// PowerMonitorInternalOpenShiftSpec defines OpenShift-specific settings
 type PowerMonitorInternalOpenShiftSpec struct {
+	// Enabled controls whether OpenShift-specific features are enabled
 	// +kubebuilder:default=true
-	Enabled   bool                              `json:"enabled"`
+	Enabled bool `json:"enabled"`
+	// Dashboard configures the Grafana dashboard deployment
 	Dashboard PowerMonitorInternalDashboardSpec `json:"dashboard,omitempty"`
 }
 
+// PowerMonitorInternalKeplerDeploymentSpec extends PowerMonitorKeplerDeploymentSpec with internal deployment settings
 type PowerMonitorInternalKeplerDeploymentSpec struct {
 	PowerMonitorKeplerDeploymentSpec `json:",inline"`
+	// Image specifies the Kepler container image
 	// +kubebuilder:validation:MinLength=3
 	Image string `json:"image"`
 
+	// KubeRbacProxyImage specifies the kube-rbac-proxy sidecar image
 	// +kubebuilder:validation:MinLength=3
 	KubeRbacProxyImage string `json:"kubeRbacProxyImage,omitempty"`
 
+	// Namespace specifies the namespace where Kepler will be deployed
 	// +kubebuilder:validation:MinLength=1
 	Namespace string `json:"namespace"`
 }
 
+// PowerMonitorInternalKeplerConfigSpec defines configuration options for internal Kepler deployment
 type PowerMonitorInternalKeplerConfigSpec struct {
+	// LogLevel sets the logging verbosity (e.g., debug, info, warn, error)
 	// +kubebuilder:default="info"
 	LogLevel string `json:"logLevel,omitempty"`
 
@@ -73,16 +84,21 @@ type PowerMonitorInternalKeplerConfigSpec struct {
 	MaxTerminated *int32 `json:"maxTerminated,omitempty"`
 }
 
+// PowerMonitorInternalKeplerSpec defines the internal Kepler component specification
 type PowerMonitorInternalKeplerSpec struct {
+	// Deployment contains the deployment settings for the internal Kepler DaemonSet
 	// +kubebuilder:validation:Required
 	Deployment PowerMonitorInternalKeplerDeploymentSpec `json:"deployment"`
-	Config     PowerMonitorInternalKeplerConfigSpec     `json:"config,omitempty"`
+	// Config contains the configuration options for internal Kepler
+	Config PowerMonitorInternalKeplerConfigSpec `json:"config,omitempty"`
 }
 
-// PowerMonitorInternalSpec defines the desired state of PowerMonitorInternalSpec
+// PowerMonitorInternalSpec defines the desired state of PowerMonitorInternal
 type PowerMonitorInternalSpec struct {
+	// Kepler contains the Kepler component specification
 	// +kubebuilder:validation:Required
-	Kepler    PowerMonitorInternalKeplerSpec    `json:"kepler"`
+	Kepler PowerMonitorInternalKeplerSpec `json:"kepler"`
+	// OpenShift contains OpenShift-specific settings
 	OpenShift PowerMonitorInternalOpenShiftSpec `json:"openshift,omitempty"`
 }
 
@@ -109,8 +125,9 @@ type PowerMonitorInternal struct {
 	Status PowerMonitorInternalStatus `json:"status,omitempty"`
 }
 
+// PowerMonitorInternalKeplerStatus defines the observed state of the internal Kepler DaemonSet
 type PowerMonitorInternalKeplerStatus struct {
-	// The number of nodes that are running at least 1 power-monitor-internal pod and are
+	// CurrentNumberScheduled is the number of nodes that are running at least 1 power-monitor-internal pod and are
 	// supposed to run the power-monitor-internal pod.
 	CurrentNumberScheduled int32 `json:"currentNumberScheduled"`
 
@@ -141,7 +158,9 @@ type PowerMonitorInternalKeplerStatus struct {
 	NumberUnavailable int32 `json:"numberUnavailable,omitempty"`
 }
 
+// PowerMonitorInternalStatus defines the observed state of PowerMonitorInternal
 type PowerMonitorInternalStatus struct {
+	// Kepler contains the status of the internal Kepler DaemonSet
 	Kepler PowerMonitorInternalKeplerStatus `json:"kepler,omitempty"`
 	// conditions represent the latest available observations of power-monitor-internal
 	// +operator-sdk:csv:customresourcedefinitions:type=status,xDescriptors="urn:alm:descriptor:com.tectonic.ui:conditions"

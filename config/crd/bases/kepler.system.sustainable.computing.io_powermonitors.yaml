@@ -67,8 +67,10 @@ spec:
             description: PowerMonitorSpec defines the desired state of Power Monitor
             properties:
               kepler:
+                description: PowerMonitorKeplerSpec defines the Kepler component specification
                 properties:
                   config:
+                    description: Config contains the configuration options for Kepler
                     properties:
                       additionalConfigMaps:
                         description: |-
@@ -88,6 +90,8 @@ spec:
                         x-kubernetes-list-type: atomic
                       logLevel:
                         default: info
+                        description: LogLevel sets the logging verbosity (e.g., debug,
+                          info, warn, error)
                         type: string
                       maxTerminated:
                         default: 0
@@ -132,13 +136,16 @@ spec:
                         type: string
                     type: object
                   deployment:
+                    description: Deployment contains the deployment settings for the
+                      Kepler DaemonSet
                     properties:
                       nodeSelector:
                         additionalProperties:
                           type: string
                         default:
                           kubernetes.io/os: linux
-                        description: Defines which Nodes the Pod is scheduled on
+                        description: NodeSelector defines which Nodes the Pod is scheduled
+                          on
                         type: object
                       secrets:
                         description: Secrets to be mounted in the power monitor containers
@@ -186,11 +193,15 @@ spec:
                           SANames
                         properties:
                           allowedSANames:
+                            description: AllowedSANames lists service account names
+                              allowed to access Kepler metrics
                             items:
                               type: string
                             type: array
                             x-kubernetes-list-type: atomic
                           mode:
+                            description: Mode specifies the security mode (none or
+                              rbac)
                             enum:
                             - none
                             - rbac
@@ -294,10 +305,12 @@ spec:
                 type: array
                 x-kubernetes-list-type: atomic
               kepler:
+                description: PowerMonitorKeplerStatus defines the observed state of
+                  the Kepler DaemonSet
                 properties:
                   currentNumberScheduled:
                     description: |-
-                      The number of nodes that are running at least 1 power-monitor pod and are
+                      CurrentNumberScheduled is the number of nodes that are running at least 1 power-monitor pod and are
                       supposed to run the power-monitor pod.
                     format: int32
                     type: integer

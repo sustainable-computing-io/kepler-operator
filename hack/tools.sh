@@ -15,7 +15,7 @@ declare -r KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION:-v5.8.0}
 declare -r CONTROLLER_TOOLS_VERSION=${CONTROLLER_TOOLS_VERSION:-v0.19.0}
 declare -r OPERATOR_SDK_VERSION=${OPERATOR_SDK_VERSION:-v1.41.1}
 declare -r YQ_VERSION=${YQ_VERSION:-v4.34.2}
-declare -r CRDOC_VERSION=${CRDOC_VERSION:-v0.6.2}
+declare -r CRD_REF_DOCS_VERSION=${CRD_REF_DOCS_VERSION:-v0.2.0}
 declare -r OC_VERSION=${OC_VERSION:-4.18.1}
 declare -r KUBECTL_VERSION=${KUBECTL_VERSION:-v1.28.4}
 declare -r SHFMT_VERSION=${SHFMT_VERSION:-v3.7.0}
@@ -171,15 +171,14 @@ install_shfmt() {
 	go_install mvdan.cc/sh/v3/cmd/shfmt "$SHFMT_VERSION"
 }
 
-version_crdoc() {
-	crdoc --version
+version_crd-ref-docs() {
+	crd-ref-docs --version
 }
 
-install_crdoc() {
-	local version_regex="version $CRDOC_VERSION"
-
-	validate_version crdoc --version "$version_regex" && return 0
-	go_install fybrik.io/crdoc "$CRDOC_VERSION"
+install_crd-ref-docs() {
+	local version_regex="Version: $CRD_REF_DOCS_VERSION"
+	validate_version crd-ref-docs --version "$version_regex" && return 0
+	go_install github.com/elastic/crd-ref-docs "$CRD_REF_DOCS_VERSION"
 }
 
 version_oc() {
