@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2025 The Kepler Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# Configuration for crd-ref-docs
+# For more informtaion see: https://github.com/elastic/crd-ref-docs
+processor:
+  ignoreTypes:
+    - "SecurityConfig$"  # Webhook-internal type, not part of CRD spec
+  ignoreFields:
+    - "TypeMeta$"        # Avoid duplicate kind/apiVersion rows
+render:
+  kubernetesVersion: "1.32"

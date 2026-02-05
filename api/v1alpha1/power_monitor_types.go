@@ -15,16 +15,22 @@ const (
 	InvalidPowerMonitorResource ConditionReason = "InvalidPowerMonitorResource"
 )
 
+// SecurityMode defines the security mode for Kepler metrics access
 type SecurityMode string
 
 const (
+	// SecurityModeNone disables RBAC-based access control for Kepler metrics
 	SecurityModeNone SecurityMode = "none"
+	// SecurityModeRBAC enables RBAC-based access control for Kepler metrics
 	SecurityModeRBAC SecurityMode = "rbac"
 )
 
+// PowerMonitorKeplerDeploymentSecuritySpec defines security settings for the Kepler deployment
 type PowerMonitorKeplerDeploymentSecuritySpec struct {
+	// Mode specifies the security mode (none or rbac)
 	// +kubebuilder:validation:Enum=none;rbac
 	Mode SecurityMode `json:"mode,omitempty"`
+	// AllowedSANames lists service account names allowed to access Kepler metrics
 	// +optional
 	// +listType=atomic
 	AllowedSANames []string `json:"allowedSANames,omitempty"`
@@ -33,8 +39,9 @@ type PowerMonitorKeplerDeploymentSecuritySpec struct {
 // MetricsLevelDefault represents the default metric levels for PowerMonitor (node, pod, and vm)
 const MetricsLevelDefault = config.MetricsLevelNode | config.MetricsLevelPod | config.MetricsLevelVM
 
+// PowerMonitorKeplerDeploymentSpec defines deployment settings for the Kepler DaemonSet
 type PowerMonitorKeplerDeploymentSpec struct {
-	// Defines which Nodes the Pod is scheduled on
+	// NodeSelector defines which Nodes the Pod is scheduled on
 	// +optional
 	// +kubebuilder:default={"kubernetes.io/os":"linux"}
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
@@ -53,7 +60,9 @@ type PowerMonitorKeplerDeploymentSpec struct {
 	Secrets []SecretRef `json:"secrets,omitempty"`
 }
 
+// PowerMonitorKeplerConfigSpec defines configuration options for Kepler
 type PowerMonitorKeplerConfigSpec struct {
+	// LogLevel sets the logging verbosity (e.g., debug, info, warn, error)
 	// +kubebuilder:default="info"
 	// +optional
 	LogLevel string `json:"logLevel,omitempty"`
@@ -138,9 +147,12 @@ type SecretRef struct {
 	ReadOnly *bool `json:"readOnly,omitempty"`
 }
 
+// PowerMonitorKeplerSpec defines the Kepler component specification
 type PowerMonitorKeplerSpec struct {
+	// Deployment contains the deployment settings for the Kepler DaemonSet
 	Deployment PowerMonitorKeplerDeploymentSpec `json:"deployment,omitempty"`
-	Config     PowerMonitorKeplerConfigSpec     `json:"config,omitempty"`
+	// Config contains the configuration options for Kepler
+	Config PowerMonitorKeplerConfigSpec `json:"config,omitempty"`
 }
 
 // PowerMonitorSpec defines the desired state of Power Monitor
@@ -170,8 +182,9 @@ type PowerMonitor struct {
 	Status PowerMonitorStatus `json:"status,omitempty"`
 }
 
+// PowerMonitorKeplerStatus defines the observed state of the Kepler DaemonSet
 type PowerMonitorKeplerStatus struct {
-	// The number of nodes that are running at least 1 power-monitor pod and are
+	// CurrentNumberScheduled is the number of nodes that are running at least 1 power-monitor pod and are
 	// supposed to run the power-monitor pod.
 	CurrentNumberScheduled int32 `json:"currentNumberScheduled"`
 
@@ -202,13 +215,17 @@ type PowerMonitorKeplerStatus struct {
 	NumberUnavailable int32 `json:"numberUnavailable,omitempty"`
 }
 
+// ConditionType represents the type of condition for a PowerMonitor resource
 type ConditionType string
 
 const (
-	Available  ConditionType = "Available"
+	// Available indicates whether the PowerMonitor is available and serving metrics
+	Available ConditionType = "Available"
+	// Reconciled indicates whether the PowerMonitor has been successfully reconciled
 	Reconciled ConditionType = "Reconciled"
 )
 
+// ConditionReason represents the reason for a condition's last transition
 type ConditionReason string
 
 const (
@@ -219,15 +236,23 @@ const (
 	ReconcileError ConditionReason = "ReconcileError"
 
 	// DaemonSetNotFound indicates the DaemonSet created for a kepler was not found
-	DaemonSetNotFound           ConditionReason = "DaemonSetNotFound"
-	DaemonSetError              ConditionReason = "DaemonSetError"
-	DaemonSetInProgess          ConditionReason = "DaemonSetInProgress"
-	DaemonSetUnavailable        ConditionReason = "DaemonSetUnavailable"
+	DaemonSetNotFound ConditionReason = "DaemonSetNotFound"
+	// DaemonSetError indicates an error occurred with the DaemonSet
+	DaemonSetError ConditionReason = "DaemonSetError"
+	// DaemonSetInProgess indicates the DaemonSet is being updated
+	DaemonSetInProgess ConditionReason = "DaemonSetInProgress"
+	// DaemonSetUnavailable indicates no DaemonSet pods are available
+	DaemonSetUnavailable ConditionReason = "DaemonSetUnavailable"
+	// DaemonSetPartiallyAvailable indicates some but not all DaemonSet pods are available
 	DaemonSetPartiallyAvailable ConditionReason = "DaemonSetPartiallyAvailable"
-	DaemonSetPodsNotRunning     ConditionReason = "DaemonSetPodsNotRunning"
-	DaemonSetRolloutInProgress  ConditionReason = "DaemonSetRolloutInProgress"
-	DaemonSetReady              ConditionReason = "DaemonSetReady"
-	DaemonSetOutOfSync          ConditionReason = "DaemonSetOutOfSync"
+	// DaemonSetPodsNotRunning indicates DaemonSet pods exist but are not running
+	DaemonSetPodsNotRunning ConditionReason = "DaemonSetPodsNotRunning"
+	// DaemonSetRolloutInProgress indicates a DaemonSet rollout is in progress
+	DaemonSetRolloutInProgress ConditionReason = "DaemonSetRolloutInProgress"
+	// DaemonSetReady indicates the DaemonSet is fully available and ready
+	DaemonSetReady ConditionReason = "DaemonSetReady"
+	// DaemonSetOutOfSync indicates the DaemonSet spec doesn't match the desired state
+	DaemonSetOutOfSync ConditionReason = "DaemonSetOutOfSync"
 
 	// SecretNotFound indicates one or more referenced secrets are missing
 	SecretNotFound ConditionReason = "SecretNotFound"
@@ -241,9 +266,13 @@ const (
 type ConditionStatus string
 
 const (
-	ConditionTrue     ConditionStatus = "True"
-	ConditionFalse    ConditionStatus = "False"
-	ConditionUnknown  ConditionStatus = "Unknown"
+	// ConditionTrue indicates the condition is met
+	ConditionTrue ConditionStatus = "True"
+	// ConditionFalse indicates the condition is not met
+	ConditionFalse ConditionStatus = "False"
+	// ConditionUnknown indicates the condition status cannot be determined
+	ConditionUnknown ConditionStatus = "Unknown"
+	// ConditionDegraded indicates the resource is operational but in a degraded state
 	ConditionDegraded ConditionStatus = "Degraded"
 )
 

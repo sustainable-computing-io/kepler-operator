@@ -68,11 +68,14 @@ spec:
           metadata:
             type: object
           spec:
-            description: PowerMonitorInternalSpec defines the desired state of PowerMonitorInternalSpec
+            description: PowerMonitorInternalSpec defines the desired state of PowerMonitorInternal
             properties:
               kepler:
+                description: Kepler contains the Kepler component specification
                 properties:
                   config:
+                    description: Config contains the configuration options for internal
+                      Kepler
                     properties:
                       additionalConfigMaps:
                         description: |-
@@ -92,6 +95,8 @@ spec:
                         x-kubernetes-list-type: atomic
                       logLevel:
                         default: info
+                        description: LogLevel sets the logging verbosity (e.g., debug,
+                          info, warn, error)
                         type: string
                       maxTerminated:
                         default: 0
@@ -136,14 +141,21 @@ spec:
                         type: string
                     type: object
                   deployment:
+                    description: Deployment contains the deployment settings for the
+                      internal Kepler DaemonSet
                     properties:
                       image:
+                        description: Image specifies the Kepler container image
                         minLength: 3
                         type: string
                       kubeRbacProxyImage:
+                        description: KubeRbacProxyImage specifies the kube-rbac-proxy
+                          sidecar image
                         minLength: 3
                         type: string
                       namespace:
+                        description: Namespace specifies the namespace where Kepler
+                          will be deployed
                         minLength: 1
                         type: string
                       nodeSelector:
@@ -151,7 +163,8 @@ spec:
                           type: string
                         default:
                           kubernetes.io/os: linux
-                        description: Defines which Nodes the Pod is scheduled on
+                        description: NodeSelector defines which Nodes the Pod is scheduled
+                          on
                         type: object
                       secrets:
                         description: Secrets to be mounted in the power monitor containers
@@ -199,11 +212,15 @@ spec:
                           SANames
                         properties:
                           allowedSANames:
+                            description: AllowedSANames lists service account names
+                              allowed to access Kepler metrics
                             items:
                               type: string
                             type: array
                             x-kubernetes-list-type: atomic
                           mode:
+                            description: Mode specifies the security mode (none or
+                              rbac)
                             enum:
                             - none
                             - rbac
@@ -261,15 +278,21 @@ spec:
                 - deployment
                 type: object
               openshift:
+                description: OpenShift contains OpenShift-specific settings
                 properties:
                   dashboard:
+                    description: Dashboard configures the Grafana dashboard deployment
                     properties:
                       enabled:
                         default: false
+                        description: Enabled controls whether to deploy the Grafana
+                          dashboard
                         type: boolean
                     type: object
                   enabled:
                     default: true
+                    description: Enabled controls whether OpenShift-specific features
+                      are enabled
                     type: boolean
                 required:
                 - enabled
@@ -278,6 +301,8 @@ spec:
             - kepler
             type: object
           status:
+            description: PowerMonitorInternalStatus defines the observed state of
+              PowerMonitorInternal
             properties:
               conditions:
                 description: conditions represent the latest available observations
@@ -325,10 +350,11 @@ spec:
                 type: array
                 x-kubernetes-list-type: atomic
               kepler:
+                description: Kepler contains the status of the internal Kepler DaemonSet
                 properties:
                   currentNumberScheduled:
                     description: |-
-                      The number of nodes that are running at least 1 power-monitor-internal pod and are
+                      CurrentNumberScheduled is the number of nodes that are running at least 1 power-monitor-internal pod and are
                       supposed to run the power-monitor-internal pod.
                     format: int32
                     type: integer

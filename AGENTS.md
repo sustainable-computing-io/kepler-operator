@@ -96,7 +96,7 @@ kepler-operator/
 - **Style**: Follow [Effective Go](https://go.dev/doc/effective_go) and idiomatic patterns
 - **Testing**: Use `testify` framework (assert/require)
 - **Functions**: Keep under 50-60 lines, single responsibility
-- **Documentation**: GoDoc comments for all exported items
+- **Documentation**: GoDoc comments for all exported items, especially CRD types (see below)
 
 ### Pre-commit Checks
 
@@ -233,7 +233,8 @@ Maintaining accurate and consistent documentation across the repository is criti
    - [ ] Update README.md for user-facing changes
    - [ ] Update user guides for feature changes
    - [ ] Update developer guides for architecture changes
-   - [ ] Regenerate API docs after CRD changes: `make docs`
+   - [ ] Add godoc comments to new/modified CRD types, fields, and constants
+   - [ ] Regenerate API docs after CRD changes: `make manifests generate bundle docs helm-sync-crds`
    - [ ] Verify all cross-document links still work
    - [ ] Ensure examples are tested and functional
 
@@ -253,6 +254,14 @@ Some documentation is auto-generated and should **never** be manually edited:
 - Helm chart dependencies - Synced via `make helm-sync-crds`
 
 Always regenerate these files when their sources change.
+
+#### CRD Type Documentation (GoDoc Comments)
+
+The API reference (`docs/user/reference/api.md`) is **generated from godoc comments** in `api/v1alpha1/*_types.go`. When modifying CRD types:
+
+1. Add godoc comments to all exported types, constants, and struct fields
+2. Follow [Go documentation conventions](https://go.dev/doc/effective_go#commentary): comments start with the name being documented, use present tense
+3. Regenerate docs: `make manifests generate bundle docs helm-sync-crds`
 
 #### Bundle Generation Guidelines
 
