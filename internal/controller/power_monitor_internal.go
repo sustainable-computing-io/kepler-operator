@@ -64,7 +64,7 @@ const (
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;prometheusrules,verbs=list;watch;create;update;patch;delete
 
 // RBAC required by Kepler exporter
-//+kubebuilder:rbac:groups=core,resources=nodes/metrics;nodes/proxy;nodes/stats,verbs=get;list;watch
+//+kubebuilder:rbac:groups=core,resources=nodes;nodes/metrics;nodes/proxy;nodes/stats,verbs=get;list;watch
 
 // indexAdditonalConfigmaps sets up indexer for PowerMonitorInternal based on referenced ConfigMaps
 func indexAdditonalConfigmaps(mgr ctrl.Manager, logger logr.Logger) error {

@@ -22,6 +22,7 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - nodes
   - nodes/metrics
   - nodes/proxy
   - nodes/stats
