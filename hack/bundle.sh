@@ -78,7 +78,7 @@ main() {
 	info "Adding additional metadata annotations"
 	cat <<-EOF >>bundle/metadata/annotations.yaml
 		  # Annotations for OpenShift version
-		  com.redhat.openshift.versions: "v4.18-v4.20"
+		  com.redhat.openshift.versions: "v4.18-v4.21"
 	EOF
 
 	run operator-sdk bundle validate ./bundle \
