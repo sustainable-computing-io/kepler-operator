@@ -265,7 +265,7 @@ func TestPowerMonitorClusterRole(t *testing.T) {
 			spec: v1alpha1.PowerMonitorInternalKeplerSpec{},
 			rules: []rbacv1.PolicyRule{{
 				APIGroups: []string{""},
-				Resources: []string{"nodes/metrics", "nodes/proxy", "nodes/stats", "pods"},
+				Resources: []string{"nodes", "nodes/metrics", "nodes/proxy", "nodes/stats", "pods"},
 				Verbs:     []string{"get", "watch", "list"},
 			}},
 			scenario: "default case",
@@ -283,7 +283,7 @@ func TestPowerMonitorClusterRole(t *testing.T) {
 			rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{""},
-					Resources: []string{"nodes/metrics", "nodes/proxy", "nodes/stats", "pods"},
+					Resources: []string{"nodes", "nodes/metrics", "nodes/proxy", "nodes/stats", "pods"},
 					Verbs:     []string{"get", "watch", "list"},
 				},
 				{

@@ -259,7 +259,7 @@ func NewPowerMonitorClusterRole(c components.Detail, pmi *v1alpha1.PowerMonitorI
 		},
 		Rules: []rbacv1.PolicyRule{{
 			APIGroups: []string{""},
-			Resources: []string{"nodes/metrics", "nodes/proxy", "nodes/stats", "pods"},
+			Resources: []string{"nodes", "nodes/metrics", "nodes/proxy", "nodes/stats", "pods"},
 			Verbs:     []string{"get", "watch", "list"},
 		}},
 	}

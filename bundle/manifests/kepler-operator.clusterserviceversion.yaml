@@ -27,7 +27,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Monitoring
     containerImage: quay.io/sustainable_computing_io/kepler-operator:0.23.0
-    createdAt: "2025-11-27T12:36:15Z"
+    createdAt: "2026-02-10T07:27:43Z"
     description: Deploys and Manages Kepler on Kubernetes
     operators.operatorframework.io/builder: operator-sdk-v1.41.1
     operators.operatorframework.io/internal-objects: |-
@@ -111,6 +111,7 @@ spec:
         - apiGroups:
           - ""
           resources:
+          - nodes
           - nodes/metrics
           - nodes/proxy
           - nodes/stats
