@@ -22,6 +22,9 @@ import (
 type Feature string
 
 const (
+	// ExperimentalHwmonFeature represents the hwmon power monitoring feature
+	ExperimentalHwmonFeature Feature = "hwmon"
+
 	// ExperimentalRedfishFeature represents the Redfish BMC power monitoring feature
 	ExperimentalRedfishFeature Feature = "redfish"
 
@@ -33,6 +36,9 @@ const (
 
 	// PprofFeature represents the pprof debug endpoints feature
 	PprofFeature Feature = "pprof"
+
+	// ExperimentalGPUFeature represents GPU power monitoring (experimental)
+	ExperimentalGPUFeature Feature = "gpu"
 )
 
 // Config represents the complete application configuration
@@ -49,6 +55,33 @@ type (
 	// Rapl configuration
 	Rapl struct {
 		Zones []string `yaml:"zones"`
+	}
+
+	// ChipPairingRule defines how voltage and current sensors should be paired for a specific chip.
+	// This allows users to override hardcoded chip rules or add new chips via configuration.
+	ChipPairingRule struct {
+		// Name is the chip driver name (from hwmon "name" file), e.g., "ina3221", "ltc2945"
+		Name string `yaml:"name"`
+		// Pairings maps voltage sensor index to current sensor index for explicit pairings
+		// Key: voltage sensor index (in{N}), Value: current sensor index (curr{N})
+		// Example: {1: 1, 2: 2} means in1↔curr1 and in2↔curr2
+		Pairings map[int]int `yaml:"pairings,omitempty"`
+		// SkipVoltages lists voltage indices to skip (shunt voltages, aux inputs, etc.)
+		SkipVoltages []int `yaml:"skipVoltages,omitempty"`
+		// SkipCurrents lists current indices to skip (current-only channels, per-phase, etc.)
+		SkipCurrents []int `yaml:"skipCurrents,omitempty"`
+		// UseSameIndex indicates this chip uses same-index pairing (in{N} ↔ curr{N})
+		// If true, Pairings map is ignored and same-index matching is used
+		UseSameIndex bool `yaml:"useSameIndex,omitempty"`
+	}
+
+	// Hwmon configuration (Set in Experimental)
+	Hwmon struct {
+		Enabled *bool    `yaml:"enabled"` // Development mode settings (sensor detection should be set based on architecture in future)
+		Zones   []string `yaml:"zones"`
+		// ChipRules allows users to override or add chip pairing rules via configuration.
+		// Rules defined here take precedence over hardcoded defaults.
+		ChipRules []ChipPairingRule `yaml:"chipRules,omitempty"`
 	}
 
 	// Development mode settings; disabled by default
@@ -105,10 +138,16 @@ type (
 		Pprof PprofDebug `yaml:"pprof"`
 	}
 
+	PodInformer struct {
+		Mode         string        `yaml:"mode"`         // "kubelet" (default) or "apiserver"
+		PollInterval time.Duration `yaml:"pollInterval"` // Poll interval for kubelet mode (default: 15s)
+	}
+
 	Kube struct {
-		Enabled *bool  `yaml:"enabled"`
-		Config  string `yaml:"config"`
-		Node    string `yaml:"nodeName"`
+		Enabled     *bool       `yaml:"enabled"`
+		Config      string      `yaml:"config"`
+		Node        string      `yaml:"nodeName"`
+		PodInformer PodInformer `yaml:"podInformer"`
 	}
 
 	// Platform contains settings for platform power monitoring
@@ -124,9 +163,23 @@ type (
 		HTTPTimeout time.Duration `yaml:"httpTimeout"` // HTTP client timeout for BMC requests
 	}
 
+	// ExperimentalGPU contains GPU power monitoring settings
+	ExperimentalGPU struct {
+		// Enabled controls whether GPU power monitoring is enabled
+		Enabled *bool `yaml:"enabled"`
+
+		// IdlePower is the GPU idle power in Watts. When set (> 0), this value
+		// is used instead of auto-detected idle power. Useful when Kepler cannot
+		// observe true idle (e.g. GPUs always under load).
+		// 0 means auto-detect (track minimum power when no compute processes are running).
+		IdlePower float64 `yaml:"idlePower"`
+	}
+
 	// Experimental contains experimental features (no stability guarantees)
 	Experimental struct {
-		Platform Platform `yaml:"platform"`
+		Platform Platform        `yaml:"platform"`
+		Hwmon    Hwmon           `yaml:"hwmon"`
+		GPU      ExperimentalGPU `yaml:"gpu"`
 	}
 
 	Config struct {
@@ -231,6 +284,14 @@ const (
 	ExperimentalPlatformRedfishNodeNameFlag = "experimental.platform.redfish.node-name"
 	ExperimentalPlatformRedfishConfigFlag   = "experimental.platform.redfish.config-file"
 
+	// Experimental Hwmon flags
+	ExperimentalHwmonEnabledFlag = "experimental.hwmon.enabled"
+	ExperimentalHwmonZonesFlag   = "experimental.hwmon.zones"
+
+	// Experimental GPU flags
+	ExperimentalGPUEnabledFlag   = "experimental.gpu.enabled"
+	ExperimentalGPUIdlePowerFlag = "experimental.gpu.idle-power"
+
 // WARN:  dev settings shouldn't be exposed as flags as flags are intended for end users
 )
 
@@ -275,6 +336,10 @@ func DefaultConfig() *Config {
 		},
 		Kube: Kube{
 			Enabled: ptr.To(false),
+			PodInformer: PodInformer{
+				Mode:         "kubelet",
+				PollInterval: 15 * time.Second,
+			},
 		},
 
 		// NOTE: Experimental config will be nil by default and only allocated when needed
@@ -381,6 +446,14 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 	redfishNodeName := app.Flag(ExperimentalPlatformRedfishNodeNameFlag, "Node name for experimental Redfish platform power monitoring").String()
 	redfishConfig := app.Flag(ExperimentalPlatformRedfishConfigFlag, "Path to experimental Redfish BMC configuration file").String()
 
+	// experimental hwmon
+	hwmonEnabled := app.Flag(ExperimentalHwmonEnabledFlag, "Enable experimental hwmon power monitoring").Default("false").Bool()
+	hwmonZones := app.Flag(ExperimentalHwmonZonesFlag, "Hwmon zone filter (power labels to monitor)").Strings()
+
+	// experimental GPU
+	gpuEnabled := app.Flag(ExperimentalGPUEnabledFlag, "Enable experimental GPU power monitoring").Default("false").Bool()
+	gpuIdlePower := app.Flag(ExperimentalGPUIdlePowerFlag, "GPU idle power in Watts (0 = auto-detect from idle observations)").Default("0").Float64()
+
 	return func(cfg *Config) error {
 		// Logging settings
 		if flagsSet[LogLevelFlag] {
@@ -447,6 +520,14 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 		if err := applyRedfishConfig(cfg, flagsSet, redfishEnabled, redfishNodeName, redfishConfig); err != nil {
 			return err
 		}
+
+		// Apply experimental hwmon settings
+		if err := applyHwmonConfig(cfg, flagsSet, hwmonEnabled, hwmonZones); err != nil {
+			return err
+		}
+
+		// Apply experimental GPU settings
+		applyGPUConfig(cfg, flagsSet, gpuEnabled, gpuIdlePower)
 
 		cfg.sanitize()
 		return cfg.Validate()
@@ -524,6 +605,76 @@ func resolveRedfishNodeName(redfish *Redfish, kubeNodeName string) error {
 	return nil
 }
 
+// applyHwmonConfig applies Hwmon configuration flags
+func applyHwmonConfig(cfg *Config, flagsSet map[string]bool, enabled *bool, zones *[]string) error {
+	// Early exit if no hwmon flags are set and config file does not have experimental section
+	if !hasHwmonFlags(flagsSet) && cfg.Experimental == nil {
+		return nil
+	}
+
+	// At this point, either hwmon flags are set or config file has experimental section
+	// so ensure experimental section exists
+	if cfg.Experimental == nil {
+		cfg.Experimental = &Experimental{
+			Hwmon: defaultHwmonConfig(),
+		}
+	}
+
+	hwmon := &cfg.Experimental.Hwmon
+
+	// Apply flag values
+	applyHwmonFlags(hwmon, flagsSet, enabled, zones)
+
+	return nil
+}
+
+// hasHwmonFlags returns true if any hwmon experimental flags are set
+func hasHwmonFlags(flagsSet map[string]bool) bool {
+	return flagsSet[ExperimentalHwmonEnabledFlag] ||
+		flagsSet[ExperimentalHwmonZonesFlag]
+}
+
+func defaultHwmonConfig() Hwmon {
+	return Hwmon{
+		Enabled:   ptr.To(false),
+		Zones:     []string{},
+		ChipRules: []ChipPairingRule{},
+	}
+}
+
+// applyHwmonFlags applies flag values to hwmon config
+func applyHwmonFlags(hwmon *Hwmon, flagsSet map[string]bool, enabled *bool, zones *[]string) {
+	if flagsSet[ExperimentalHwmonEnabledFlag] {
+		hwmon.Enabled = enabled
+	}
+
+	if flagsSet[ExperimentalHwmonZonesFlag] {
+		hwmon.Zones = *zones
+	}
+}
+
+// applyGPUConfig applies GPU configuration from flags
+func applyGPUConfig(cfg *Config, flagsSet map[string]bool, enabled *bool, idlePower *float64) {
+	// Early exit if GPU enabled flag is not set and config file does not have experimental section
+	if !flagsSet[ExperimentalGPUEnabledFlag] && cfg.Experimental == nil {
+		return
+	}
+
+	// Initialize experimental section if needed
+	if cfg.Experimental == nil {
+		cfg.Experimental = &Experimental{}
+	}
+
+	if flagsSet[ExperimentalGPUEnabledFlag] {
+		cfg.Experimental.GPU.Enabled = enabled
+	}
+
+	// Only apply idle power if GPU is enabled
+	if cfg.IsFeatureEnabled(ExperimentalGPUFeature) && flagsSet[ExperimentalGPUIdlePowerFlag] {
+		cfg.Experimental.GPU.IdlePower = *idlePower
+	}
+}
+
 // resolveNodeName resolves the node name using the following precedence:
 // 1. CLI flag / config.yaml (--experimental.platform.redfish.node-name)
 // 2. Kubernetes node name
@@ -556,12 +707,22 @@ func (c *Config) IsFeatureEnabled(feature Feature) bool {
 			return false
 		}
 		return ptr.Deref(c.Experimental.Platform.Redfish.Enabled, false)
+	case ExperimentalHwmonFeature:
+		if c.Experimental == nil {
+			return false
+		}
+		return ptr.Deref(c.Experimental.Hwmon.Enabled, false)
 	case PrometheusFeature:
 		return ptr.Deref(c.Exporter.Prometheus.Enabled, false)
 	case StdoutFeature:
 		return ptr.Deref(c.Exporter.Stdout.Enabled, false)
 	case PprofFeature:
 		return ptr.Deref(c.Debug.Pprof.Enabled, false)
+	case ExperimentalGPUFeature:
+		if c.Experimental == nil {
+			return false
+		}
+		return ptr.Deref(c.Experimental.GPU.Enabled, false)
 	default:
 		return false
 	}
@@ -578,6 +739,15 @@ func (c *Config) experimentalFeatureEnabled() bool {
 		return true
 	}
 
+	// Check if Hwmon is enabled
+	if ptr.Deref(c.Experimental.Hwmon.Enabled, false) {
+		return true
+	}
+
+	// Check if GPU is enabled
+	if ptr.Deref(c.Experimental.GPU.Enabled, false) {
+		return true
+	}
 	// Add checks for future experimental features here
 
 	return false
@@ -608,6 +778,11 @@ func (c *Config) sanitize() {
 
 	c.Experimental.Platform.Redfish.NodeName = strings.TrimSpace(c.Experimental.Platform.Redfish.NodeName)
 	c.Experimental.Platform.Redfish.ConfigFile = strings.TrimSpace(c.Experimental.Platform.Redfish.ConfigFile)
+
+	// Sanitize Hwmon fields
+	for i := range c.Experimental.Hwmon.Zones {
+		c.Experimental.Hwmon.Zones[i] = strings.TrimSpace(c.Experimental.Hwmon.Zones[i])
+	}
 
 	// If all experimental features are disabled, set experimental to nil to hide it
 	if !c.experimentalFeatureEnabled() {
@@ -698,6 +873,14 @@ func (c *Config) Validate(skips ...SkipValidation) error {
 			}
 			if c.Kube.Node == "" {
 				errs = append(errs, fmt.Sprintf("%s not supplied but %s set to true", KubeNodeNameFlag, KubernetesFlag))
+			}
+
+			// Validate PodInformer mode
+			switch c.Kube.PodInformer.Mode {
+			case "kubelet", "apiserver":
+				// valid
+			default:
+				errs = append(errs, fmt.Sprintf("invalid kube.podInformer.mode: %q, must be \"kubelet\" or \"apiserver\"", c.Kube.PodInformer.Mode))
 			}
 		}
 	}
