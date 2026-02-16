@@ -3,7 +3,7 @@ kind: ClusterServiceVersion
 metadata:
   annotations:
     capabilities: Seamless Upgrades
-    categories: Monitoring
+    categories: Monitoring, Observability
     containerImage: <OPERATOR_IMG>
     createdAt: "2023-01-31 16:20:00"
     description: Deploys and Manages Kepler on Kubernetes
