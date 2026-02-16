@@ -2,8 +2,8 @@ apiVersion: v2
 name: kepler-operator
 description: A Helm chart for deploying the Kepler Operator on Kubernetes
 type: application
-version: 0.23.0
-appVersion: "v0.23.0"
+version: 0.24.0
+appVersion: "v0.24.0"
 keywords:
   - kepler
   - power
