@@ -264,7 +264,6 @@ jobs:
   operator-upgrade:
     needs: [build-images, bundle]
     env:
-      KIND_VERSION: 0.15.0
       GO111MODULE: on
       OPERATOR_IMAGE: quay.io/sustainable_computing_io/kepler-operator
       KUBECONFIG: /tmp/.kube/config
@@ -323,7 +322,6 @@ jobs:
   e2e:
     needs: [build-images, bundle]
     env:
-      KIND_VERSION: 0.15.0
       GO111MODULE: on
       OPERATOR_IMAGE: quay.io/sustainable_computing_io/kepler-operator
       KUBECONFIG: /tmp/.kube/config
@@ -400,7 +398,6 @@ jobs:
   helm-e2e:
     needs: [bundle, helm-validate]
     env:
-      KIND_VERSION: 0.27.0
       KIND_WORKER_NODES: 2
     name: helm-e2e
     runs-on: ubuntu-latest-16-cores
