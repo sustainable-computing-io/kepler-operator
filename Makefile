@@ -16,8 +16,8 @@ endif
 ENABLE_WEBHOOKS ?= true # enable webhooks by default
 
 # Setting GOENV
-GOOS := $(shell go env GOOS)
-GOARCH := $(shell go env GOARCH)
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
 
 # VERSION defines the project version for the bundle.
 # Update this value when you upgrade the version of your project.
@@ -57,6 +57,7 @@ KUBE_RBAC_PROXY_IMG_BASE ?= quay.io/brancz/kube-rbac-proxy
 # You can use it as an arg. (E.g make operator-build OPERATOR_IMG=<some-registry>:<version>)
 OPERATOR_IMG ?= $(IMG_BASE)/kepler-operator:$(VERSION)
 ADDITIONAL_TAGS ?=
+IMAGE_ARCHES ?= amd64 arm64
 
 KEPLER_IMG ?= $(KEPLER_IMG_BASE):$(KEPLER_VERSION)
 KUBE_RBAC_PROXY_IMG ?= $(KUBE_RBAC_PROXY_IMG_BASE):$(KUBE_RBAC_PROXY_VERSION)
@@ -192,7 +193,7 @@ build: manifests generate build-manager ## Build manager binary.
 
 .PHONY: build-manager
 build-manager:
-	CGO_ENABLED=$(CGO_ENABLED) go build $(LDFLAGS) -o bin/manager ./cmd/...
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=$(CGO_ENABLED) CC=$(CC) go build $(LDFLAGS) -o bin/manager ./cmd/...
 
 OPENSHIFT ?= true
 RUN_ARGS ?=
@@ -258,9 +259,28 @@ operator-build: manifests generate ## Build docker image with the manager.
 	$(call docker_tag,$(OPERATOR_IMG),$(ADDITIONAL_TAGS))
 
 
+# Build multi-architecture Docker images (local, no push)
+.PHONY: operator-build-multi
+operator-build-multi: manifests generate ## Build multi-arch operator images (local)
+	go mod tidy
+	@for arch in $(IMAGE_ARCHES); do \
+		echo "==> Building operator for linux/$$arch"; \
+		$(MAKE) operator-build GOARCH=$$arch OPERATOR_IMG=$(OPERATOR_IMG)-$$arch; \
+	done
+
 .PHONY: operator-push
 operator-push: ## Push docker image with the manager.
 	$(call docker_push,$(OPERATOR_IMG),$(ADDITIONAL_TAGS))
+
+# Push multi-architecture operator images and create manifest
+.PHONY: operator-push-multi
+operator-push-multi: ## Push multi-arch operator images and create manifest
+	@for arch in $(IMAGE_ARCHES); do \
+		docker push $(OPERATOR_IMG)-$$arch; \
+	done
+	docker manifest create --amend $(OPERATOR_IMG) \
+		$(foreach arch,$(IMAGE_ARCHES),$(OPERATOR_IMG)-$(arch))
+	docker manifest push $(OPERATOR_IMG)
 
 
 .PHONY: e2e-test-image
@@ -445,6 +465,26 @@ bundle-build: ## Build the bundle image.
 		-t $(BUNDLE_IMG) \
 		--platform=linux/$(GOARCH) .
 	$(call docker_tag,$(BUNDLE_IMG),$(ADDITIONAL_TAGS))
+
+# Build multi-architecture bundle images (local, no push)
+.PHONY: bundle-build-multi
+bundle-build-multi: ## Build multi-arch bundle images (local)
+	@for arch in $(IMAGE_ARCHES); do \
+		echo "==> Building bundle for linux/$$arch"; \
+		docker build -f bundle.Dockerfile \
+			-t $(BUNDLE_IMG)-$$arch \
+			--platform=linux/$$arch .; \
+	done
+
+# Push multi-architecture bundle images and create manifest
+.PHONY: bundle-push-multi
+bundle-push-multi: ## Push multi-arch bundle images and create manifest
+	@for arch in $(IMAGE_ARCHES); do \
+		docker push $(BUNDLE_IMG)-$$arch; \
+	done
+	docker manifest create --amend $(BUNDLE_IMG) \
+		$(foreach arch,$(IMAGE_ARCHES),$(BUNDLE_IMG)-$(arch))
+	docker manifest push $(BUNDLE_IMG)
 
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.

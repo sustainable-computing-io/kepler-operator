@@ -91,5 +91,6 @@ This documentation is for:
 
 ## Developer Guides
 
+- [Cross-Compilation Guide](cross-compilation.md) - Building for ARM64 and multi-arch container images
 - [Helm Chart Maintenance](helm-chart-maintenance.md) - How to update and maintain the Helm chart
 - [Pre-commit Hooks](pre-commit-hooks.md) - Setting up and using pre-commit hooks
