@@ -167,7 +167,11 @@ To test must-gather changes locally:
 1. Build the operator image with your changes:
 
    ```sh
+   # Single-arch (default: amd64)
    make operator-build operator-push IMG_BASE=<your-registry>
+
+   # Multi-arch (amd64 + arm64)
+   make operator-build-multi operator-push-multi IMG_BASE=<your-registry>
    ```
 
 2. Run must-gather with your custom image:

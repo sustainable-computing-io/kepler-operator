@@ -92,5 +92,6 @@ This documentation is for:
 ## Developer Guides
 
 - [E2E Tests](e2e-tests.md) - Test architecture, writing new tests, and CI integration
+- [Multi Architecture Guide](multi-arch-builds.md) - Building for ARM64 and multi-arch container images
 - [Helm Chart Maintenance](helm-chart-maintenance.md) - How to update and maintain the Helm chart
 - [Pre-commit Hooks](pre-commit-hooks.md) - Setting up and using pre-commit hooks
