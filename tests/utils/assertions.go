@@ -7,16 +7,18 @@ import (
 	"context"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	. "github.com/onsi/gomega"
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
+
+// ConditionFunc checks a condition and returns (done, error).
+// When done is true, the condition is met. When error is non-nil, it indicates a transient problem.
+type ConditionFunc func(ctx context.Context) (bool, error)
 
 type AssertOption struct {
 	PollInterval time.Duration
@@ -62,64 +64,87 @@ func assertOption(fns ...AssertOptionFn) AssertOption {
 	return option
 }
 
-func (f Framework) WaitUntil(msg string, fn wait.ConditionWithContextFunc, fns ...AssertOptionFn) {
-	f.T.Helper()
+// WaitUntil polls a condition function until it returns true or the timeout expires.
+func (f *Framework) WaitUntil(msg string, fn ConditionFunc, fns ...AssertOptionFn) {
 	opt := assertOption(fns...)
-	ctx, cancel := context.WithTimeout(context.Background(), opt.WaitTimeout)
-	defer cancel()
 
-	err := wait.PollUntilContextTimeout(ctx, opt.PollInterval, opt.WaitTimeout, true, fn)
-	assert.NoError(f.T, err, "failed waiting for %s (timeout %v)", msg, opt.WaitTimeout)
+	Eventually(func(g Gomega) {
+		done, err := fn(context.Background())
+		if err != nil {
+			g.Expect(err).NotTo(HaveOccurred(), "error while waiting for %s", msg)
+		}
+		g.Expect(done).To(BeTrue(), "condition not met for: %s", msg)
+	}).WithTimeout(opt.WaitTimeout).WithPolling(opt.PollInterval).Should(Succeed(),
+		"failed waiting for %s (timeout %v)", msg, opt.WaitTimeout)
 }
 
-func (f Framework) AssertResourceExists(name, ns string, obj client.Object, fns ...AssertOptionFn) {
-	f.T.Helper()
+// ExpectResourceExists waits for a resource to exist and populates obj with its state.
+func (f *Framework) ExpectResourceExists(name, ns string, obj client.Object, fns ...AssertOptionFn) {
 	opt := assertOption(fns...)
-	key := types.NamespacedName{Name: name, Namespace: ns}
+	key := client.ObjectKey{Name: name, Namespace: ns}
 
-	var getErr error
-	ctx, cancel := context.WithTimeout(context.Background(), opt.WaitTimeout)
-	defer cancel()
-
-	wait.PollUntilContextTimeout(ctx, opt.PollInterval, opt.WaitTimeout, true, func(ctx context.Context) (bool, error) {
-		getErr = f.client.Get(ctx, key, obj)
-		// NOTE: return true (stop loop) if resource exists
-		return getErr == nil, nil
-	})
-
-	assert.NoError(f.T, getErr, "failed to find %v (timeout %v)", key, opt.WaitTimeout)
+	Eventually(func(g Gomega) {
+		err := f.client.Get(context.Background(), key, obj)
+		g.Expect(err).NotTo(HaveOccurred(), "resource %s/%s should exist", ns, name)
+	}).WithTimeout(opt.WaitTimeout).WithPolling(opt.PollInterval).Should(Succeed())
 }
 
-func (f Framework) AssertNoResourceExists(name, ns string, obj client.Object, fns ...AssertOptionFn) {
-	f.T.Helper()
+// ExpectNoResourceExists waits until the specified resource no longer exists.
+func (f *Framework) ExpectNoResourceExists(name, ns string, obj client.Object, fns ...AssertOptionFn) {
 	opt := assertOption(fns...)
-	key := types.NamespacedName{Name: name, Namespace: ns}
+	key := client.ObjectKey{Name: name, Namespace: ns}
 
-	ctx, cancel := context.WithTimeout(context.Background(), opt.WaitTimeout)
-	defer cancel()
-
-	err := wait.PollUntilContextTimeout(ctx, opt.PollInterval, opt.WaitTimeout, true, func(ctx context.Context) (bool, error) {
-		getErr := f.client.Get(ctx, key, obj)
-		// NOTE: return true (stop loop) if resource does not exist
-		return errors.IsNotFound(getErr), nil
-	})
-	if err != nil {
-		f.T.Errorf("%s (%v) exists after %v", k8s.GVKName(obj), key, opt.WaitTimeout)
-	}
+	Eventually(func(g Gomega) {
+		err := f.client.Get(context.Background(), key, obj)
+		g.Expect(errors.IsNotFound(err)).To(BeTrue(), "resource %s/%s should not exist", ns, name)
+	}).WithTimeout(opt.WaitTimeout).WithPolling(opt.PollInterval).Should(Succeed())
 }
 
-func (f Framework) AssertPowerMonitorInternalStatus(name string, fns ...AssertOptionFn) {
-	pmi := f.WaitUntilPowerMonitorInternalCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionTrue, fns...)
-	assert.Equal(f.T, []corev1.Toleration{{Operator: "Exists"}}, pmi.Spec.Kepler.Deployment.Tolerations)
+// ExpectPowerMonitorCondition waits for a PowerMonitor to reach the specified condition status.
+func (f *Framework) ExpectPowerMonitorCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus, fns ...AssertOptionFn) *v1alpha1.PowerMonitor {
+	opt := assertOption(fns...)
+	pm := &v1alpha1.PowerMonitor{}
+
+	Eventually(func(g Gomega) {
+		err := f.client.Get(context.Background(), client.ObjectKey{Name: name}, pm)
+		g.Expect(err).NotTo(HaveOccurred(), "powermonitor %s should exist", name)
+
+		condition, _ := k8s.FindCondition(pm.Status.Conditions, t)
+		g.Expect(condition.Status).To(Equal(s), "powermonitor %s should have condition %s=%s", name, t, s)
+	}).WithTimeout(opt.WaitTimeout).WithPolling(opt.PollInterval).Should(Succeed())
+
+	return pm
+}
+
+// ExpectPowerMonitorInternalCondition waits for a PowerMonitorInternal to reach the specified condition status.
+func (f *Framework) ExpectPowerMonitorInternalCondition(name string, t v1alpha1.ConditionType, s v1alpha1.ConditionStatus, fns ...AssertOptionFn) *v1alpha1.PowerMonitorInternal {
+	opt := assertOption(fns...)
+	pmi := &v1alpha1.PowerMonitorInternal{}
+
+	Eventually(func(g Gomega) {
+		err := f.client.Get(context.Background(), client.ObjectKey{Name: name}, pmi)
+		g.Expect(err).NotTo(HaveOccurred(), "powermonitorinternal %s should exist", name)
+
+		condition, _ := k8s.FindCondition(pmi.Status.Conditions, t)
+		g.Expect(condition.Status).To(Equal(s), "powermonitorinternal %s should have condition %s=%s", name, t, s)
+	}).WithTimeout(opt.WaitTimeout).WithPolling(opt.PollInterval).Should(Succeed())
+
+	return pmi
+}
+
+// ExpectPowerMonitorInternalStatus verifies that a PowerMonitorInternal is reconciled and available.
+func (f *Framework) ExpectPowerMonitorInternalStatus(name string, fns ...AssertOptionFn) {
+	pmi := f.ExpectPowerMonitorInternalCondition(name, v1alpha1.Reconciled, v1alpha1.ConditionTrue, fns...)
+	Expect(pmi.Spec.Kepler.Deployment.Tolerations).To(Equal([]corev1.Toleration{{Operator: "Exists"}}))
 
 	reconciled, err := k8s.FindCondition(pmi.Status.Conditions, v1alpha1.Reconciled)
-	assert.NoError(f.T, err, "unable to get reconciled condition")
-	assert.Equal(f.T, reconciled.ObservedGeneration, pmi.Generation)
-	assert.Equal(f.T, reconciled.Status, v1alpha1.ConditionTrue)
+	Expect(err).NotTo(HaveOccurred(), "unable to get reconciled condition")
+	Expect(reconciled.ObservedGeneration).To(Equal(pmi.Generation))
+	Expect(reconciled.Status).To(Equal(v1alpha1.ConditionTrue))
 
-	pmi = f.WaitUntilPowerMonitorInternalCondition(name, v1alpha1.Available, v1alpha1.ConditionTrue, fns...)
+	pmi = f.ExpectPowerMonitorInternalCondition(name, v1alpha1.Available, v1alpha1.ConditionTrue, fns...)
 	available, err := k8s.FindCondition(pmi.Status.Conditions, v1alpha1.Available)
-	assert.NoError(f.T, err, "unable to get available condition")
-	assert.Equal(f.T, available.ObservedGeneration, pmi.Generation)
-	assert.Equal(f.T, available.Status, v1alpha1.ConditionTrue)
+	Expect(err).NotTo(HaveOccurred(), "unable to get available condition")
+	Expect(available.ObservedGeneration).To(Equal(pmi.Generation))
+	Expect(available.Status).To(Equal(v1alpha1.ConditionTrue))
 }
