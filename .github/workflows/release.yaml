@@ -39,7 +39,7 @@ jobs:
       - name: Install all tools
         uses: ./.github/tools-cache
       - name: Setup Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
         with:
           version: latest
       - name: Build Operator
