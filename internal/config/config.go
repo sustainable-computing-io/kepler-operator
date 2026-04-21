@@ -77,8 +77,8 @@ type (
 
 	// Hwmon configuration (Set in Experimental)
 	Hwmon struct {
-		Enabled *bool    `yaml:"enabled"` // Development mode settings (sensor detection should be set based on architecture in future)
-		Zones   []string `yaml:"zones"`
+		ForceEnabled *bool    `yaml:"forceEnabled"` // Force hwmon as the power meter, skipping RAPL auto-detection
+		Zones        []string `yaml:"zones"`
 		// ChipRules allows users to override or add chip pairing rules via configuration.
 		// Rules defined here take precedence over hardcoded defaults.
 		ChipRules []ChipPairingRule `yaml:"chipRules,omitempty"`
@@ -285,8 +285,8 @@ const (
 	ExperimentalPlatformRedfishConfigFlag   = "experimental.platform.redfish.config-file"
 
 	// Experimental Hwmon flags
-	ExperimentalHwmonEnabledFlag = "experimental.hwmon.enabled"
-	ExperimentalHwmonZonesFlag   = "experimental.hwmon.zones"
+	ExperimentalHwmonForceEnabledFlag = "experimental.hwmon.force-enabled"
+	ExperimentalHwmonZonesFlag        = "experimental.hwmon.zones"
 
 	// Experimental GPU flags
 	ExperimentalGPUEnabledFlag   = "experimental.gpu.enabled"
@@ -447,7 +447,7 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 	redfishConfig := app.Flag(ExperimentalPlatformRedfishConfigFlag, "Path to experimental Redfish BMC configuration file").String()
 
 	// experimental hwmon
-	hwmonEnabled := app.Flag(ExperimentalHwmonEnabledFlag, "Enable experimental hwmon power monitoring").Default("false").Bool()
+	hwmonEnabled := app.Flag(ExperimentalHwmonForceEnabledFlag, "Force hwmon as the power meter, skipping RAPL auto-detection").Default("false").Bool()
 	hwmonZones := app.Flag(ExperimentalHwmonZonesFlag, "Hwmon zone filter (power labels to monitor)").Strings()
 
 	// experimental GPU
@@ -630,13 +630,13 @@ func applyHwmonConfig(cfg *Config, flagsSet map[string]bool, enabled *bool, zone
 
 // hasHwmonFlags returns true if any hwmon experimental flags are set
 func hasHwmonFlags(flagsSet map[string]bool) bool {
-	return flagsSet[ExperimentalHwmonEnabledFlag] ||
+	return flagsSet[ExperimentalHwmonForceEnabledFlag] ||
 		flagsSet[ExperimentalHwmonZonesFlag]
 }
 
 func defaultHwmonConfig() Hwmon {
 	return Hwmon{
-		Enabled:   ptr.To(false),
+		ForceEnabled: ptr.To(false),
 		Zones:     []string{},
 		ChipRules: []ChipPairingRule{},
 	}
@@ -644,8 +644,8 @@ func defaultHwmonConfig() Hwmon {
 
 // applyHwmonFlags applies flag values to hwmon config
 func applyHwmonFlags(hwmon *Hwmon, flagsSet map[string]bool, enabled *bool, zones *[]string) {
-	if flagsSet[ExperimentalHwmonEnabledFlag] {
-		hwmon.Enabled = enabled
+	if flagsSet[ExperimentalHwmonForceEnabledFlag] {
+		hwmon.ForceEnabled = enabled
 	}
 
 	if flagsSet[ExperimentalHwmonZonesFlag] {
@@ -711,7 +711,7 @@ func (c *Config) IsFeatureEnabled(feature Feature) bool {
 		if c.Experimental == nil {
 			return false
 		}
-		return ptr.Deref(c.Experimental.Hwmon.Enabled, false)
+		return ptr.Deref(c.Experimental.Hwmon.ForceEnabled, false)
 	case PrometheusFeature:
 		return ptr.Deref(c.Exporter.Prometheus.Enabled, false)
 	case StdoutFeature:
@@ -740,7 +740,7 @@ func (c *Config) experimentalFeatureEnabled() bool {
 	}
 
 	// Check if Hwmon is enabled
-	if ptr.Deref(c.Experimental.Hwmon.Enabled, false) {
+	if ptr.Deref(c.Experimental.Hwmon.ForceEnabled, false) {
 		return true
 	}
 
