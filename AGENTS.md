@@ -11,6 +11,12 @@
 ## Quick Reference
 
 ```bash
+# Cross-compilation (CGO_ENABLED=0, no C cross-compiler needed)
+make build-manager GOARCH=arm64                    # ARM64 binary
+make operator-build GOARCH=arm64                   # ARM64 container image
+make operator-build-multi                          # Multi-arch image build (amd64+arm64), local only
+make operator-push-multi                           # Push multi-arch images and create manifest
+
 # Before any PR
 make fmt vet test
 

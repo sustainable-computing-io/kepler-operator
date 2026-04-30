@@ -1,9 +1,10 @@
 # Build the manager binary
-FROM golang:1.24 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.24 AS builder
 
 ARG VERSION
 ARG GIT_COMMIT
 ARG GIT_BRANCH
+ARG TARGETARCH
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -16,25 +17,27 @@ RUN go mod download
 # Copy the go source
 COPY . .
 
-# Build
+# Build - cross-compile natively (CGO_ENABLED=0)
 RUN make build-manager \
+  GOARCH=${TARGETARCH} \
   VERSION=${VERSION} \
   GIT_COMMIT=${GIT_COMMIT} \
   GIT_BRANCH=${GIT_BRANCH}
 
-FROM quay.io/openshift/origin-cli:4.18 AS origincli
-
 FROM registry.access.redhat.com/ubi9-minimal:9.2
+ARG TARGETARCH
 RUN INSTALL_PKGS=" \
   rsync \
   tar \
+  gzip \
   " && \
   microdnf install -y $INSTALL_PKGS && \
   microdnf clean all
+RUN curl -sL "https://mirror.openshift.com/pub/openshift-v4/${TARGETARCH}/clients/ocp/stable/openshift-client-linux.tar.gz" \
+    | tar -xzf - -C /usr/bin oc
 WORKDIR /
 COPY --from=builder /workspace/bin/manager .
 COPY --from=builder /workspace/must-gather/* /usr/bin/
-COPY --from=origincli /usr/bin/oc /usr/bin
 USER 65532:65532
 
 ENTRYPOINT ["/manager"]
