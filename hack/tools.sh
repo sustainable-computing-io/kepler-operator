@@ -21,6 +21,7 @@ declare -r KUBECTL_VERSION=${KUBECTL_VERSION:-v1.28.4}
 declare -r SHFMT_VERSION=${SHFMT_VERSION:-v3.7.0}
 declare -r JQ_VERSION=${JQ_VERSION:-1.7}
 declare -r HELM_VERSION=${HELM_VERSION:-v3.18.1}
+declare -r GOVULNCHECK_VERSION=${GOVULNCHECK_VERSION:-v1.1.4}
 
 # install
 declare -r KUSTOMIZE_INSTALL_SCRIPT="https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
@@ -130,18 +131,15 @@ install_operator-sdk() {
 }
 
 version_govulncheck() {
-	warn govulncheck - latest
+	govulncheck -version
 }
 
 install_govulncheck() {
+	local version_regex="govulncheck@$GOVULNCHECK_VERSION"
 
-	# NOTE: govulncheck does not have a -version flag, so checking
-	# if it is available is "good" enough
-	command -v govulncheck >/dev/null 2>&1 && {
-		ok "govulncheck is already installed"
-		return 0
-	}
-	go_install golang.org/x/vuln/cmd/govulncheck latest
+	validate_version govulncheck -version "$version_regex" && return 0
+
+	go_install golang.org/x/vuln/cmd/govulncheck "$GOVULNCHECK_VERSION"
 }
 
 version_yq() {
