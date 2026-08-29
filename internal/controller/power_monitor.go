@@ -202,6 +202,8 @@ func (r PowerMonitorReconciler) reconcilersForPowerMonitor(pm *v1alpha1.PowerMon
 		detail = components.Full
 	}
 
+	// Deleter proceeds without waiting, owner references guarantee
+	// PowerMonitorInternal cleanup via Kubernetes GC
 	rs := []reconciler.Reconciler{
 		op(newPowerMonitorInternal(detail, pm)),
 		reconciler.Finalizer{
