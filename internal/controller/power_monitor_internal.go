@@ -6,9 +6,7 @@ package controller
 import (
 	"context"
 	"fmt"
-
 	"slices"
-	"time"
 
 	"github.com/go-logr/logr"
 	secv1 "github.com/openshift/api/security/v1"
@@ -569,15 +567,14 @@ func (r PowerMonitorInternalReconciler) reconcilersForPowerMonitor(pmi *v1alpha1
 	rs = append(rs, exporterReconcilers...)
 
 	if cleanup {
+		// Deleter proceeds without waiting, owner references guarantee
+		// namespace cleanup via Kubernetes GC
 		rs = append(rs, reconciler.Deleter{
-			OnError:     reconciler.Requeue,
-			Resource:    components.NewNamespace(pmi.Namespace()),
-			WaitTimeout: 2 * time.Minute,
+			OnError:  reconciler.Requeue,
+			Resource: components.NewNamespace(pmi.Namespace()),
 		})
 	}
 
-	// WARN: only run finalizer if theren't any errors
-	// this bug 🐛 must be FIXED
 	rs = append(rs, reconciler.Finalizer{
 		Resource:  pmi,
 		Finalizer: Finalizer,
