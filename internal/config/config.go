@@ -6,7 +6,9 @@ package config
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -50,6 +52,13 @@ type (
 	Host struct {
 		SysFS  string `yaml:"sysfs"`
 		ProcFS string `yaml:"procfs"`
+	}
+
+	// Cpu configuration controls how CPU power meters are selected.
+	// PreferredMeters lists backends in preference order. The first backend
+	// that initializes successfully and reports zones is used.
+	Cpu struct {
+		PreferredMeters []string `yaml:"preferredMeters"`
 	}
 
 	// Rapl configuration
@@ -173,6 +182,11 @@ type (
 		// observe true idle (e.g. GPUs always under load).
 		// 0 means auto-detect (track minimum power when no compute processes are running).
 		IdlePower float64 `yaml:"idlePower"`
+
+		// DCGMEndpoint is the URL of the dcgm-exporter Prometheus metrics endpoint.
+		// Required for MIG power attribution. If empty, auto-discovered via K8s API.
+		// Example: "http://10.131.2.22:9400/metrics"
+		DCGMEndpoint string `yaml:"dcgmEndpoint"`
 	}
 
 	// Experimental contains experimental features (no stability guarantees)
@@ -186,6 +200,7 @@ type (
 		Log      Log      `yaml:"log"`
 		Host     Host     `yaml:"host"`
 		Monitor  Monitor  `yaml:"monitor"`
+		Cpu      Cpu      `yaml:"cpu"`
 		Rapl     Rapl     `yaml:"rapl"`
 		Exporter Exporter `yaml:"exporter"`
 		Web      Web      `yaml:"web"`
@@ -197,6 +212,11 @@ type (
 		// use omitempty to suppress printing (String) Experimental configuration
 		// when it is empty
 		Experimental *Experimental `yaml:"experimental,omitempty"`
+
+		// unknownFields holds the keys present in the config file that do not
+		// map to any field above. They are dropped silently by the decoder, so
+		// they are kept here to be reported at startup.
+		unknownFields []string `yaml:"-"`
 	}
 )
 
@@ -258,6 +278,9 @@ const (
 	MonitorStaleness         = "monitor.staleness" // not a flag
 	MonitorMaxTerminatedFlag = "monitor.max-terminated"
 
+	// CPU
+	CpuPreferredMeters = "cpu.preferredMeters" // not a flag
+
 	// RAPL
 	RaplZones = "rapl.zones" // not a flag
 
@@ -289,8 +312,9 @@ const (
 	ExperimentalHwmonZonesFlag        = "experimental.hwmon.zones"
 
 	// Experimental GPU flags
-	ExperimentalGPUEnabledFlag   = "experimental.gpu.enabled"
-	ExperimentalGPUIdlePowerFlag = "experimental.gpu.idle-power"
+	ExperimentalGPUEnabledFlag      = "experimental.gpu.enabled"
+	ExperimentalGPUIdlePowerFlag    = "experimental.gpu.idle-power"
+	ExperimentalGPUDCGMEndpointFlag = "experimental.gpu.dcgm-endpoint"
 
 // WARN:  dev settings shouldn't be exposed as flags as flags are intended for end users
 )
@@ -305,6 +329,9 @@ func DefaultConfig() *Config {
 		Host: Host{
 			SysFS:  "/sys",
 			ProcFS: "/proc",
+		},
+		Cpu: Cpu{
+			PreferredMeters: []string{"rapl", "hwmon"},
 		},
 		Rapl: Rapl{
 			Zones: []string{},
@@ -351,6 +378,29 @@ func DefaultConfig() *Config {
 	return cfg
 }
 
+// ApplyCpuMeterDeprecations translates legacy CPU-meter selectors into an
+// effective cpu.preferredMeters value and logs a deprecation warning per
+// translation.
+//
+// Legacy selectors:
+//   - experimental.hwmon.forceEnabled=true → cpu.preferredMeters: ["hwmon"]
+//   - dev.fake-cpu-meter.enabled=true      → cpu.preferredMeters: ["fake"]
+//
+// Legacy selectors win over an explicit cpu.preferredMeters when set, since
+// operators who set them today expect the legacy behavior. When both legacy
+// keys are set, fake takes precedence over hwmon. The legacy keys will stop
+// working in a future release.
+func (c *Config) ApplyCpuMeterDeprecations(logger *slog.Logger) {
+	switch {
+	case ptr.Deref(c.Dev.FakeCpuMeter.Enabled, false):
+		logger.Warn(`dev.fake-cpu-meter.enabled is deprecated; set cpu.preferredMeters: ["fake"] instead`)
+		c.Cpu.PreferredMeters = []string{"fake"}
+	case c.Experimental != nil && ptr.Deref(c.Experimental.Hwmon.ForceEnabled, false):
+		logger.Warn(`experimental.hwmon.forceEnabled is deprecated; set cpu.preferredMeters: ["hwmon"] instead`)
+		c.Cpu.PreferredMeters = []string{"hwmon"}
+	}
+}
+
 // Load loads configuration from an io.Reader
 func Load(r io.Reader) (*Config, error) {
 	cfg := DefaultConfig()
@@ -363,6 +413,7 @@ func Load(r io.Reader) (*Config, error) {
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
+	cfg.unknownFields = unknownFields(data)
 	cfg.sanitize()
 
 	if err := cfg.Validate(); err != nil {
@@ -447,12 +498,13 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 	redfishConfig := app.Flag(ExperimentalPlatformRedfishConfigFlag, "Path to experimental Redfish BMC configuration file").String()
 
 	// experimental hwmon
-	hwmonEnabled := app.Flag(ExperimentalHwmonForceEnabledFlag, "Force hwmon as the power meter, skipping RAPL auto-detection").Default("false").Bool()
+	hwmonForceEnabled := app.Flag(ExperimentalHwmonForceEnabledFlag, "Force hwmon as the power meter, skipping RAPL auto-detection").Default("false").Bool()
 	hwmonZones := app.Flag(ExperimentalHwmonZonesFlag, "Hwmon zone filter (power labels to monitor)").Strings()
 
 	// experimental GPU
 	gpuEnabled := app.Flag(ExperimentalGPUEnabledFlag, "Enable experimental GPU power monitoring").Default("false").Bool()
 	gpuIdlePower := app.Flag(ExperimentalGPUIdlePowerFlag, "GPU idle power in Watts (0 = auto-detect from idle observations)").Default("0").Float64()
+	gpuDCGMEndpoint := app.Flag(ExperimentalGPUDCGMEndpointFlag, "dcgm-exporter metrics endpoint URL for MIG power attribution (auto-discovered if empty)").Default("").String()
 
 	return func(cfg *Config) error {
 		// Logging settings
@@ -522,12 +574,22 @@ func RegisterFlags(app *kingpin.Application) ConfigUpdaterFn {
 		}
 
 		// Apply experimental hwmon settings
-		if err := applyHwmonConfig(cfg, flagsSet, hwmonEnabled, hwmonZones); err != nil {
+		if err := applyHwmonConfig(cfg, flagsSet, hwmonForceEnabled, hwmonZones); err != nil {
 			return err
 		}
 
 		// Apply experimental GPU settings
-		applyGPUConfig(cfg, flagsSet, gpuEnabled, gpuIdlePower)
+		applyGPUConfig(cfg, flagsSet, gpuEnabled, gpuIdlePower, gpuDCGMEndpoint)
+
+		// Resolve Kube.Node fallback to hostname when Kubernetes is not enabled
+		// and no node name was set by flags or YAML
+		if cfg.Kube.Node == "" && !ptr.Deref(cfg.Kube.Enabled, false) {
+			hostname, err := os.Hostname()
+			if err != nil {
+				return fmt.Errorf("failed to resolve node name: %w", err)
+			}
+			cfg.Kube.Node = hostname
+		}
 
 		cfg.sanitize()
 		return cfg.Validate()
@@ -606,7 +668,7 @@ func resolveRedfishNodeName(redfish *Redfish, kubeNodeName string) error {
 }
 
 // applyHwmonConfig applies Hwmon configuration flags
-func applyHwmonConfig(cfg *Config, flagsSet map[string]bool, enabled *bool, zones *[]string) error {
+func applyHwmonConfig(cfg *Config, flagsSet map[string]bool, forceEnabled *bool, zones *[]string) error {
 	// Early exit if no hwmon flags are set and config file does not have experimental section
 	if !hasHwmonFlags(flagsSet) && cfg.Experimental == nil {
 		return nil
@@ -623,7 +685,7 @@ func applyHwmonConfig(cfg *Config, flagsSet map[string]bool, enabled *bool, zone
 	hwmon := &cfg.Experimental.Hwmon
 
 	// Apply flag values
-	applyHwmonFlags(hwmon, flagsSet, enabled, zones)
+	applyHwmonFlags(hwmon, flagsSet, forceEnabled, zones)
 
 	return nil
 }
@@ -643,9 +705,9 @@ func defaultHwmonConfig() Hwmon {
 }
 
 // applyHwmonFlags applies flag values to hwmon config
-func applyHwmonFlags(hwmon *Hwmon, flagsSet map[string]bool, enabled *bool, zones *[]string) {
+func applyHwmonFlags(hwmon *Hwmon, flagsSet map[string]bool, forceEnabled *bool, zones *[]string) {
 	if flagsSet[ExperimentalHwmonForceEnabledFlag] {
-		hwmon.ForceEnabled = enabled
+		hwmon.ForceEnabled = forceEnabled
 	}
 
 	if flagsSet[ExperimentalHwmonZonesFlag] {
@@ -654,7 +716,7 @@ func applyHwmonFlags(hwmon *Hwmon, flagsSet map[string]bool, enabled *bool, zone
 }
 
 // applyGPUConfig applies GPU configuration from flags
-func applyGPUConfig(cfg *Config, flagsSet map[string]bool, enabled *bool, idlePower *float64) {
+func applyGPUConfig(cfg *Config, flagsSet map[string]bool, enabled *bool, idlePower *float64, dcgmEndpoint *string) {
 	// Early exit if GPU enabled flag is not set and config file does not have experimental section
 	if !flagsSet[ExperimentalGPUEnabledFlag] && cfg.Experimental == nil {
 		return
@@ -669,9 +731,14 @@ func applyGPUConfig(cfg *Config, flagsSet map[string]bool, enabled *bool, idlePo
 		cfg.Experimental.GPU.Enabled = enabled
 	}
 
-	// Only apply idle power if GPU is enabled
-	if cfg.IsFeatureEnabled(ExperimentalGPUFeature) && flagsSet[ExperimentalGPUIdlePowerFlag] {
-		cfg.Experimental.GPU.IdlePower = *idlePower
+	// Only apply GPU-specific settings if GPU is enabled
+	if cfg.IsFeatureEnabled(ExperimentalGPUFeature) {
+		if flagsSet[ExperimentalGPUIdlePowerFlag] {
+			cfg.Experimental.GPU.IdlePower = *idlePower
+		}
+		if flagsSet[ExperimentalGPUDCGMEndpointFlag] {
+			cfg.Experimental.GPU.DCGMEndpoint = *dcgmEndpoint
+		}
 	}
 }
 
@@ -739,7 +806,7 @@ func (c *Config) experimentalFeatureEnabled() bool {
 		return true
 	}
 
-	// Check if Hwmon is enabled
+	// Check if Hwmon is force-enabled
 	if ptr.Deref(c.Experimental.Hwmon.ForceEnabled, false) {
 		return true
 	}
@@ -761,6 +828,10 @@ func (c *Config) sanitize() {
 	c.Web.Config = strings.TrimSpace(c.Web.Config)
 	for i := range c.Web.ListenAddresses {
 		c.Web.ListenAddresses[i] = strings.TrimSpace(c.Web.ListenAddresses[i])
+	}
+
+	for i := range c.Cpu.PreferredMeters {
+		c.Cpu.PreferredMeters[i] = strings.TrimSpace(c.Cpu.PreferredMeters[i])
 	}
 
 	for i := range c.Rapl.Zones {
@@ -852,6 +923,19 @@ func (c *Config) Validate(skips ...SkipValidation) error {
 			}
 		}
 	}
+	{ // cpu.preferredMeters
+		// Keep this list in sync with the switch in internal/device/cpu_power_meter.go.
+		validCpuMeters := map[string]bool{
+			"rapl":  true,
+			"hwmon": true,
+			"fake":  true,
+		}
+		for _, name := range c.Cpu.PreferredMeters {
+			if !validCpuMeters[name] {
+				errs = append(errs, fmt.Sprintf("invalid cpu.preferredMeters entry %q, must be one of %q, %q, %q", name, "rapl", "hwmon", "fake"))
+			}
+		}
+	}
 	{ // Monitor
 		if c.Monitor.Interval < 0 {
 			errs = append(errs, fmt.Sprintf("invalid monitor interval: %s can't be negative", c.Monitor.Interval))
@@ -914,6 +998,8 @@ func (c *Config) validateExperimentalConfig(validationSkipped map[SkipValidation
 				}
 			}
 		}
+
+		errs = append(errs, validateDCGMEndpoint(c.Experimental.GPU.DCGMEndpoint)...)
 	}
 
 	return errs
@@ -988,6 +1074,47 @@ func validatePort(port string) error {
 	return nil
 }
 
+// validateDCGMEndpoint validates the DCGM endpoint URL if set.
+// Empty endpoint is valid (auto-discovery will be used).
+func validateDCGMEndpoint(endpoint string) []string {
+	if endpoint == "" {
+		return nil
+	}
+
+	var errs []string
+	ep := strings.TrimSpace(endpoint)
+
+	u, err := url.Parse(ep)
+	if err != nil {
+		return []string{fmt.Sprintf("invalid dcgmEndpoint: %s", err)}
+	}
+
+	if u.Scheme != "http" && u.Scheme != "https" {
+		errs = append(errs, fmt.Sprintf("dcgmEndpoint scheme must be http or https, got %q", u.Scheme))
+	}
+	if u.Host == "" {
+		errs = append(errs, "dcgmEndpoint must include a host")
+	}
+	if u.User != nil {
+		errs = append(errs, "dcgmEndpoint must not contain credentials")
+	}
+	if strings.ContainsRune(ep, '\\') {
+		errs = append(errs, "dcgmEndpoint must not contain backslashes")
+	}
+	if u.RawQuery != "" || u.Fragment != "" {
+		errs = append(errs, "dcgmEndpoint must not contain query string or fragment")
+	}
+
+	// Validate port if present
+	if _, port, err := net.SplitHostPort(u.Host); err == nil {
+		if err := validatePort(port); err != nil {
+			errs = append(errs, fmt.Sprintf("dcgmEndpoint: %s", err))
+		}
+	}
+
+	return errs
+}
+
 func (c *Config) String() string {
 	bytes, err := yaml.Marshal(c)
 	if err == nil {
@@ -1010,6 +1137,7 @@ func (c *Config) manualString() string {
 		{MonitorIntervalFlag, c.Monitor.Interval.String()},
 		{MonitorStaleness, c.Monitor.Staleness.String()},
 		{MonitorMaxTerminatedFlag, fmt.Sprintf("%d", c.Monitor.MaxTerminated)},
+		{CpuPreferredMeters, strings.Join(c.Cpu.PreferredMeters, ", ")},
 		{RaplZones, strings.Join(c.Rapl.Zones, ", ")},
 		{ExporterStdoutEnabledFlag, fmt.Sprintf("%v", c.Exporter.Stdout.Enabled)},
 		{ExporterPrometheusEnabledFlag, fmt.Sprintf("%v", c.Exporter.Prometheus.Enabled)},

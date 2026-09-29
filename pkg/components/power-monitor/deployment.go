@@ -878,6 +878,8 @@ func KeplerConfig(pmi *v1alpha1.PowerMonitorInternal, additionalConfigs ...strin
 	}
 
 	// Skip validation of paths and files that only exist in the target Kepler pods, not in the operator container.
+	// TODO: Consider validating the experimental DCGM endpoint URL here without
+	// enabling checks for paths and files that only exist in Kepler pods.
 	if err := cfg.Validate(config.SkipHostValidation, config.SkipExperimentalValidation); err != nil {
 		return config.DefaultConfig().String(), err
 	}

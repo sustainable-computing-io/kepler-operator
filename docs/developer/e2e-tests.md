@@ -75,7 +75,7 @@ These flags are passed after `--`:
 |------|---------|-------------|
 | `-openshift` | `false` | Run against an OpenShift cluster |
 | `-running-on-vm` | `false` | Enable VM test mode (fake CPU meter) |
-| `-kepler-image` | `quay.io/sustainable_computing_io/kepler:v0.11.3` | Kepler image to use |
+| `-kepler-image` | `quay.io/sustainable_computing_io/kepler:v0.12.0` | Kepler image to use |
 | `-deployment-namespace` | `power-monitor` | Namespace for Kepler components |
 
 ### Test Output
