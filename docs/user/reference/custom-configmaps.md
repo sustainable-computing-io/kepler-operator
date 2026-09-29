@@ -184,6 +184,58 @@ data:
 - Want to complement CPU-only RAPL monitoring
 - Need power data when running Kepler in VMs
 
+### ⚡ Example 6: Selecting CPU Power Meters
+
+Select CPU power meters in preference order (Kepler v0.12.0):
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kepler-cpu-config
+  namespace: power-monitor
+data:
+  config.yaml: |
+    cpu:
+      preferredMeters:
+        - rapl
+        - hwmon
+```
+
+**Important Notes:**
+
+- Requires an operator build with Kepler v0.12.0 configuration support
+- The default is `[rapl, hwmon]`. Kepler selects the first backend that initializes successfully and reports zones at startup; there is no runtime failover
+- Use `[hwmon]` to select only HWMON, or `[fake]` for development and testing
+- The legacy settings `experimental.hwmon.forceEnabled: true` and `dev.fake-cpu-meter.enabled: true` remain supported in v0.12.0, but are deprecated and override `cpu.preferredMeters`. If both are enabled, the fake meter wins
+- In v0.12.0, keep `experimental.hwmon.forceEnabled: true` when using HWMON `zones` or `chipRules`. Kepler otherwise drops that tuning when no experimental feature is enabled. Retaining `forceEnabled` selects HWMON exclusively
+
+### 🖥️ Example 7: Configuring the GPU DCGM Endpoint
+
+Configure the DCGM exporter endpoint for MIG power attribution (Kepler v0.12.0):
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kepler-gpu-config
+  namespace: power-monitor
+data:
+  config.yaml: |
+    experimental:
+      gpu:
+        enabled: true
+        dcgmEndpoint: http://dcgm-exporter:9400/metrics
+```
+
+**Important Notes:**
+
+- This feature is **experimental** and requires an operator build with Kepler v0.12.0 configuration support
+- Requires a running DCGM exporter and working NVIDIA device access and driver-library mounts, configured separately from this setting
+- An empty or omitted endpoint uses automatic discovery of the local DCGM exporter pod when no earlier ConfigMap sets one
+- To return to automatic discovery, remove the endpoint from every referenced ConfigMap that sets it
+- An explicit endpoint must serve the GPUs on the same node as Kepler and use HTTP or HTTPS without URL credentials, query parameters, or fragments
+
 ## 🗂️ Using Multiple ConfigMaps
 
 You can reference multiple ConfigMaps to organize your configuration. The operator merges them in the order specified:

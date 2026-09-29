@@ -114,7 +114,7 @@ Key configuration values:
 |-----------|-------------|---------|
 | `operator.image` | Operator image (full path with tag) | `quay.io/sustainable_computing_io/kepler-operator:0.21.0` |
 | `operator.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `kepler.image` | Kepler image (full path with tag) | `quay.io/sustainable_computing_io/kepler:v0.11.0` |
+| `kepler.image` | Kepler image (full path with tag) | `quay.io/sustainable_computing_io/kepler:v0.12.0` |
 | `kube-rbac-proxy.image` | Kube RBAC Proxy image (full path with tag) | `quay.io/brancz/kube-rbac-proxy:v0.19.0` |
 | `replicaCount` | Number of operator replicas | `1` |
 | `namespace` | Operator namespace | `kepler-operator` |
