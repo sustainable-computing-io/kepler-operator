@@ -36,6 +36,7 @@ Step-by-step tutorials for common tasks:
 - **[Validating Prometheus Integration](guides/validating-prometheus-integration.md)** - Verify Prometheus is scraping Kepler metrics
 - **[Setting up Grafana Dashboards](guides/grafana-dashboard.md)** - Visualize energy metrics
 - **[Upgrading](guides/upgrading.md)** - Upgrade the operator (Helm and OLM)
+- **[Legacy Kepler Migration](guides/migration.md)** - Migrate to PowerMonitor before upgrading from an operator that supports the legacy API
 - **[Troubleshooting Guide](guides/troubleshooting.md)** - Common issues and platform-specific solutions
 
 ### Experimental Features

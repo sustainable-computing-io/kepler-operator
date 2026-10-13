@@ -62,7 +62,7 @@ kubectl describe pod <operator-pod-name> -n kepler-operator
 
 1. **Image pull failures**:
 
-```text
+   ```text
    Error: ImagePullBackOff
    ```
 
@@ -74,7 +74,7 @@ kubectl describe pod <operator-pod-name> -n kepler-operator
 
 1. **Insufficient resources**:
 
-```text
+   ```text
    Error: 0/3 nodes are available: insufficient memory
    ```
 
@@ -82,7 +82,7 @@ kubectl describe pod <operator-pod-name> -n kepler-operator
 
 1. **RBAC permission errors**:
 
-```text
+   ```text
    Error: forbidden: User cannot create resource
    ```
 
@@ -127,7 +127,7 @@ Look at `status.conditions` for error messages.
 
 1. **Validation errors**:
 
-```text
+   ```text
    Error: spec.kepler.config.sampleRate: Invalid value
    ```
 
@@ -166,7 +166,7 @@ kubectl logs -n kepler-operator deployment/kepler-operator-controller --tail=100
 
 1. **prometheus-operator not installed** (MOST COMMON):
 
-```text
+   ```text
    ERROR controller-runtime.source.EventHandler if kind is a CRD, it should be installed before calling Start
    {"kind": "ServiceMonitor.monitoring.coreos.com", "error": "failed to get restmapping: no matches for kind \"ServiceMonitor\" in version \"monitoring.coreos.com/v1\""}
    ```
@@ -223,7 +223,7 @@ kubectl describe pod -n <namespace> <power-monitor-pod-name>
 
 1. **Missing hardware sensors** (VMs or cloud instances):
 
-```text
+   ```text
    Error: failed to read RAPL: no such file or directory
    ```
 
@@ -258,15 +258,15 @@ kubectl describe pod -n <namespace> <power-monitor-pod-name>
 
 1. **Permission denied errors**:
 
-```text
+   ```text
    Error: failed to access /sys/class/powercap: permission denied
    ```
 
-   **Note**: The operator automatically configures the required privileged security context for Kepler pods. If you see this error, it indicates a configuration issue with the operator deployment. Check operator logs for errors related to security context or permissions.
+   **Note**: The operator configures host mounts and `SYS_PTRACE` for Kepler pods, with `privileged: false`. Check the pod's mounts and security context, host sensor permissions, and operator logs for reconciliation errors.
 
 1. **Invalid configuration**:
 
-```text
+   ```text
    Error: invalid log level: "invalid"
    ```
 
@@ -387,29 +387,19 @@ kubectl patch powermonitor power-monitor --type=merge -p '
 
 #### ServiceMonitor Not Created
 
-**Kubernetes**:
+The operator reconciles the Kepler exporter ServiceMonitor in the PowerMonitor deployment namespace (default: `power-monitor`). The Helm value `metrics.serviceMonitor.enabled` controls the operator manager's metrics monitor.
 
-Verify ServiceMonitor is enabled in Helm values:
-
-```bash
-helm get values kepler-operator -n kepler-operator
-```
-
-If `metrics.serviceMonitor.enabled: false`, upgrade with:
+Check that the ServiceMonitor CRD is installed, then inspect PowerMonitor conditions and the exporter namespace:
 
 ```bash
-helm upgrade kepler-operator ./manifests/helm/kepler-operator \
-  --namespace kepler-operator \
-  --set metrics.serviceMonitor.enabled=true
+kubectl get crd servicemonitors.monitoring.coreos.com
+kubectl describe powermonitor power-monitor
+kubectl get servicemonitor power-monitor -n power-monitor
 ```
 
-**OpenShift**:
+Use your configured deployment namespace if it differs from the default. Check operator logs using [Step 1](#step-1-check-operator-health) for reconciliation errors. On Kubernetes, install the [required monitoring stack](../installation/monitoring-stack-kubernetes.md) if the CRD is missing.
 
-ServiceMonitor should be created automatically. Verify:
-
-```bash
-oc get servicemonitor -n <namespace>
-```
+In RBAC security mode, the operator creates the exporter ServiceMonitor only when `allowedSANames` includes `openshift-user-workload-monitoring:prometheus-user-workload`. On OpenShift, also enable User Workload Monitoring; see [Prometheus integration](validating-prometheus-integration.md).
 
 #### Prometheus Not Discovering ServiceMonitor
 
@@ -728,23 +718,22 @@ oc get installplan -n openshift-operators
 **Symptoms**:
 
 ```text
-Error: pods "kepler-xxx" is forbidden: unable to validate against any security context constraint
+Error: pods "power-monitor-xxx" is forbidden: unable to validate against any security context constraint
 ```
 
 **Diagnosis**:
 
 ```bash
-oc get scc | grep kepler
-oc describe scc <kepler-scc>
+oc get scc power-monitor
+oc describe scc power-monitor
+oc get serviceaccount power-monitor -n power-monitor
+oc describe powermonitor power-monitor
+oc logs -n openshift-operators deployment/kepler-operator-controller --tail=200
 ```
 
 **Solution**:
 
-Kepler Operator automatically creates appropriate SCC. If missing:
-
-```bash
-oc adm policy add-scc-to-user privileged -z kepler -n <namespace>
-```
+Kepler Operator manages the `power-monitor` SCC for the `power-monitor` service account in the exporter namespace. Use your configured namespace if it differs from the default. Verify that the operator runs with `--openshift`, as the standard OpenShift bundle does, and resolve operator permission or reconciliation errors so the managed SCC can be created. The SCC allows the required host access and `SYS_PTRACE`, while keeping `privileged: false`.
 
 ### OpenShift Monitoring Stack
 
@@ -794,6 +783,68 @@ oc get servicemonitor -A
 OpenShift user workload monitoring scrapes ServiceMonitors in user namespaces, not `openshift-*` namespaces.
 
 Ensure ServiceMonitor is in the correct namespace (typically where PowerMonitor is deployed).
+
+## High Resource Usage
+
+Measure usage and inspect the current settings before changing them:
+
+```bash
+kubectl top pods -n power-monitor
+kubectl get powermonitor power-monitor -o yaml
+kubectl describe resourcequota -n power-monitor
+kubectl get events -n power-monitor --sort-by='.lastTimestamp'
+```
+
+Process and container metrics increase cardinality. If they are unnecessary,
+reduce exported levels and sampling frequency. Save the existing manifest
+before tuning so that its settings can be restored:
+
+```bash
+kubectl patch powermonitor power-monitor --type=merge -p \
+  '{"spec":{"kepler":{"config":{"metricLevels":["node","pod"],"sampleRate":"10s","maxTerminated":0}}}}'
+pm_generation=$(kubectl get powermonitor power-monitor -o jsonpath='{.metadata.generation}')
+kubectl wait \
+  --for=jsonpath='{.status.conditions[?(@.type=="Reconciled")].observedGeneration}'="$pm_generation" \
+  powermonitor/power-monitor --timeout=180s
+kubectl wait --for=condition=Reconciled powermonitor/power-monitor --timeout=180s
+kubectl rollout status daemonset/power-monitor -n power-monitor --timeout=180s
+```
+
+Use a positive `maxTerminated` only if terminated-workload metrics are needed;
+the operator default `0` disables that tracking. The public PowerMonitor API
+does not expose `spec.kepler.deployment.resources`; resource-limit YAML using
+that field is unsupported. Investigate namespace quota errors separately from
+runtime CPU or memory usage.
+
+## Temporary Debug Logging
+
+Record the current log level, then enable debug logging while investigating:
+
+```bash
+kubectl get powermonitor power-monitor -o jsonpath='{.spec.kepler.config.logLevel}'
+kubectl patch powermonitor power-monitor --type=merge -p \
+  '{"spec":{"kepler":{"config":{"logLevel":"debug"}}}}'
+pm_generation=$(kubectl get powermonitor power-monitor -o jsonpath='{.metadata.generation}')
+kubectl wait \
+  --for=jsonpath='{.status.conditions[?(@.type=="Reconciled")].observedGeneration}'="$pm_generation" \
+  powermonitor/power-monitor --timeout=180s
+kubectl wait --for=condition=Reconciled powermonitor/power-monitor --timeout=180s
+kubectl rollout status daemonset/power-monitor -n power-monitor --timeout=180s
+kubectl get pods -n power-monitor -l app.kubernetes.io/name=power-monitor-exporter
+kubectl logs -n power-monitor <pod-name> --tail=100 -f
+```
+
+Select one of the listed pods for the log command. Restore the original log
+level afterwards (`info` is the default), then repeat the generation and
+readiness checks:
+
+```bash
+kubectl patch powermonitor power-monitor --type=merge -p \
+  '{"spec":{"kepler":{"config":{"logLevel":"info"}}}}'
+```
+
+For OpenShift dashboard access and current metric examples, see
+[the installation walkthrough](../installation/openshift.md#view-the-openshift-dashboards).
 
 ## Getting Help
 

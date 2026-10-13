@@ -18,13 +18,16 @@ Unlike vanilla Kubernetes, OpenShift includes several features out-of-the-box th
 
 ## Installation via OpenShift Web Console (Recommended)
 
+The screenshots were captured with operator 0.20.0. Console layout can differ
+with your installed version; use the current manifests and instructions below.
+
 ### Step 1: Navigate to OperatorHub
 
 1. Log in to the OpenShift Web Console
 2. Navigate to **Operators** → **OperatorHub**
 3. In the search box, type "Kepler Operator"
 
-<!-- TODO: Add screenshot of OperatorHub catalog showing Kepler Operator -->
+![Search for Kepler in OperatorHub](assets/images/01-operatorhub-kepler-search.png)
 
 ### Step 2: Install the Operator
 
@@ -32,15 +35,15 @@ Unlike vanilla Kubernetes, OpenShift includes several features out-of-the-box th
 2. Click **Install**
 3. Configure installation options:
    - **Update channel**: Select `alpha` (or the latest stable channel)
-   - **Installation mode**: Choose one of:
-     - **All namespaces on the cluster** (recommended) - Operator can manage PowerMonitors in any namespace
-     - **A specific namespace** - Operator only manages resources in selected namespace
+   - **Installation mode**: **All namespaces on the cluster**, the mode supported by the operator's CSV
    - **Installed Namespace**: Select `openshift-operators` (recommended) or create a custom namespace
    - **Update approval**: Choose automatic or manual updates
 
-<!-- TODO: Add screenshot of installation configuration page -->
+![Operator installation options](assets/images/02b-operator-installation-start.png)
 
 1. Click **Install**
+
+![Installation in progress](assets/images/02-operator-installing.png)
 
 ### Step 3: Verify Installation
 
@@ -48,7 +51,7 @@ Unlike vanilla Kubernetes, OpenShift includes several features out-of-the-box th
 2. Ensure the namespace filter shows your selected namespace (e.g., `openshift-operators`)
 3. Verify **Kepler Operator** appears with status **Succeeded**
 
-<!-- TODO: Add screenshot of installed operators page showing Kepler Operator -->
+![Installed operator](assets/images/03-operator-installed.png)
 
 The operator is now ready to manage PowerMonitor resources.
 
@@ -93,7 +96,82 @@ Apply the subscription:
 oc apply -f kepler-operator-subscription.yaml
 ```
 
+Complete the [installation verification](#verification) before creating a
+PowerMonitor. Continue after the installed Kepler CSV reports `Succeeded` and
+the PowerMonitor CRD is available.
+
+## Create a PowerMonitor
+
+Before continuing, enable [User Workload Monitoring](#integration-with-openshift-monitoring)
+if it is not already enabled, and confirm its service account exists:
+
+```bash
+oc get serviceaccount prometheus-user-workload -n openshift-user-workload-monitoring
+```
+
+If the service account is missing, wait for User Workload Monitoring to finish
+starting before continuing. The default OpenShift RBAC configuration requires
+this service account for PowerMonitor reconciliation.
+
+### Using the Console
+
+1. Open **Operators → Installed Operators → Kepler Operator**.
+2. Select the **PowerMonitor** tab and click **Create PowerMonitor**.
+3. Switch to YAML view and use the manifest below. The name must be
+   `power-monitor`; PowerMonitor is a cluster-scoped singleton.
+
+### Using YAML or the CLI
+
+Save this as `power-monitor.yaml`, or paste it into the console YAML editor:
+
+```yaml
+apiVersion: kepler.system.sustainable.computing.io/v1alpha1
+kind: PowerMonitor
+metadata:
+  name: power-monitor
+spec:
+  kepler:
+    deployment:
+      nodeSelector:
+        kubernetes.io/os: linux
+    config:
+      logLevel: info
+      metricLevels: [node, pod, vm]
+      sampleRate: 5s
+      staleness: 500ms
+```
+
+For CLI installation, validate and apply it:
+
+```bash
+oc apply --dry-run=server -f power-monitor.yaml
+oc apply -f power-monitor.yaml
+pm_generation=$(oc get powermonitor power-monitor -o jsonpath='{.metadata.generation}')
+oc wait \
+  --for=jsonpath='{.status.conditions[?(@.type=="Reconciled")].observedGeneration}'="$pm_generation" \
+  powermonitor/power-monitor --timeout=180s
+oc wait --for=condition=Reconciled powermonitor/power-monitor --timeout=180s
+oc rollout status daemonset/power-monitor -n power-monitor --timeout=180s
+oc get powermonitor power-monitor -o yaml
+oc get pods -n power-monitor -o wide
+```
+
+The component namespace defaults to `power-monitor`; substitute your operator's
+`--deployment-namespace` value if customized. If a wait times out, check
+PowerMonitor conditions and events before continuing.
+
+![PowerMonitor status in the console](assets/images/07-powermonitor-details.png)
+
+See [PowerMonitor configuration](../reference/power-monitor.md) for additional
+settings and [uninstallation](../reference/uninstallation.md) for removal.
+
 ## Verification
+
+### Check Subscription Status
+
+```bash
+oc get subscription kepler-operator -n openshift-operators
+```
 
 ### Check Operator Status
 
@@ -133,17 +211,18 @@ oc get crd powermonitors.kepler.system.sustainable.computing.io
 
 ### Security Context Constraints (SCC)
 
-Kepler requires privileged access to read hardware sensors. The operator automatically configures appropriate Security Context Constraints (SCC) for Kepler pods.
+Kepler needs host access to hardware sensors and process information. The operator manages the `power-monitor` Security Context Constraints (SCC), allowing host paths, host PID access, and the `SYS_PTRACE` capability. Kepler containers run with `privileged: false`.
 
 You can verify the SCC configuration:
 
 ```bash
-oc get scc | grep kepler
+oc get scc power-monitor
+oc describe scc power-monitor
 ```
 
 ### Integration with OpenShift Monitoring
 
-Kepler automatically integrates with OpenShift's built-in monitoring stack through ServiceMonitor resources. No additional configuration is needed for basic metrics collection.
+Kepler integrates with OpenShift monitoring through ServiceMonitor resources. With the default RBAC security mode, the exporter ServiceMonitor requires the User Workload Monitoring service account in `allowedSANames`; see [Prometheus integration](../guides/validating-prometheus-integration.md).
 
 To enable User Workload Monitoring (if not already enabled):
 
@@ -164,9 +243,24 @@ EOF
 
 Now that the operator is installed:
 
-1. **[Create a PowerMonitor resource](../reference/power-monitor.md)** to deploy Kepler
-2. **[Configure PowerMonitor](../reference/power-monitor.md)** for your cluster
-3. **[Set up Grafana dashboards](../guides/grafana-dashboard.md)** to visualize energy metrics
+1. **[Configure PowerMonitor](../reference/power-monitor.md)** for your cluster
+2. **[Set up Grafana dashboards](../guides/grafana-dashboard.md)** to visualize energy metrics
+
+### View the OpenShift Dashboards
+
+With User Workload Monitoring enabled and scraping Kepler, open
+**Observe → Dashboards**. Select **Power Monitor / Overview** for node metrics
+or **Power Monitor / Namespace (Pods)** for pod metrics.
+
+![Power Monitor overview dashboard](assets/images/08-openshift-metrics-dashboard-overview.png)
+
+![Power Monitor namespace dashboard](assets/images/09-openshift-metrics-dashboard-detailed.png)
+
+Use **Observe → Metrics** for PromQL queries, for example
+`kepler_node_cpu_watts{job="power-monitor"}`. For direct diagnostics, run
+`oc port-forward -n power-monitor daemonset/power-monitor 28282:28282` and query
+`http://localhost:28282/metrics` in another terminal. This forwards the exporter
+port locally; the RBAC-protected Service uses HTTPS port `8443`.
 
 ## Troubleshooting
 
