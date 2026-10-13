@@ -167,6 +167,23 @@ spec:
 - `none`: No RBAC enforcement (default on kubernetes)
 - `rbac`: Enable RBAC-based access control to metrics ( default on OpenShift)
 
+With `rbac`, `allowedSANames` entries use `namespace:service-account` format:
+
+```yaml
+spec:
+  kepler:
+    deployment:
+      security:
+        mode: rbac
+        allowedSANames:
+        - openshift-user-workload-monitoring:prometheus-user-workload
+        - monitoring:prometheus
+```
+
+An explicit list replaces the default allowlist. Keep the OpenShift User
+Workload Monitoring entry when adding other consumers if that integration
+should continue to scrape metrics.
+
 #### Secrets
 
 Mount secrets into Kepler containers:
@@ -222,7 +239,7 @@ The Secret contains BMC credentials, while the ConfigMap enables the feature and
 
 For complete Redfish setup instructions, see:
 
-- **[Redfish BMC Monitoring Guide](./experimental/redfish.md)** - Complete setup and configuration
+- **[Redfish BMC Monitoring Guide](../guides/experimental/redfish.md)** - Complete setup and configuration
 - **[Custom ConfigMaps Guide](./custom-configmaps.md)** - Using additionalConfigMaps
 
 ### Kepler Configuration
@@ -290,12 +307,15 @@ Control how many terminated workloads to track:
 spec:
   kepler:
     config:
-      maxTerminated: 500  # Default: 500
+      maxTerminated: 500  # Explicitly enable tracking; operator default: 0
 ```
 
 - Negative values: Track unlimited terminated workloads
 - Zero: Disable terminated workload tracking
 - Positive values: Track top N by energy consumption
+
+The PowerMonitor API defaults to `0`, even though standalone Kepler defaults
+to `500`.
 
 #### Additional ConfigMaps
 
@@ -424,6 +444,29 @@ status:
 
 ## Updating PowerMonitor
 
+Validate configuration against the installed CRD and admission webhook before
+applying it:
+
+```bash
+kubectl apply --dry-run=server -f power-monitor.yaml
+```
+
+Server validation checks supported fields and admission rules. Apply the
+manifest, then wait for the `Reconciled` condition to observe the new resource
+generation before checking its status and DaemonSet readiness. Otherwise,
+checks can report success for the previous configuration:
+
+```bash
+kubectl apply -f power-monitor.yaml
+pm_generation=$(kubectl get powermonitor power-monitor -o jsonpath='{.metadata.generation}')
+kubectl wait \
+  --for=jsonpath='{.status.conditions[?(@.type=="Reconciled")].observedGeneration}'="$pm_generation" \
+  powermonitor/power-monitor --timeout=180s
+kubectl wait --for=condition=Reconciled powermonitor/power-monitor --timeout=180s
+kubectl rollout status daemonset/power-monitor -n power-monitor --timeout=180s
+kubectl get powermonitor power-monitor -o yaml
+```
+
 To update a PowerMonitor configuration:
 
 1. Edit your PowerMonitor YAML
@@ -446,9 +489,7 @@ kubectl patch powermonitor power-monitor --type=merge -p '{"spec":{"kepler":{"co
 
 Monitor the rollout:
 
-```bash
-kubectl rollout status daemonset/power-monitor -n power-monitor
-```
+Use the generation-aware checks above after patching the resource.
 
 ## Deleting PowerMonitor
 
@@ -512,11 +553,11 @@ Check node taints:
 kubectl get nodes -o json | jq '.items[].spec.taints'
 ```
 
-For more troubleshooting guidance, see the [Troubleshooting Guide](./troubleshooting.md).
+For more troubleshooting guidance, see the [Troubleshooting Guide](../guides/troubleshooting.md).
 
 ## Next Steps
 
 - **[Custom ConfigMaps Guide](./custom-configmaps.md)** - Advanced Kepler configuration with custom ConfigMaps
-- **[Grafana Dashboards](./grafana-dashboard.md)** - Visualize Kepler metrics
-- **[Troubleshooting Guide](./troubleshooting.md)** - Diagnose common issues
+- **[Grafana Dashboards](../guides/grafana-dashboard.md)** - Visualize Kepler metrics
+- **[Troubleshooting Guide](../guides/troubleshooting.md)** - Diagnose common issues
 - **[API Reference](../reference/api.md)** - Complete PowerMonitor API specification

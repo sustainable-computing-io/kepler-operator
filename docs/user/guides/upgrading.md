@@ -4,6 +4,10 @@ This guide explains how to upgrade Kepler Operator on both Kubernetes (using Hel
 
 ## Pre-Upgrade Checklist
 
+If your cluster still has legacy `Kepler` resources, complete the
+[Kepler-to-PowerMonitor migration](migration.md) before upgrading to operator
+v0.21.0 or newer. Those versions no longer reconcile the legacy API.
+
 Before upgrading, ensure you:
 
 1. **Review release notes** for breaking changes and new features
