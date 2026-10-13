@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	keplerImage        = `quay.io/sustainable_computing_io/kepler:v0.11.4`
+	keplerImage        = `quay.io/sustainable_computing_io/kepler:v0.12.0`
 	kubeRbacProxyImage = `quay.io/brancz/kube-rbac-proxy:v0.19.0`
 
 	// Default timeouts for async operations

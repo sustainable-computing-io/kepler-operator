@@ -473,7 +473,7 @@ func TestHwmonConfig_YAMLParsing(t *testing.T) {
 		expectError  bool
 		validateFunc func(*testing.T, *Config)
 	}{{
-		name: "hwmon enabled in yaml",
+		name: "hwmon force-enabled in yaml",
 		yamlContent: `
 experimental:
   hwmon:
@@ -489,7 +489,7 @@ experimental:
 			assert.Equal(t, []string{"package", "core"}, cfg.Experimental.Hwmon.Zones)
 		},
 	}, {
-		name: "hwmon disabled in yaml",
+		name: "hwmon not force-enabled in yaml",
 		yamlContent: `
 experimental:
   hwmon:
