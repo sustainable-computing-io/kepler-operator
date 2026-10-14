@@ -53,13 +53,17 @@ jobs:
         env:
           IMG_BASE: ${{ vars.IMG_BASE }}
           VERSION_REPLACED: ${{ github.event.inputs.version-replace }}
-      - name: Update Helm Chart Version
+      - name: Update Helm Chart Version and Image
         shell: bash
+        env:
+          VERSION: ${{ github.event.inputs.tag }}
+          IMG_BASE: ${{ vars.IMG_BASE }}
         run: |
-          VERSION=${{ github.event.inputs.tag }}
           # Update Chart.yaml with the release version
           sed -i "s/^version:.*/version: $VERSION/" manifests/helm/kepler-operator/Chart.yaml
           sed -i "s/^appVersion:.*/appVersion: \"v$VERSION\"/" manifests/helm/kepler-operator/Chart.yaml
+          sed -i "/^operator:/,/^[^[:space:]]/s|^  image:.*|  image: $IMG_BASE/kepler-operator:$VERSION|" manifests/helm/kepler-operator/values.yaml
+          make helm-validate
       - name: Package Helm Chart
         shell: bash
         run: |
