@@ -6,6 +6,8 @@ This document outlines the automated release workflow for Kepler Operator.
 
 The release process for Kepler Operator is automated through GitHub Actions. When triggered, it handles version updates, image building, and publishing of artifacts.
 
+Before packaging the Helm chart, the release workflow updates its `version` and `appVersion` and sets `operator.image` in `values.yaml` to the operator image built for that release. It runs `make helm-validate` to check the chart, including that the default operator image tag matches the chart version. The existing version-update PR includes these Helm changes.
+
 ## ⚠️ Important Notes
 
 - Ensure you have proper permissions to trigger the release workflow

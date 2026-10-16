@@ -72,6 +72,26 @@ validate_helm_template() {
 ensure_all_tools() {
 	info "Ensuring tools are installed"
 	"$PROJECT_ROOT/hack/tools.sh" helm
+	"$PROJECT_ROOT/hack/tools.sh" yq
+}
+
+# Check the chart's default image without the overrides used by other checks.
+validate_operator_image_version() {
+	info "Validating default operator image version..."
+
+	local chart_version operator_image
+	chart_version=$(yq -er '.version' "$HELM_CHART_DIR/Chart.yaml")
+	operator_image=$(helm template kepler-operator "$HELM_CHART_DIR" \
+		--namespace kepler-operator \
+		--show-only templates/deployment.yaml |
+		yq -er '.spec.template.spec.containers[] | select(.name == "manager") | .image')
+
+	[[ "$operator_image" == *":$chart_version" ]] || {
+		fail "Default operator image $operator_image must use chart version tag $chart_version"
+		return 1
+	}
+	ok "Default operator image matches chart version"
+	return 0
 }
 
 # Validate CRD sync status
@@ -146,6 +166,7 @@ main() {
 
 	validate_helm_syntax
 	validate_helm_template
+	validate_operator_image_version
 	validate_crd_sync
 	validate_resources
 

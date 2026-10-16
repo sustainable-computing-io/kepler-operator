@@ -50,7 +50,7 @@ manifests/helm/kepler-operator/
 | **Deployment Changed** | Manual template update | `templates/deployment.yaml` |
 | **New Resource Added** | Create new template | `templates/<resource>.yaml` |
 | **Config Option Added** | Update values & templates | `values.yaml` + relevant template |
-| **Version Bump** | Update chart metadata | `Chart.yaml` (version, appVersion) |
+| **Version Bump** | Release workflow updates chart metadata and default operator image | `Chart.yaml` (version, appVersion), `values.yaml` (operator.image) |
 
 ---
 
@@ -204,6 +204,7 @@ helm template kepler-operator manifests/helm/kepler-operator \
 ```
 
 - Verifies CRD sync status (CRDs match `config/crd/bases/`)
+- Renders the Deployment without image overrides and verifies that the default operator image tag matches the chart version
 - Validates all expected resources present
 - Checks project-local tools available
 
@@ -425,17 +426,19 @@ For manual chart publishing (outside of automated release workflow):
 
 ### Build and Publish Process
 
-**1. Update Chart Version**:
+**1. Update Chart Version and Operator Image**:
 
 ```bash
 VERSION=0.22.0
+IMG_BASE=quay.io/sustainable_computing_io
 
-# Update Chart.yaml with the release version
+# Update chart metadata and the default operator image with the release version
 sed -i "s/^version:.*/version: $VERSION/" manifests/helm/kepler-operator/Chart.yaml
 sed -i "s/^appVersion:.*/appVersion: \"v$VERSION\"/" manifests/helm/kepler-operator/Chart.yaml
+sed -i "/^operator:/,/^[^[:space:]]/s|^  image:.*|  image: $IMG_BASE/kepler-operator:$VERSION|" manifests/helm/kepler-operator/values.yaml
 
 # Verify changes
-cat manifests/helm/kepler-operator/Chart.yaml
+cat manifests/helm/kepler-operator/Chart.yaml manifests/helm/kepler-operator/values.yaml
 ```
 
 **2. Validate Chart**:
