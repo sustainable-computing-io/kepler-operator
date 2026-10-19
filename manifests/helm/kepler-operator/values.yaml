@@ -2,7 +2,7 @@
 
 # Operator
 operator:
-  image: quay.io/sustainable_computing_io/kepler-operator:0.24.0
+  image: quay.io/sustainable_computing_io/kepler-operator:0.25.0
   pullPolicy: IfNotPresent
   # Namespace where power monitoring components will be deployed
   # Defaults to "power-monitor" if not specified
