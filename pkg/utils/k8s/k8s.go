@@ -161,9 +161,9 @@ func GVKName(o client.Object) string {
 	name := o.GetName()
 	gvk := o.GetObjectKind().GroupVersionKind().String()
 	if ns != "" {
-		return fmt.Sprintf("%s (%s)", name, gvk)
+		return fmt.Sprintf("%s/%s (%s)", ns, name, gvk)
 	}
-	return fmt.Sprintf("%s/%s (%s)", ns, name, gvk)
+	return fmt.Sprintf("%s (%s)", name, gvk)
 }
 
 func FindCondition(c []v1alpha1.Condition, t v1alpha1.ConditionType) (v1alpha1.Condition, error) {
