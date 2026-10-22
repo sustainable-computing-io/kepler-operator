@@ -150,7 +150,7 @@ data:
 
 ### 🔬 Example 5: Enabling Experimental Redfish BMC Monitoring
 
-⚠️ **EXPERIMENTAL FEATURE** - See [Redfish Monitoring Guide](./experimental/redfish.md)
+⚠️ **EXPERIMENTAL FEATURE** - See [Redfish Monitoring Guide](../guides/experimental/redfish.md)
 
 Enable platform-level power monitoring via Redfish BMC API:
 
@@ -175,7 +175,7 @@ data:
 - This feature is **experimental** and may change in future versions
 - Requires a **Secret** containing BMC credentials (not shown here)
 - The `configFile` must point to a mounted Secret path
-- See the complete [Redfish Monitoring Guide](./experimental/redfish.md) for full setup instructions
+- See the complete [Redfish Monitoring Guide](../guides/experimental/redfish.md) for full setup instructions
 
 **When to use:**
 
