@@ -70,7 +70,7 @@ To ensure Kepler is working correctly, follow these validation guides:
 
 - **[Validate Prometheus Integration](docs/user/guides/validating-prometheus-integration.md)** - Verify metrics are being collected (recommended)
 - **[Setup Grafana Dashboards](docs/user/guides/grafana-dashboard.md)** - Visualize power consumption metrics
-- [Configuration Options](docs/user/guides/power-monitor.md) - Customize Kepler deployment
+- [Configuration Options](docs/user/reference/power-monitor.md) - Customize Kepler deployment
 
 **Need Help?**
 
@@ -91,8 +91,8 @@ For detailed installation, configuration, and usage instructions, see the [User 
   - [Monitoring Stack Installation](docs/user/installation/monitoring-stack-kubernetes.md)
   - [OpenShift Installation (OperatorHub)](docs/user/installation/openshift.md)
 - **Usage**:
-  - [Creating PowerMonitor Resources](docs/user/guides/power-monitor.md)
-  - [Configuring PowerMonitor](docs/user/guides/power-monitor.md)
+  - [Creating PowerMonitor Resources](docs/user/reference/power-monitor.md)
+  - [Configuring PowerMonitor](docs/user/reference/power-monitor.md)
   - [Setting up Grafana Dashboards](docs/user/guides/grafana-dashboard.md)
   - [Validating Prometheus Integration](docs/user/guides/validating-prometheus-integration.md)
   - [Upgrading](docs/user/guides/upgrading.md)
