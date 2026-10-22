@@ -36,7 +36,7 @@ TO-DO
 
 The Kepler-Operator CI tests perform the following checks:
 
-- [integration tests](./.github/workflows/integration_test.yml)
+- [integration tests](./.github/workflows/pr-checks.yaml)
 
 ### Unit Tests
 
@@ -53,7 +53,7 @@ make test
 
 Integration tests should be based on the minimal scope of a unit test needed to succeed.
 
-The GitHub Actions workflow for integration tests and in-depth steps can be found [here](./.github/workflows/integration_test.yml).
+The GitHub Actions workflow for integration tests and in-depth steps can be found [here](./.github/workflows/pr-checks.yaml).
 
 ## Sign Commits
 
