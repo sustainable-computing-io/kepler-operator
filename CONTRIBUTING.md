@@ -7,10 +7,10 @@ There are multiple ways to contribute, including new feature requests and implem
 
 1. Before opening a new issue or PR, search for any existing issues [here](https://github.com/sustainable-computing-io/kepler-operator/issues) to avoid duplication.
 2. For any code contribution, please read the documents below carefully:
-   - [License](./LICENSE)
+   - [License](LICENSE)
    - [DCO](./DCO)
 
-If you are good with our [License](./LICENSE) and [DCO](./DCO), follow these steps to start with your 1st code contribution:
+If you are good with our [License](LICENSE) and [DCO](./DCO), follow these steps to start with your 1st code contribution:
 
 1. Fork & clone Kepler Operator
 2. We use as a test framework. Please add units tests that cover your code changes.
@@ -36,7 +36,7 @@ TO-DO
 
 The Kepler-Operator CI tests perform the following checks:
 
-- [integration tests](./.github/workflows/integration_test.yml)
+- [Integration Tests](.github/workflows/pr-checks.yaml)
 
 ### Unit Tests
 
@@ -53,7 +53,7 @@ make test
 
 Integration tests should be based on the minimal scope of a unit test needed to succeed.
 
-The GitHub Actions workflow for integration tests and in-depth steps can be found [here](./.github/workflows/integration_test.yml).
+The GitHub Actions workflow for integration tests and in-depth steps can be found [here](./.github/workflows/pr-checks.yaml).
 
 ## Sign Commits
 

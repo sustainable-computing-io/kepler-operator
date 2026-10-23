@@ -551,7 +551,7 @@ Planned improvements for future versions:
 
 - **[PowerMonitor Guide](../../reference/power-monitor.md)** - Complete PowerMonitor configuration
 - **[Custom ConfigMaps Guide](../../reference/custom-configmaps.md)** - Using additionalConfigMaps
-- **[Kepler Redfish Proposal](https://github.com/sustainable-computing-io/kepler/blob/main/doc/dev/EP_001-redfish-support.md)** - Technical design document
+- **[Kepler Redfish Proposal](https://github.com/sustainable-computing-io/kepler/blob/main/docs/developer/proposal/EP-001-redfish-support.md)** - Technical design document
 
 ## Getting Help
 
