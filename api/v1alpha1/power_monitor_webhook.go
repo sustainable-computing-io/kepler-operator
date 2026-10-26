@@ -47,7 +47,6 @@ func SetupWebhookWithManager(mgr ctrl.Manager) error {
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as it is used only for temporary operations and does not need to be deeply copied.
 type PowerMonitorCustomDefaulter struct {
-	// TODO(user): Add more fields as needed for defaulting
 }
 
 var _ webhook.CustomDefaulter = &PowerMonitorCustomDefaulter{}
@@ -81,7 +80,6 @@ func (d *PowerMonitorCustomDefaulter) Default(_ context.Context, obj runtime.Obj
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as this struct is used only for temporary operations and does not need to be deeply copied.
 type PowerMonitorCustomValidator struct {
-	// TODO(user): Add more fields as needed for validation
 }
 
 var _ webhook.CustomValidator = &PowerMonitorCustomValidator{}
@@ -110,8 +108,6 @@ func (v *PowerMonitorCustomValidator) ValidateUpdate(_ context.Context, oldObj, 
 	}
 	pmonLog.Info("Validation for PowerMonitor upon update", "name", powerMonitor.GetName())
 
-	// TODO(user): fill in your validation logic upon object update.
-
 	return nil, nil
 }
 
@@ -122,8 +118,6 @@ func (v *PowerMonitorCustomValidator) ValidateDelete(_ context.Context, obj runt
 		return nil, fmt.Errorf("expected a PowerMonitor object but got %T", obj)
 	}
 	pmonLog.Info("Validation for PowerMonitor upon deletion", "name", powerMonitor.GetName())
-
-	// TODO(user): fill in your validation logic upon object deletion.
 
 	return nil, nil
 }

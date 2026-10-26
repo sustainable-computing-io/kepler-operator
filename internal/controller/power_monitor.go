@@ -32,7 +32,7 @@ const (
 
 var PowerMonitorDeploymentNS = "power-monitor"
 
-// PowerMonitorReconciler reconciles a Kepler object
+// PowerMonitorReconciler reconciles a PowerMonitor object
 type PowerMonitorReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -54,22 +54,12 @@ func (r *PowerMonitorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the Kepler object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *PowerMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	// TODO: remove these keys from the log
-	// "controller": "kepler", "controllerGroup": "kepler.system.sustainable.computing.io",
-	// "controllerKind": "Kepler", "Kepler": {"name":"kepler"},
 
 	logger := log.FromContext(ctx)
 	r.logger = logger
 
-	logger.Info("Start of  reconcile")
+	logger.Info("Start of reconcile")
 	defer logger.Info("End of reconcile")
 
 	pm, err := r.getPowerMonitor(ctx, req)
