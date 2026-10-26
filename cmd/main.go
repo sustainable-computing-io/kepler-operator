@@ -240,7 +240,7 @@ func main() {
 		Scheme:        scheme,
 		Metrics:       metricsServerOptions,
 		WebhookServer: webhookServer,
-		// TODO: add new introduced namespace from KeplerInternal.Spec.Deployment.Namespace
+		// TODO: add new introduced namespace from PowerMonitorInternal.Spec.Kepler.Deployment.Namespace
 		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
 			cacheNs := map[string]cache.Config{
 				controller.PowerMonitorDeploymentNS: {},
