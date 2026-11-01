@@ -55,7 +55,7 @@ func (r *PowerMonitorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *PowerMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
+	// TODO: remove these keys from the log
 	logger := log.FromContext(ctx)
 	r.logger = logger
 
