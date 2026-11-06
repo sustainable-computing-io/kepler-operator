@@ -1,8 +1,8 @@
 module github.com/sustainable.computing.io/kepler-operator/tests
 
-go 1.25.0
+go 1.26.0
 
-toolchain go1.25.14
+toolchain go1.26.10
 
 require (
 	github.com/cert-manager/cert-manager v1.18.6
