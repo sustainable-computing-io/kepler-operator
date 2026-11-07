@@ -260,9 +260,10 @@ kubectl describe pod -n <namespace> <power-monitor-pod-name>
 
    ```text
    Error: failed to access /sys/class/powercap: permission denied
+   failed to get process executable: readlink /host/proc/1/exe: permission denied
    ```
 
-   **Note**: The operator configures host mounts and `SYS_PTRACE` for Kepler pods, with `privileged: false`. Check the pod's mounts and security context, host sensor permissions, and operator logs for reconciliation errors.
+   **Note**: The operator configures host mounts and `SYS_PTRACE` for Kepler pods, with `privileged: false` and an `Unconfined` AppArmor profile. Without it, the container runtime's default AppArmor profile blocks reading `/proc/<pid>/exe` of host processes even with `SYS_PTRACE`: operator v0.24.0 and v0.25.0 lack this setting and fail with the `/proc` error above on AppArmor-enabled nodes. Check the pod's mounts and security context, host sensor permissions, and operator logs for reconciliation errors.
 
 1. **Invalid configuration**:
 

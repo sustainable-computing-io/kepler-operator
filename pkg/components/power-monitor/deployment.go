@@ -723,6 +723,12 @@ func newKeplerContainer(pmi *v1alpha1.PowerMonitorInternal) corev1.Container {
 				Drop: []corev1.Capability{"ALL"},
 				Add:  []corev1.Capability{"SYS_PTRACE"},
 			},
+			// The container runtime's default AppArmor profile only allows ptrace
+			// between processes under the same profile, so it denies reading
+			// /proc/<pid>/exe of host processes even with SYS_PTRACE.
+			AppArmorProfile: &corev1.AppArmorProfile{
+				Type: corev1.AppArmorProfileTypeUnconfined,
+			},
 		},
 		Image:           deployment.Image,
 		ImagePullPolicy: corev1.PullAlways,
