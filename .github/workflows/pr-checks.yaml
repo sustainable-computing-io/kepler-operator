@@ -175,6 +175,12 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v7
 
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
       - name: Setup Python
         uses: actions/setup-python@v7
 

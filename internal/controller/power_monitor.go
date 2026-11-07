@@ -184,7 +184,11 @@ func (r PowerMonitorReconciler) getInternalForPowerMonitor(ctx context.Context, 
 }
 
 func (r PowerMonitorReconciler) reconcilersForPowerMonitor(pm *v1alpha1.PowerMonitor) []reconciler.Reconciler {
-	op := deleteResource
+	op := func(obj client.Object) reconciler.Reconciler {
+		return &reconciler.Deleter{
+			Resource: obj, OnError: reconciler.Requeue, WaitForDeletion: true,
+		}
+	}
 	detail := components.Metadata
 
 	if update := pm.DeletionTimestamp.IsZero(); update {
@@ -192,6 +196,7 @@ func (r PowerMonitorReconciler) reconcilersForPowerMonitor(pm *v1alpha1.PowerMon
 		detail = components.Full
 	}
 
+	// Keep the finalizer until PowerMonitorInternal has completed its cleanup.
 	rs := []reconciler.Reconciler{
 		op(newPowerMonitorInternal(detail, pm)),
 		reconciler.Finalizer{

@@ -6,24 +6,23 @@ package reconciler
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/sustainable.computing.io/kepler-operator/pkg/utils/k8s"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// Deleter requests deletion without blocking reconciliation.
 type Deleter struct {
-	Resource    client.Object
-	OnError     Action
-	WaitTimeout time.Duration
+	// Resource is the object to delete.
+	Resource client.Object
+	// OnError determines how reconciliation proceeds after an API error.
+	OnError Action
+	// WaitForDeletion requeues while Resource still exists, delaying later reconcilers.
+	WaitForDeletion bool
 }
 
 func (r Deleter) Reconcile(ctx context.Context, c client.Client, scheme *runtime.Scheme) Result {
-	objKey := client.ObjectKeyFromObject(r.Resource)
-
 	if err := c.Delete(ctx, r.Resource); client.IgnoreNotFound(err) != nil {
 		return Result{
 			Error:  r.error("failed to delete", err),
@@ -31,19 +30,14 @@ func (r Deleter) Reconcile(ctx context.Context, c client.Client, scheme *runtime
 		}
 	}
 
-	dup := r.Resource.DeepCopyObject().(client.Object)
-
-	timeout := max(r.WaitTimeout, 60*time.Second)
-	err := wait.PollUntilContextTimeout(ctx, 5*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
-		err := c.Get(ctx, objKey, dup)
-		// repeat until object is not found
-		return errors.IsNotFound(err), nil
-	})
-
-	if err != nil {
-		return Result{
-			Error:  r.error("timed out waiting for deletion", err),
-			Action: r.OnError,
+	if r.WaitForDeletion {
+		obj := r.Resource.DeepCopyObject().(client.Object)
+		err := c.Get(ctx, client.ObjectKeyFromObject(r.Resource), obj)
+		if client.IgnoreNotFound(err) != nil {
+			return Result{Error: r.error("failed to check deletion", err), Action: r.OnError}
+		}
+		if err == nil {
+			return Result{Action: Requeue}
 		}
 	}
 	return Result{}

@@ -36,7 +36,9 @@ kubectl get powermonitor power-monitor
 kubectl delete powermonitor power-monitor
 ```
 
-This automatically removes Kepler DaemonSets and related resources.
+Keep the operator running until this command completes. PowerMonitor deletion
+waits for PowerMonitorInternal cleanup and removal of the Kepler deployment
+namespace. Kubernetes garbage collection removes any remaining owned resources.
 
 ### Step 2: Uninstall the Operator
 
@@ -144,6 +146,8 @@ The script automatically:
    oc delete powermonitor power-monitor
    ```
 
+   Wait for PowerMonitor deletion to complete before uninstalling the operator.
+
 2. **Uninstall Operator**:
 
    - Navigate to **Operators** → **Installed Operators**
@@ -166,7 +170,8 @@ The script automatically:
 oc delete powermonitor power-monitor
 ```
 
-Wait for the Kepler DaemonSet to be removed.
+Keep the operator running until PowerMonitor deletion completes. This waits for
+PowerMonitorInternal cleanup and removal of the Kepler deployment namespace.
 
 #### Step 2: Delete the Subscription
 
