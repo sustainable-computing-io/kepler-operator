@@ -265,9 +265,8 @@ func TestPowerMonitorKeplerContainerSecurityContext(t *testing.T) {
 			Drop: []corev1.Capability{"ALL"},
 			Add:  []corev1.Capability{"SYS_PTRACE"},
 		},
-		AppArmorProfile: &corev1.AppArmorProfile{
-			Type: corev1.AppArmorProfileTypeUnconfined,
-		},
+		// securityContext.appArmorProfile must stay unset: the field only exists in
+		// Kubernetes 1.30+ and server-side apply rejects it on older clusters.
 	}
 
 	tt := []struct {
@@ -301,6 +300,13 @@ func TestPowerMonitorKeplerContainerSecurityContext(t *testing.T) {
 			require.NotEmpty(t, containers)
 			assert.Equal(t, pmi.DaemonsetName(), containers[0].Name)
 			assert.Equal(t, expected, containers[0].SecurityContext)
+
+			// AppArmor is unconfined via the pod annotation for the Kepler container only.
+			assert.Equal(t,
+				map[string]string{
+					"container.apparmor.security.beta.kubernetes.io/" + pmi.DaemonsetName(): "unconfined",
+				},
+				ds.Spec.Template.Annotations)
 		})
 	}
 }
@@ -1738,7 +1744,7 @@ func TestAnnotateWithSecretHash(t *testing.T) {
 			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
 			AnnotateWithSecretHash(&ds.Spec.Template.ObjectMeta, tc.secret, SecretTLSHashAnnotation)
 			actualAnnotation := k8s.AnnotationFromDS(ds)
-			assert.Equal(t, tc.annotation, actualAnnotation)
+			assert.Subset(t, actualAnnotation, tc.annotation)
 		})
 	}
 }
@@ -1838,7 +1844,7 @@ func TestMountConfigMapToDaemonSet(t *testing.T) {
 			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
 			MountConfigMapToDaemonSet(ds, tc.configMap)
 			actualAnnotation := k8s.AnnotationFromDS(ds)
-			assert.Equal(t, tc.annotation, actualAnnotation)
+			assert.Subset(t, actualAnnotation, tc.annotation)
 		})
 	}
 }

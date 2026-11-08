@@ -562,9 +562,9 @@ dev:
 				"Should drop ALL capabilities")
 			Expect(secCtx.Capabilities.Add).To(Equal([]corev1.Capability{"SYS_PTRACE"}),
 				"Should only add SYS_PTRACE capability")
-			Expect(secCtx.AppArmorProfile).NotTo(BeNil(), "Container should set an AppArmor profile")
-			Expect(secCtx.AppArmorProfile.Type).To(Equal(corev1.AppArmorProfileTypeUnconfined),
-				"AppArmor profile should be Unconfined so SYS_PTRACE can read host /proc entries")
+			Expect(ds.Spec.Template.Annotations).To(HaveKeyWithValue(
+				"container.apparmor.security.beta.kubernetes.io/"+pm.Name, "unconfined"),
+				"AppArmor should be unconfined so SYS_PTRACE can read host /proc entries")
 		})
 	})
 
