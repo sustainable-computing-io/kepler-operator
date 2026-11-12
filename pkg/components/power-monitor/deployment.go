@@ -138,6 +138,15 @@ func NewPowerMonitorDaemonSet(detail components.Detail, pmi *v1alpha1.PowerMonit
 					Name:      pmi.DaemonsetName(),
 					Namespace: pmi.Namespace(),
 					Labels:    podSelector(pmi),
+					// The container runtime's default AppArmor profile only allows ptrace
+					// between processes under the same profile, so it denies reading
+					// /proc/<pid>/exe of host processes even with SYS_PTRACE.
+					// The annotation (instead of securityContext.appArmorProfile, which
+					// only exists in Kubernetes 1.30+) is accepted by every supported
+					// Kubernetes version and still honored by newer ones.
+					Annotations: map[string]string{
+						corev1.DeprecatedAppArmorBetaContainerAnnotationKeyPrefix + pmi.DaemonsetName(): corev1.DeprecatedAppArmorBetaProfileNameUnconfined,
+					},
 				},
 				Spec: corev1.PodSpec{
 					HostPID:            true,
