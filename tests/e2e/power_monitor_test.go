@@ -562,6 +562,9 @@ dev:
 				"Should drop ALL capabilities")
 			Expect(secCtx.Capabilities.Add).To(Equal([]corev1.Capability{"SYS_PTRACE"}),
 				"Should only add SYS_PTRACE capability")
+			Expect(ds.Spec.Template.Annotations).To(HaveKeyWithValue(
+				"container.apparmor.security.beta.kubernetes.io/"+pm.Name, "unconfined"),
+				"AppArmor should be unconfined so SYS_PTRACE can read host /proc entries")
 		})
 	})
 

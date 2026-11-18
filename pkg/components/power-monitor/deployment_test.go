@@ -14,6 +14,7 @@ import (
 	"github.com/cespare/xxhash/v2"
 	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/sustainable.computing.io/kepler-operator/api/v1alpha1"
 	"github.com/sustainable.computing.io/kepler-operator/internal/config"
 	"github.com/sustainable.computing.io/kepler-operator/pkg/components"
@@ -251,6 +252,61 @@ func TestPowerMonitorDaemonSet(t *testing.T) {
 				actualAnnotation := k8s.AnnotationFromDS(ds)
 				assert.Contains(t, actualAnnotation, ConfigMapHashAnnotation+"-power-monitor-internal")
 			}
+		})
+	}
+}
+
+func TestPowerMonitorKeplerContainerSecurityContext(t *testing.T) {
+	expected := &corev1.SecurityContext{
+		Privileged:               ptr.To(false),
+		AllowPrivilegeEscalation: ptr.To(false),
+		ReadOnlyRootFilesystem:   ptr.To(true),
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{"ALL"},
+			Add:  []corev1.Capability{"SYS_PTRACE"},
+		},
+		// securityContext.appArmorProfile must stay unset: the field only exists in
+		// Kubernetes 1.30+ and server-side apply rejects it on older clusters.
+	}
+
+	tt := []struct {
+		scenario string
+		mode     v1alpha1.SecurityMode
+	}{
+		{scenario: "default security mode", mode: v1alpha1.SecurityModeNone},
+		{scenario: "rbac security mode", mode: v1alpha1.SecurityModeRBAC},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
+			pmi := v1alpha1.PowerMonitorInternal{
+				ObjectMeta: metav1.ObjectMeta{Name: "power-monitor-internal"},
+				Spec: v1alpha1.PowerMonitorInternalSpec{
+					Kepler: v1alpha1.PowerMonitorInternalKeplerSpec{
+						Deployment: v1alpha1.PowerMonitorInternalKeplerDeploymentSpec{
+							PowerMonitorKeplerDeploymentSpec: v1alpha1.PowerMonitorKeplerDeploymentSpec{
+								Security: v1alpha1.PowerMonitorKeplerDeploymentSecuritySpec{
+									Mode: tc.mode,
+								},
+							},
+						},
+					},
+				},
+			}
+			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
+			containers := ds.Spec.Template.Spec.Containers
+			require.NotEmpty(t, containers)
+			assert.Equal(t, pmi.DaemonsetName(), containers[0].Name)
+			assert.Equal(t, expected, containers[0].SecurityContext)
+
+			// AppArmor is unconfined via the pod annotation for the Kepler container only.
+			assert.Equal(t,
+				map[string]string{
+					"container.apparmor.security.beta.kubernetes.io/" + pmi.DaemonsetName(): "unconfined",
+				},
+				ds.Spec.Template.Annotations)
 		})
 	}
 }
@@ -1688,7 +1744,7 @@ func TestAnnotateWithSecretHash(t *testing.T) {
 			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
 			AnnotateWithSecretHash(&ds.Spec.Template.ObjectMeta, tc.secret, SecretTLSHashAnnotation)
 			actualAnnotation := k8s.AnnotationFromDS(ds)
-			assert.Equal(t, tc.annotation, actualAnnotation)
+			assert.Subset(t, actualAnnotation, tc.annotation)
 		})
 	}
 }
@@ -1788,7 +1844,7 @@ func TestMountConfigMapToDaemonSet(t *testing.T) {
 			ds := NewPowerMonitorDaemonSet(components.Full, &pmi)
 			MountConfigMapToDaemonSet(ds, tc.configMap)
 			actualAnnotation := k8s.AnnotationFromDS(ds)
-			assert.Equal(t, tc.annotation, actualAnnotation)
+			assert.Subset(t, actualAnnotation, tc.annotation)
 		})
 	}
 }
